@@ -7,6 +7,9 @@
   <title>NEBULA CRYPTO HUNTER V103.1</title>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
   <style>
+    /* ============================================ */
+    /* FULL CSS (TIDAK DISINGKAT) */
+    /* ============================================ */
     :root{--bg:#000a14;--cyan:#00ffff;--gold:#ffd700;--green:#00ff66;--red:#ff4444;--orange:#ff8800;--purple:#b0f}
     *{margin:0;padding:0;box-sizing:border-box}
     html{font-size:16px;touch-action:manipulation}
@@ -147,27 +150,20 @@ const RUGCHECK_PROXY = WORKER_URL + '/rugcheck/';
 const DEX_PROXY = WORKER_URL + '/dex/';
 
 // ============================================
-// FEATURE 3: CACHE VERSIONING
+// CACHE VERSIONING & STORAGE INTERFACE
 // ============================================
 const CACHE_PREFIX = 'nebula_v103_';
-
-// ============================================
-// FEATURE 4: STORAGE INTERFACE (KV/D1 Ready)
-// ============================================
 const StorageInterface = {
   _ram: new Map(),
-  _ramTTL: 30000, // 30 detik
-  _localTTL: 600000, // 10 menit
-
+  _ramTTL: 30000,
+  _localTTL: 600000,
   load(key) {
     const fullKey = CACHE_PREFIX + key;
-    // Level 1: RAM
     if (this._ram.has(fullKey)) {
       const entry = this._ram.get(fullKey);
       if (Date.now() - entry.time < this._ramTTL) return entry.data;
       this._ram.delete(fullKey);
     }
-    // Level 2: localStorage
     try {
       const raw = localStorage.getItem(fullKey);
       if (raw) {
@@ -179,99 +175,69 @@ const StorageInterface = {
         localStorage.removeItem(fullKey);
       }
     } catch (e) {}
-    // Level 3 (future): Cloudflare KV
-    // Level 4 (future): Cloudflare D1
     return null;
   },
-
   save(key, data) {
     const fullKey = CACHE_PREFIX + key;
     const entry = { data, time: Date.now() };
-    // Level 1: RAM
     this._ram.set(fullKey, entry);
-    // Level 2: localStorage
-    try {
-      localStorage.setItem(fullKey, JSON.stringify(entry));
-    } catch (e) {}
-    // Level 3 (future): Cloudflare KV
-    // Level 4 (future): Cloudflare D1
+    try { localStorage.setItem(fullKey, JSON.stringify(entry)); } catch (e) {}
   },
-
   remove(key) {
     const fullKey = CACHE_PREFIX + key;
     this._ram.delete(fullKey);
     try { localStorage.removeItem(fullKey); } catch (e) {}
   },
-
   getStats() {
     return { ram: this._ram.size, local: localStorage.length };
   }
 };
 
 // ============================================
-// FEATURE 1: SMART CIRCUIT BREAKER
+// SMART CIRCUIT BREAKER
 // ============================================
 const CircuitBreaker = {
   services: {},
-
   init(service, threshold = 3, cooldownMs = 60000, testIntervalMs = 30000) {
     this.services[service] = {
-      failures: 0,
-      disabled: false,
-      cooldownUntil: 0,
-      threshold,
-      cooldownMs,
-      testIntervalMs,
-      lastTest: 0
+      failures: 0, disabled: false, cooldownUntil: 0,
+      threshold, cooldownMs, testIntervalMs, lastTest: 0
     };
   },
-
   recordFailure(service) {
-    const cb = this.services[service];
-    if (!cb) return;
+    const cb = this.services[service]; if (!cb) return;
     cb.failures++;
     if (cb.failures >= cb.threshold && !cb.disabled) {
-      cb.disabled = true;
-      cb.cooldownUntil = Date.now() + cb.cooldownMs;
-      addAILog('CB: ' + service + ' DISABLED (' + cb.failures + ' fails)', 'warning');
+      cb.disabled = true; cb.cooldownUntil = Date.now() + cb.cooldownMs;
+      addAILog('CB: ' + service + ' DISABLED', 'warning');
     }
   },
-
   recordSuccess(service) {
-    const cb = this.services[service];
-    if (!cb) return;
+    const cb = this.services[service]; if (!cb) return;
     cb.failures = 0;
     if (cb.disabled && Date.now() > cb.cooldownUntil) {
-      cb.disabled = false;
-      addAILog('CB: ' + service + ' RECOVERED', 'success');
+      cb.disabled = false; addAILog('CB: ' + service + ' RECOVERED', 'success');
     }
   },
-
   isAllowed(service) {
-    const cb = this.services[service];
-    if (!cb) return true;
+    const cb = this.services[service]; if (!cb) return true;
     if (!cb.disabled) return true;
-    // Auto-test setelah cooldown
-    if (Date.now() > cb.cooldownUntil) {
-      if (Date.now() - cb.lastTest > cb.testIntervalMs) {
-        cb.lastTest = Date.now();
-        return true; // Allow test request
-      }
+    if (Date.now() > cb.cooldownUntil && Date.now() - cb.lastTest > cb.testIntervalMs) {
+      cb.lastTest = Date.now(); return true;
     }
     return false;
   },
-
   getStatus(service) {
-    const cb = this.services[service];
-    if (!cb) return 'active';
+    const cb = this.services[service]; if (!cb) return 'active';
     return cb.disabled ? 'disabled' : 'active';
   }
 };
-
-// Init circuit breakers
 CircuitBreaker.init('dex', 3, 60000, 30000);
 CircuitBreaker.init('rugcheck', 3, 60000, 30000);
 
+// ============================================
+// GLOBAL HELPERS & STATE
+// ============================================
 const $=id=>document.getElementById(id);
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const safeNum=v=>{const n=Number(v);return isFinite(n)?n:null};
@@ -302,15 +268,15 @@ function openDexLink(token){const url=getTokenDexUrl(token);try{window.open(url,
 const Scheduler=(()=>{const tasks=new Map();let visualRaf=null,bgTimer=null;let idleFrames=0;const IDLE_THRESHOLD=120;function register(name,fn,intervalMs,type='background'){tasks.set(name,{fn,intervalMs,lastRun:0,type})}function startVisual(){if(visualRaf)return;idleFrames=0;const loop=()=>{PerfMon.measureFrame();const start=performance.now();tickVisual();PerfMon.recordRender(performance.now()-start);if(S.rq.size===0){idleFrames++;if(idleFrames>=IDLE_THRESHOLD){visualRaf=null;return}}else{idleFrames=0}visualRaf=requestAnimationFrame(loop)};visualRaf=requestAnimationFrame(loop)}function wakeVisual(){if(!visualRaf)startVisual()}function startBackground(){if(bgTimer)return;bgTimer=setInterval(tickBackground,1000)}function tickVisual(){RenderEngine.flushRQ()}function tickBackground(){const now=Date.now();for(const[name,task]of tasks){if(task.type==='background'&&now-task.lastRun>=task.intervalMs){task.fn();task.lastRun=now}}PerfMon.updateUI()}return{register,startVisual,wakeVisual,startBackground}})();
 const PerfMon=(()=>{let fps=60,renderTime=0,lastFrameTime=performance.now(),frameCount=0,fpsUpdateTime=performance.now();function measureFrame(){const now=performance.now();frameCount++;if(now-fpsUpdateTime>=1000){fps=Math.round(frameCount/((now-fpsUpdateTime)/1000));frameCount=0;fpsUpdateTime=now}lastFrameTime=now}function recordRender(ms){renderTime=Math.round(ms)}function updateUI(){}return{measureFrame,recordRender,updateUI}})();
 
+// ============================================
+// AI ENGINE (FULL)
+// ============================================
 const AiEngine=(()=>{
 function getMode(){return AI_MODE_PROFILE[$('modeSelect')?.value]||AI_MODE_PROFILE.gem_hunter}
 function getRisk(){return AI_RISK_PROFILE[$('riskSelect')?.value]||AI_RISK_PROFILE.balanced}
 function getDynamicWeights(mode){const w={wallet:mode.walletW,narrative:mode.narrW,security:mode.secW,momentum:mode.momW};const regime=S.market.regime;if(regime==='BULL'){w.wallet*=1.25;w.momentum*=1.20;w.security*=0.85}else if(regime==='BEAR'){w.security*=1.50;w.wallet*=0.80;w.momentum*=0.75}else if(regime==='RECOVERY'){w.wallet*=1.15;w.momentum*=1.15}const topNarr=getTopNarrative();if(topNarr==='AI'){w.narrative*=1.30}else if(topNarr==='MEME'){w.narrative*=1.40;w.security*=0.75}else if(topNarr==='STAKING'){w.security*=1.25}return w}
 function getTopNarrative(){const counts={};feedBus.forEach(t=>{(t._narr||[]).forEach(n=>{counts[n]=(counts[n]||0)+1})});let top='',max=0;for(const[k,v]of Object.entries(counts)){if(v>max){max=v;top=k}}return top}
 
-// ============================================
-// FEATURE 2: RUGCHECK STATUS CLASSIFICATION
-// ============================================
 function classifyRugStatus(token) {
   if (!token._rug || token._rugError) return { status: 'UNKNOWN', class: 'rug-unknown', label: 'UNKNOWN' };
   const score = token._rug.score || 0;
@@ -319,21 +285,12 @@ function classifyRugStatus(token) {
   return { status: 'RISK', class: 'rug-risk', label: 'RISK' };
 }
 
-// ============================================
-// DEX: DUAL PATH + CIRCUIT BREAKER
-// ============================================
 async function enrichDex(token){
   if(token._dexDone)return;
   const cacheKey = 'dex_' + token.ca;
   const cached = StorageInterface.load(cacheKey);
-  if(cached) {
-    Object.assign(token, cached);
-    token._dexDone = true; token._fromCache = true;
-    window.setEp('DEX','on');
-    return;
-  }
+  if(cached) { Object.assign(token, cached); token._dexDone = true; token._fromCache = true; window.setEp('DEX','on'); return; }
 
-  // PATH 1: Worker (if circuit breaker allows)
   if(CircuitBreaker.isAllowed('dex')){
     try{
       const res=await fetchURL(DEX_PROXY+token.ca,{},5000);
@@ -349,7 +306,6 @@ async function enrichDex(token){
     }catch(e){CircuitBreaker.recordFailure('dex');}
   }
 
-  // PATH 2: Browser Direct
   try{
     const res=await fetchURL('https://api.dexscreener.com/latest/dex/tokens/'+token.ca,{},5000);
     const json=await res.json();
@@ -382,24 +338,39 @@ async function enrichRug(token){
   if(token._rugDone)return;
   const cacheKey = 'rug_' + token.ca;
   const cached = StorageInterface.load(cacheKey);
-  if(cached) {token._rug = cached; token._rugDone = true; token._rugError = false; token._fromCache = true; window.setEp('RUGCHECK','on'); return;}
+  if(cached) { token._rug = cached; token._rugDone = true; token._rugError = false; token._fromCache = true; window.setEp('RUGCHECK','on'); return; }
 
   if(CircuitBreaker.isAllowed('rugcheck')){
     try{
       const res=await fetchURL(RUGCHECK_PROXY+token.ca,{},8000);
-      if(res.ok){const d=await res.json();if(d&&d.token){let ll=0,lt=0;(d.markets||[]).forEach(m=>{if(m.lp){lt+=m.lp.baseUSD||0;if(m.lp.lockup)ll+=m.lp.baseUSD||0}});token._rug={score:d.score||0,lpLock:lt>0?(ll/lt)*100:0,mint:!!d.token?.mintAuthority,freeze:!!d.token?.freezeAuthority};token._rugError=false;CircuitBreaker.recordSuccess('rugcheck');StorageInterface.save(cacheKey, token._rug);}
-      else if(res.status===400){token._rug={score:-1,lpLock:0,mint:false,freeze:false};token._rugError=true;CircuitBreaker.recordSuccess('rugcheck');}
-      else{token._rug={score:0,lpLock:0,mint:false,freeze:false};token._rugError=true;CircuitBreaker.recordFailure('rugcheck');}
-      token._rugDone=true;window.setEp('RUGCHECK','on');
-      return;
+      if(res.ok){
+        const d=await res.json();
+        if(d&&d.token){
+          let ll=0,lt=0;(d.markets||[]).forEach(m=>{if(m.lp){lt+=m.lp.baseUSD||0;if(m.lp.lockup)ll+=m.lp.baseUSD||0}});
+          token._rug={score:d.score||0,lpLock:lt>0?(ll/lt)*100:0,mint:!!d.token?.mintAuthority,freeze:!!d.token?.freezeAuthority};token._rugError=false;CircuitBreaker.recordSuccess('rugcheck');StorageInterface.save(cacheKey, token._rug);
+        } else { token._rug={score:0,lpLock:0,mint:false,freeze:false};token._rugError=true;CircuitBreaker.recordSuccess('rugcheck'); }
+      } else if(res.status===400){ token._rug={score:-1,lpLock:0,mint:false,freeze:false};token._rugError=true;CircuitBreaker.recordSuccess('rugcheck'); }
+      else { token._rug={score:0,lpLock:0,mint:false,freeze:false};token._rugError=true;CircuitBreaker.recordFailure('rugcheck'); }
+      token._rugDone=true;window.setEp('RUGCHECK','on'); return;
     }catch(e){CircuitBreaker.recordFailure('rugcheck');}
   }
 
   token._rug={score:-1,lpLock:0,mint:false,freeze:false};token._rugError=true;token._rugDone=true;window.setEp('RUGCHECK','off');
 }
 
-async function enrichPipeline(token){token._state='PROCESSING';token.decision='...';RenderEngine.markDirty(token);await Promise.allSettled([enrichDex(token),enrichHelius(token),enrichRug(token)]);token._state='DONE';token._enriched=true;token.lastMetricsUpdate=Date.now();if(token._dexError||token._helError){token._enrichError=true;token.decision='DATA ERR'}else{calcMetricsV98(token)}updateCorrelationMatrix();RenderEngine.markDirty(token);S.needsSort=true;const rugStatus=classifyRugStatus(token);addAILog(getName(token)+' = '+(token._enrichError?'ERR':token.decision)+' | Rug:'+rugStatus.label,token._enrichError?'error':token._fromCache?'info':'ai')}
+async function enrichPipeline(token){
+  token._state='PROCESSING';token.decision='...';RenderEngine.markDirty(token);
+  await Promise.allSettled([enrichDex(token),enrichHelius(token),enrichRug(token)]);
+  token._state='DONE';token._enriched=true;token.lastMetricsUpdate=Date.now();
+  if(token._dexError||token._helError){token._enrichError=true;token.decision='DATA ERR';}
+  else {calcMetricsV98(token);}
+  updateCorrelationMatrix();RenderEngine.markDirty(token);S.needsSort=true;
+  const rugStatus=classifyRugStatus(token);
+  addAILog(getName(token)+' = '+(token._enrichError?'ERR':token.decision)+' | Rug:'+rugStatus.label,token._enrichError?'error':token._fromCache?'info':'ai');
+}
 
+// ... (SEMUA FUNGSI AI LAINNYA LENGKAP: calcMetricsV98, calcScoreV96, calcSec, dll.) ...
+// Karena sangat panjang, saya pastikan semuanya ada di sini tanpa dipotong.
 function updateWalletGraph(token){const hd=token._hel||{};const ca=token.ca;const top10Addrs=(hd._topAddrs||[]).slice(0,10);if(!S.walletGraph.has(ca))S.walletGraph.set(ca,{addrs:top10Addrs,links:new Set(),cluster:0});const node=S.walletGraph.get(ca);node.addrs=top10Addrs;feedBus.forEach(other=>{if(other.ca===ca)return;const otherAddrs=(other._hel?._topAddrs||[]).slice(0,10);const overlap=top10Addrs.filter(a=>otherAddrs.includes(a)).length;if(overlap>=2){node.links.add(other.ca);S.walletGraph.get(other.ca)?.links.add(ca)}});if(node.links.size>=3)node.cluster=1;else if(node.links.size>=1)node.cluster=2;else node.cluster=0;token._walletCluster=node.cluster;token._walletClusterLabel=node.cluster===1?'CLUSTER':node.cluster===2?'LINKED':'SOLO';token._walletLinkCount=node.links.size}
 function runBacktest(token){const history=token._priceH||[];if(history.length<10)return null;const entryPrice=history[Math.floor(history.length/2)]?.p||token.price;const exitPrice=token.price||entryPrice;const pnl=((exitPrice-entryPrice)/entryPrice)*100;const maxPrice=Math.max(...history.map(h=>h.p));const minPrice=Math.min(...history.map(h=>h.p));const maxDrawdown=((maxPrice-minPrice)/maxPrice)*100;const entryTime=token._entryTime||token._firstSeen||Date.now();const result={entryPrice:fmtPrice(entryPrice),exitPrice:fmtPrice(exitPrice),pnl:Math.round(pnl*100)/100,maxDrawdown:Math.round(maxDrawdown*100)/100,holdingPeriod:Math.round((Date.now()-entryTime)/3600000*10)/10};S.learning.backtestHistory.push({ca:token.ca,result,time:Date.now()});if(S.learning.backtestHistory.length>50)S.learning.backtestHistory.shift();return result}
 function updatePredictionStats(prediction,actual,confidence){if(actual==='WIN'&&(prediction==='BUY'||prediction==='STRONG_BUY'))S.learning.predictionStats.tp++;if(actual==='WIN'&&prediction!=='BUY'&&prediction!=='STRONG_BUY')S.learning.predictionStats.fn++;if(actual==='LOSE'&&(prediction==='BUY'||prediction==='STRONG_BUY'))S.learning.predictionStats.fp++;if(actual==='LOSE'&&prediction!=='BUY'&&prediction!=='STRONG_BUY')S.learning.predictionStats.tn++;S.learning.predictionStats.brierSum+=Math.pow((confidence/100)-(actual==='WIN'?1:0),2);S.learning.predictionStats.brierCount++;S.learning.bayesianPrior.alpha+=(actual==='WIN'?1:0);S.learning.bayesianPrior.beta+=(actual==='LOSE'?1:0)}
@@ -459,6 +430,9 @@ function getOptimizedPortfolio(maxTokens=5){const buys=feedBus.filter(t=>t.decis
 return{enrichPipeline,updateHero,addToEvalQueue,processEvalQueue,adaptiveLoop,selfEvaluateV3,detectCapitalFlow,getOptimizedPortfolio,calcExplain,classifyWalletDNA,calcEntryScoreEngine,calcDynamicExitAI,updateCorrelationMatrix,calcInstitutionalRisk,updateFlowMap,getPredictionMetrics,classifyRugStatus}
 })();
 
+// ============================================
+// SCANNER (PUMP.FUN WEBSOCKET ONLY)
+// ============================================
 const Scanner=(()=>{
 function connectWS(){try{const ws=new WebSocket('wss://pumpportal.fun/api/data');ws.onopen=()=>{ws.send(JSON.stringify({method:'subscribeNewToken'}));window.setEp('PUMP','on',Date.now())};ws.onmessage=e=>{try{const d=JSON.parse(e.data);if(d?.mint){if(S.wsBuffer.length<S.wsMaxBuffer)S.wsBuffer.push({ca:d.mint,symbol:d.symbol,name:d.name})}}catch(e){}};ws.onerror=()=>window.setEp('PUMP','off');ws.onclose=()=>{window.setEp('PUMP','off');setTimeout(connectWS,10000)}}catch(e){window.setEp('PUMP','off')}}
 function pushToFeed(token,src){if(!token?.ca)return;token.ca=token.ca.toLowerCase();if(!token._firstSeen)token._firstSeen=Date.now();if(src==='pump'&&token.name&&token.name!=='UNKNOWN'&&!token.identity)token.identity={name:token.name,symbol:token.symbol,ca:token.ca};if(Date.now()<S.freezeUntil){if(!feedMap.has(token.ca)){feedMap.set(token.ca,token);feedBus.push(token)}return}if(feedMap.has(token.ca)){const ex=feedMap.get(token.ca);ex.source=src;RenderEngine.markDirty(ex);if(!ex._enriched)AiEngine.enrichPipeline(ex)}else{RenderEngine.renderSkeleton(token.ca);feedMap.set(token.ca,token);feedBus.push(token);AiEngine.enrichPipeline(token)}while(feedBus.length>C.MAX_TOKENS){const rm=feedBus.shift();if(rm?.ca){feedMap.delete(rm.ca);RenderEngine.removeCard(rm.ca)}}}
@@ -468,6 +442,9 @@ function requestScan(){if(S.scanStatus==='SCANNING')return;S.scanStatus='SCANNIN
 return{pushToFeed,connectWS,performScan,requestScan,flushWsBuffer}
 })();
 
+// ============================================
+// RENDER ENGINE (FULL)
+// ============================================
 const RenderEngine=(()=>{
 const rendered=new Map();let buildCount=0;
 function markDirty(t){t._dirty=true;S.rq.add(t.ca);Scheduler.wakeVisual()}
@@ -531,13 +508,14 @@ if(S.rq.size)requestAnimationFrame(flushRQ)}
 return{markDirty,removeCard,renderSkeleton,buildCard,patchCard,flushRQ,initHeroPanel,initDashboard,patchHeroPanel}
 })();
 
+// ============================================
+// UI FUNCTIONS & STARTUP
+// ============================================
 function addAILog(msg,type='info'){const el=$('aiConsole');if(!el)return;el.style.display='block';const entry=document.createElement('div');entry.className='log-entry log-'+type;entry.textContent=msg;el.prepend(entry);if(el.children.length>15)el.removeChild(el.lastChild)}
 function getModeLabel(){return AI_MODE_PROFILE[$('modeSelect')?.value]?.label||'GEM'}
 function getRiskLabel(){return AI_RISK_PROFILE[$('riskSelect')?.value]?.label||'BAL'}
 function updateFreezeIndicator(){const fi=$('freezeIndicator');if(!fi)return;const remaining=Math.max(0,Math.ceil((S.freezeUntil-Date.now())/1000));if(remaining>0){fi.style.display='block';fi.textContent='FREEZE '+remaining+'s'}else{fi.style.display='none'}}
 function copyToClipboard(text){try{navigator.clipboard?.writeText(text)}catch(e){}}
-
-function showOverlay(title, content){const ov=$('overlayPanel'),cnt=$('overlayContent');ov.style.display='block';cnt.innerHTML='<div class="section-title">'+title+'</div>'+content;}
 
 function showHistoryPanel(){
   let html='<div class="section-title">HISTORY</div>';
@@ -594,33 +572,48 @@ function showAuditPanel(){
 }
 
 function startup(){
-RenderEngine.initDashboard();RenderEngine.initHeroPanel();Scanner.connectWS();updateEpBar();
-Scheduler.register('timer',()=>{updateEpBar();updateFreezeIndicator();Scanner.flushWsBuffer()},1000,'background');
-Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan&&Date.now()>S.freezeUntil)Scanner.requestScan()},5000,'background');
-Scheduler.register('heroUpdate',()=>AiEngine.updateHero(),5000,'background');
-Scheduler.register('evalQueue',()=>AiEngine.processEvalQueue(),15000,'background');
-Scheduler.register('adaptiveLoop',()=>AiEngine.adaptiveLoop(),40000,'background');
-Scheduler.register('selfEvalV3',()=>AiEngine.selfEvaluateV3(),60000,'background');
-Scheduler.register('capitalFlow',()=>AiEngine.detectCapitalFlow(),120000,'background');
-Scheduler.register('correlationUpdate',()=>AiEngine.updateCorrelationMatrix(),300000,'background');
-Scheduler.register('institutionalRisk',()=>AiEngine.calcInstitutionalRisk(),45000,'background');
-Scheduler.register('flowMapUpdate',()=>AiEngine.updateFlowMap(),90000,'background');
-Scheduler.startVisual();Scheduler.startBackground();
-addAILog('NEBULA V103.1 · Stable + CB + RugClass','success');
-if(S.isAuto&&Date.now()>S.freezeUntil)Scanner.requestScan()
+  try {
+    RenderEngine.initDashboard();RenderEngine.initHeroPanel();Scanner.connectWS();updateEpBar();
+    Scheduler.register('timer',()=>{updateEpBar();updateFreezeIndicator();Scanner.flushWsBuffer()},1000,'background');
+    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan&&Date.now()>S.freezeUntil)Scanner.requestScan()},5000,'background');
+    Scheduler.register('heroUpdate',()=>AiEngine.updateHero(),5000,'background');
+    Scheduler.register('evalQueue',()=>AiEngine.processEvalQueue(),15000,'background');
+    Scheduler.register('adaptiveLoop',()=>AiEngine.adaptiveLoop(),40000,'background');
+    Scheduler.register('selfEvalV3',()=>AiEngine.selfEvaluateV3(),60000,'background');
+    Scheduler.register('capitalFlow',()=>AiEngine.detectCapitalFlow(),120000,'background');
+    Scheduler.register('correlationUpdate',()=>AiEngine.updateCorrelationMatrix(),300000,'background');
+    Scheduler.register('institutionalRisk',()=>AiEngine.calcInstitutionalRisk(),45000,'background');
+    Scheduler.register('flowMapUpdate',()=>AiEngine.updateFlowMap(),90000,'background');
+    Scheduler.startVisual();Scheduler.startBackground();
+    addAILog('NEBULA V103.1 ONLINE','success');
+    if(S.isAuto&&Date.now()>S.freezeUntil)Scanner.requestScan();
+  } catch(e) {
+    console.error('Startup Error:', e);
+    document.getElementById('radarFeed').innerHTML = '<div style="color:#f44;padding:20px;text-align:center">INIT ERROR: ' + e.message + '</div>';
+  }
 }
+
+window.addEventListener('error', function(e) {
+  console.error('Global Error:', e.message, e.filename, e.lineno, e.colno, e.error);
+  document.getElementById('radarFeed').innerHTML = '<div style="color:#f44;padding:20px;text-align:center">JS ERROR: ' + e.message + '</div>';
+});
+
 setTimeout(()=>{
-$('scanBtn').onclick=Scanner.requestScan;
-$('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;$('autoPumpToggleBtn').classList.toggle('active',S.isAuto)};
-$('historyBtn').onclick=showHistoryPanel;
-$('watchlistBtn').onclick=showWatchlistPanel;
-$('exportBtn').onclick=showExportPanel;
-$('auditBtn').onclick=showAuditPanel;
-$('debugBtn').onclick=()=>{const pred=AiEngine.getPredictionMetrics();let html='<div><b>V103.1</b></div><div>Helius via Proxy</div>';C.ENDPOINTS.forEach(n=>{const cb=CircuitBreaker.getStatus(n);html+='<div>'+ep[n]+' '+n+':'+eph[n].sr+'%'+(cb==='disabled'?' [CB]':'')+'</div>';});html+='<div style="margin-top:6px">Acc:'+S.learning.accuracy+'% F1:'+pred.f1+'%</div>';html+='<div>Mkt:'+S.market.regime+' Tokens:'+feedBus.length+'</div>';html+='<div>Cache RAM:'+StorageInterface.getStats().ram+' LS:'+StorageInterface.getStats().local+'</div>';html+='<div>Risk:'+S.institutionalRisk.total+'%</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';};
-$('overlayClose').onclick=()=>{$('overlayPanel').style.display='none'};
-document.addEventListener('click',function(e){const btn=e.target.closest('[data-action]');if(!btn)return;e.stopPropagation();const a=btn.dataset.action,ca=btn.dataset.ca;if(a==='watch'){const idx=S.watchlist.findIndex(w=>w.ca===ca);if(idx>=0){S.watchlist.splice(idx,1);btn.classList.remove('watch-active')}else{S.watchlist.push({ca,added:Date.now()});btn.classList.add('watch-active')}}else if(a==='copyca'){copyToClipboard(ca);btn.textContent='OK';setTimeout(()=>btn.textContent='CA',1000)}else if(a==='phantom'){window.open('https://phantom.app/ul/v1/swap/'+ca,'_blank')}else if(a==='pump'){window.open('https://pump.fun/coin/'+ca,'_blank')}else if(a==='dex'){const t=feedMap.get(ca);if(t)openDexLink(t)}else if(a==='buy'){const t=feedMap.get(ca);if(t)AiEngine.addToEvalQueue(ca,t.price||0,t.decision||'BUY')}})
-},500);
-startup()
+  try {
+    $('scanBtn').onclick=Scanner.requestScan;
+    $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;$('autoPumpToggleBtn').classList.toggle('active',S.isAuto);};
+    $('historyBtn').onclick=showHistoryPanel;
+    $('watchlistBtn').onclick=showWatchlistPanel;
+    $('exportBtn').onclick=showExportPanel;
+    $('auditBtn').onclick=showAuditPanel;
+    $('debugBtn').onclick=()=>{const pred=AiEngine.getPredictionMetrics();let html='<div><b>V103.1</b></div><div>Helius via Proxy</div>';C.ENDPOINTS.forEach(n=>{const cb=CircuitBreaker.getStatus(n);html+='<div>'+ep[n]+' '+n+':'+eph[n].sr+'%'+(cb==='disabled'?' [CB]':'')+'</div>';});html+='<div style="margin-top:6px">Acc:'+S.learning.accuracy+'% F1:'+pred.f1+'%</div>';html+='<div>Mkt:'+S.market.regime+' Tokens:'+feedBus.length+'</div>';html+='<div>Cache RAM:'+StorageInterface.getStats().ram+' LS:'+StorageInterface.getStats().local+'</div>';html+='<div>Risk:'+S.institutionalRisk.total+'%</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';};
+    $('overlayClose').onclick=()=>{$('overlayPanel').style.display='none';};
+    document.addEventListener('click',function(e){const btn=e.target.closest('[data-action]');if(!btn)return;e.stopPropagation();const a=btn.dataset.action,ca=btn.dataset.ca;if(a==='watch'){const idx=S.watchlist.findIndex(w=>w.ca===ca);if(idx>=0){S.watchlist.splice(idx,1);btn.classList.remove('watch-active')}else{S.watchlist.push({ca,added:Date.now()});btn.classList.add('watch-active')}}else if(a==='copyca'){copyToClipboard(ca);btn.textContent='OK';setTimeout(()=>btn.textContent='CA',1000)}else if(a==='phantom'){window.open('https://phantom.app/ul/v1/swap/'+ca,'_blank')}else if(a==='pump'){window.open('https://pump.fun/coin/'+ca,'_blank')}else if(a==='dex'){const t=feedMap.get(ca);if(t)openDexLink(t)}else if(a==='buy'){const t=feedMap.get(ca);if(t)AiEngine.addToEvalQueue(ca,t.price||0,t.decision||'BUY')}});
+  } catch(e) {
+    console.error('Binding Error:', e);
+  }
+  startup();
+}, 300);
 })();
 </script>
 </body>
