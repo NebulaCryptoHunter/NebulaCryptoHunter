@@ -153,8 +153,13 @@
 <script>
 (function(){
 "use strict";
-const WORKER_URL='https://nebulacryptohunter.nebula-crypto-proxy.workers.dev';
-const HELIUS_PROXY=WORKER_URL+'/helius/rpc';
+
+// ============================================
+// KONFIGURASI WORKER (GANTI URL INI)
+// ============================================
+const WORKER_URL = 'https://nebula-api.nebula-crypto-proxy.workers.dev';
+const HELIUS_PROXY = WORKER_URL + '/helius/rpc';
+
 const $=id=>document.getElementById(id);
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const safeNum=v=>{const n=Number(v);return isFinite(n)?n:null};
@@ -362,7 +367,7 @@ $('modeSelect').addEventListener('change',updateProfileBadge);$('riskSelect').ad
 $('alphaBtn').onclick=showAlphaPanel;$('explainBtn').onclick=showExplainableAI;$('flowBtn').onclick=showFlowMap;
 $('debugBtn').onclick=()=>{const ov=$('overlayPanel'),cnt=$('overlayContent');ov.style.display='block';const pred=AiEngine.getPredictionMetrics();cnt.innerHTML='<div><b>🔒 API ROUTING</b></div><div>Helius: Worker Proxy ✅</div><div>ANKR: Direct ✅</div><div>Solana: Direct ✅</div>'+C.ENDPOINTS.map(n=>'<div>'+ep[n]+' '+n+': '+eph[n].sr+'%</div>').join('')+'<div style="margin-top:10px"><b>V99</b></div><div>Freeze: '+(S.freezeUntil>Date.now()?'ACTIVE ('+Math.ceil((S.freezeUntil-Date.now())/1000)+'s)':'OFF')+'</div><div>WS Buffer: '+S.wsBuffer.length+'</div><div style="margin-top:10px"><b>AI</b></div><div>Accuracy: '+S.learning.accuracy+'% | F1: '+pred.f1+'%</div><div>Precision: '+pred.precision+'% | Recall: '+pred.recall+'%</div><div>Brier Score: '+pred.brier+' | Samples: '+pred.total+'</div><div>Bayesian Prob: '+pred.bayesian+'%</div><div>Market: '+S.market.regime+' | Rules: '+S.learning.selfEvoRules.length+'</div><div>Wallet Graph: '+S.walletGraph.size+' nodes | Correlations: '+S.correlationMatrix.size+' pairs</div><div>Institutional Risk: '+S.institutionalRisk.total+'% | Hedge: '+S.hedgeRatio+'%</div>'};
 $('overlayClose').onclick=()=>{$('overlayPanel').style.display='none'};
-$('copyWorkerBtn').onclick=()=>{const workerCode='// NEBULA V100 Worker\n// Copy dari chat sebelumnya\nconst RATE_LIMIT=100;\nconst ALLOWED_ORIGINS=[...];\n\nexport default{async fetch(r,e,c){return handleRequest(r,e,c)}}';navigator.clipboard.writeText(workerCode).then(()=>{const btn=$('copyWorkerBtn');const st=$('copyStatus');btn.textContent='✅ TERSALIN!';btn.classList.add('copied');st.textContent='Kode worker siap dipaste di Cloudflare';setTimeout(()=>{btn.textContent='📋 SALIN KODE WORKER';btn.classList.remove('copied');st.textContent=''},2500)}).catch(()=>{alert('Gagal menyalin')})};
+$('copyWorkerBtn').onclick=()=>{const workerCode='// NEBULA V100 Worker\\n// Copy dari chat sebelumnya\\nconst RATE_LIMIT=100;\\nconst ALLOWED_ORIGINS=[...];\\n\\nexport default{async fetch(r,e,c){return handleRequest(r,e,c)}}';navigator.clipboard.writeText(workerCode).then(()=>{const btn=$('copyWorkerBtn');const st=$('copyStatus');btn.textContent='✅ TERSALIN!';btn.classList.add('copied');st.textContent='Kode worker siap dipaste di Cloudflare';setTimeout(()=>{btn.textContent='📋 SALIN KODE WORKER';btn.classList.remove('copied');st.textContent=''},2500)}).catch(()=>{alert('Gagal menyalin')})};
 document.addEventListener('click',function(e){const btn=e.target.closest('[data-action]');if(!btn)return;e.stopPropagation();const a=btn.dataset.action,ca=btn.dataset.ca;if(a==='watch'){const idx=S.watchlist.findIndex(w=>w.ca===ca);if(idx>=0){S.watchlist.splice(idx,1);btn.classList.remove('watch-active')}else{S.watchlist.push({ca,added:Date.now()});btn.classList.add('watch-active')}}else if(a==='copyca'){copyToClipboard(ca);btn.textContent='✅';setTimeout(()=>btn.textContent='CA',1200)}else if(a==='phantom'){const url='https://phantom.app/ul/v1/swap/'+ca;try{window.open(url,'_blank','noopener,noreferrer')}catch(e){window.location.href=url}}else if(a==='pump'){const url='https://pump.fun/coin/'+ca;try{window.open(url,'_blank','noopener,noreferrer')}catch(e){window.location.href=url}}else if(a==='dex'){const t=feedMap.get(ca);if(!t)return;openDexLink(t)}else if(a==='buy'){const t=feedMap.get(ca);if(!t)return;AiEngine.addToEvalQueue(ca,t.price||0,t.decision||'BUY')}})
 },500);
 startup()
