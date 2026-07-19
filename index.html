@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
   <style>
     /* ============================================ */
-    /* FULL CSS (V103.1 + V103.2 additions) */
+    /* CSS LENGKAP (V103.1 + V103.2) */
     /* ============================================ */
     :root {
       --bg: #000a14;
@@ -18,6 +18,9 @@
       --red: #ff4444;
       --orange: #ff8800;
       --purple: #b0f;
+      --deep-bg: #000510;
+      --card-bg: rgba(10, 18, 30, 0.95);
+      --border-glow: rgba(0, 255, 255, 0.2);
     }
     * {
       margin: 0;
@@ -67,12 +70,8 @@
       z-index: -1;
     }
     @keyframes scanDown {
-      0% {
-        transform: translateY(-100%);
-      }
-      100% {
-        transform: translateY(100%);
-      }
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
     }
     .app {
       max-width: 620px;
@@ -130,9 +129,7 @@
       animation: blink 1.2s infinite;
     }
     @keyframes blink {
-      50% {
-        opacity: .4;
-      }
+      50% { opacity: .4; }
     }
     .hud-controls {
       display: flex;
@@ -293,14 +290,8 @@
       border-left-style: dashed !important;
     }
     @keyframes cardSpawn {
-      0% {
-        opacity: 0;
-        transform: translateY(3px) scale(.97);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
+      0% { opacity: 0; transform: translateY(3px) scale(.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
     }
     .card-strong-buy {
       border-left: 3px solid #ffd700 !important;
@@ -329,12 +320,8 @@
       animation: heroPulse 4s infinite;
     }
     @keyframes heroPulse {
-      0%, 100% {
-        box-shadow: 0 0 15px rgba(255, 215, 0, .4);
-      }
-      50% {
-        box-shadow: 0 0 30px rgba(255, 215, 0, .7);
-      }
+      0%, 100% { box-shadow: 0 0 15px rgba(255, 215, 0, .4); }
+      50% { box-shadow: 0 0 30px rgba(255, 215, 0, .7); }
     }
     .token-name {
       font-family: 'Orbitron', sans-serif;
@@ -446,15 +433,9 @@
       animation: numPop 0.3s ease;
     }
     @keyframes numPop {
-      0% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.3);
-      }
-      100% {
-        transform: scale(1);
-      }
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
     }
     .detail-section {
       margin: 6px 0;
@@ -668,6 +649,7 @@
     .rug-unknown {
       color: #888;
     }
+    /* V103.2 New Styles */
     .multiplier-line {
       font-size: 0.48rem;
       color: #ffd700;
@@ -675,6 +657,7 @@
       display: flex;
       gap: 6px;
       align-items: center;
+      flex-wrap: wrap;
     }
     .multiplier-badge {
       background: rgba(255, 215, 0, 0.2);
@@ -764,7 +747,7 @@
     (function() {
       "use strict";
 
-      // ========== CONSTANTS & STATE (V103.1 + V103.2 additions) ==========
+      // ========== CONSTANTS & STATE (V103.1) ==========
       const VERSION = 'V103.2';
       const WORKER_URL = 'https://nebula-api.nebula-crypto-proxy.workers.dev';
       const HELIUS_PROXY = WORKER_URL + '/helius/rpc';
@@ -887,14 +870,9 @@
         institutionalRisk: { portfolio: 0, concentration: 0, systemic: 0, regime: 0, total: 0 }, hedgeRatio: 0, flowMap: new Map(),
         freezeUntil: 0, freezeDuration: 40000,
         wsBuffer: [], wsLastFlush: 0, wsFlushInterval: 12000, wsMaxBuffer: 100,
-        // V103.2 New State
-        predictionHistory: [], // {ca, predictedMultiplier, actualMultiplier, entryPrice, highestPrice, evaluatedAt}
-        calibrationCount: 0,
-        aiMultiplierWeights: {
-          walletDNA: 0.25, security: 0.15, narrative: 0.15, liquidity: 0.10,
-          momentum: 0.10, marketRegime: 0.05, holderQuality: 0.05, volume: 0.05,
-          orderFlow: 0.05, marketStructure: 0.03, age: 0.02
-        }
+        // V103.2 state
+        predictionHistory: [],
+        calibrationCount: 0
       };
 
       C.ENDPOINTS.forEach(n => { S.endpointStats[n] = { success: 0, fail: 0, latency: 0, retries: 0 }; });
@@ -976,7 +954,7 @@
         return { register, startVisual, wakeVisual, startBackground };
       })();
 
-      // ========== AI ENGINE (V103.1 FULL + V103.2 MULTIPLIER ENGINE) ==========
+      // ========== AI ENGINE (V103.1 FULL + V103.2 P1) ==========
       const AiEngine = (() => {
         function getMode() { return AI_MODE_PROFILE[$('modeSelect')?.value] || AI_MODE_PROFILE.gem_hunter; }
         function getRisk() { return AI_RISK_PROFILE[$('riskSelect')?.value] || AI_RISK_PROFILE.balanced; }
@@ -1046,7 +1024,7 @@
           if (token._helDone) return;
           try {
             const [supplyR, holdersR, sigsR] = await Promise.all([
-              rpc('getTokenSupply', [{ mint: token.ca }]),
+              rpc('getTokenSupply', [token.ca]),
               rpc('getTokenLargestAccounts', [token.ca]),
               rpc('getSignaturesForAddress', [token.ca, { limit: 30 }])
             ]);
@@ -1098,7 +1076,7 @@
           addAILog(getName(token) + ' = ' + (token._enrichError ? 'ERR' : token.decision) + ' | Rug:' + rugStatus.label, token._enrichError ? 'error' : token._fromCache ? 'info' : 'ai');
         }
 
-        // ========== V103.1 METRICS ==========
+        // ========== V103.1 METRICS (UNCHANGED) ==========
         function calcMetricsV98(token) {
           try {
             const mode = getMode(), risk = getRisk(), dw = getDynamicWeights(mode);
@@ -1163,90 +1141,26 @@
             token._mcResult = mcResult; token._rugStatus = classifyRugStatus(token);
             token.lastMetricsUpdate = Date.now();
             S.searchIdx.set(token.ca, { name: getName(token).toLowerCase(), ca: token.ca, symbol: (token.identity?.symbol || '').toLowerCase() });
-            // V103.2: Build Multiplier Object
-            buildMultiplierObject(token);
+
+            // V103.2: Build Multiplier Object (safe)
+            try { buildMultiplierObjectV2(token); } catch (e) { /* ignore multiplier errors */ }
           } catch (e) { console.error('calcMetrics', e); }
         }
 
-        function updateWalletDB(token) {
-          const hd = token._hel || {}; const smc = hd.smc || 0; const ca = token.ca;
-          let entry = S.walletDB.get(ca) || { wins: 0, total: 0, rep: 50, smc: 0 };
-          entry.smc = Math.max(entry.smc, smc);
-          const recentOutcome = S.learning.outcomeMemory.filter(r => r.ca === ca).slice(-5);
-          entry.total = recentOutcome.length; entry.wins = recentOutcome.filter(r => r.outcome === 'WIN').length;
-          entry.rep = entry.total > 0 ? Math.round((entry.wins / entry.total) * 100) : (smc > 10 ? 90 : smc > 5 ? 75 : smc > 2 ? 60 : smc > 0 ? 40 : 20);
-          if (token._whale > 70) entry.rep += 10; if (token._swScore > 60) entry.rep += 5;
-          entry.rep = clamp(entry.rep, 10, 99); S.walletDB.set(ca, entry); token._walletRep = entry.rep;
-        }
-
-        function calcLiquidityFlowV96(token) {
-          const h = token._liqH || []; if (h.length < 3) { token._liqFlowScore = 50; token._liqFlowLabel = '-'; token._liqFake = false; return; }
-          const recent = h.slice(-5); const oldest = recent[0].v || 0; const newest = recent[recent.length - 1].v || 0;
-          const delta = newest - oldest; const pct = oldest > 0 ? (delta / oldest) * 100 : 0;
-          token._liqFlowScore = clamp(Math.round(50 + pct * 2), 0, 100);
-          token._liqFlowLabel = pct > 20 ? 'IN++' : pct > 10 ? 'IN+' : pct < -20 ? 'OUT--' : pct < -10 ? 'OUT-' : '-';
-          const spikes = recent.filter(p => p.v > (oldest * 2)).length; token._liqFake = spikes > 2;
-        }
-        function calcVolumeAccelerationV96(token) {
-          const h = token._volH || []; if (h.length < 4) { token._volAccel = 0; token._volAccelLabel = '-'; return; }
-          const v1 = h[h.length - 4].v || 0, v2 = h[h.length - 3].v || 0, v3 = h[h.length - 2].v || 0, v4 = h[h.length - 1].v || 0;
-          const accel1 = v2 > 0 ? (v2 - v1) / v1 * 100 : 0, accel2 = v3 > 0 ? (v3 - v2) / v2 * 100 : 0, accel3 = v4 > 0 ? (v4 - v3) / v3 * 100 : 0;
-          token._volAccel = Math.round((accel1 + accel2 + accel3) / 3);
-          token._volAccelLabel = token._volAccel > 20 ? 'ACCEL' : token._volAccel < -20 ? 'DECEL' : '-';
-        }
-        function calcMarketStructureV98(token) {
-          const h = token._priceH || []; if (h.length < 10) { token._mktStructure = 'NEUTRAL'; return; }
-          const prices = h.map(p => p.p); let hh = 0, hl = 0, lh = 0, ll = 0, bos = 0, choch = 0;
-          for (let i = 10; i < prices.length; i++) {
-            if (prices[i] > prices[i - 1] && prices[i] > prices[i - 2] && prices[i] > prices[i - 3]) hh++;
-            if (prices[i] < prices[i - 1] && prices[i] < prices[i - 2] && prices[i] > prices[i - 5]) hl++;
-            if (prices[i] < prices[i - 1] && prices[i] < prices[i - 2] && prices[i] < prices[i - 3]) lh++;
-            if (prices[i] > prices[i - 1] && prices[i] > prices[i - 2] && prices[i] < prices[i - 5]) ll++;
-            const swingHigh = Math.max(...prices.slice(-5, -1)); const swingLow = Math.min(...prices.slice(-5, -1));
-            if (prices[prices.length - 1] > swingHigh * 1.01) bos++;
-            if (prices[prices.length - 1] < swingLow * 0.99) choch++;
-          }
-          if (hh > hl && hh > lh && bos > 0) token._mktStructure = 'BULLISH';
-          else if (lh > ll && lh > hh && choch > 0) token._mktStructure = 'BEARISH';
-          else if (hh > lh) token._mktStructure = 'S.BULLISH';
-          else if (lh > hh) token._mktStructure = 'S.BEARISH';
-          else token._mktStructure = 'NEUTRAL';
-        }
-        function calcVolatilityV96(token) {
-          const h = token._priceH || []; if (h.length < 5) { token._volatility = 'NORMAL'; return; }
-          const returns = []; for (let i = 1; i < h.length; i++) { if (h[i - 1].p > 0) returns.push(Math.abs((h[i].p - h[i - 1].p) / h[i - 1].p)); }
-          const avgRet = returns.reduce((a, b) => a + b, 0) / returns.length || 0;
-          token._volatility = avgRet > 0.1 ? 'HIGH' : avgRet > 0.03 ? 'NORMAL' : 'LOW';
-        }
+        // ... (V103.1 helper functions unchanged, omitted for brevity but present in full code)
+        function updateWalletDB(token) { const hd = token._hel || {}; const smc = hd.smc || 0; const ca = token.ca; let entry = S.walletDB.get(ca) || { wins: 0, total: 0, rep: 50, smc: 0 }; entry.smc = Math.max(entry.smc, smc); const recentOutcome = S.learning.outcomeMemory.filter(r => r.ca === ca).slice(-5); entry.total = recentOutcome.length; entry.wins = recentOutcome.filter(r => r.outcome === 'WIN').length; entry.rep = entry.total > 0 ? Math.round((entry.wins / entry.total) * 100) : (smc > 10 ? 90 : smc > 5 ? 75 : smc > 2 ? 60 : smc > 0 ? 40 : 20); if (token._whale > 70) entry.rep += 10; if (token._swScore > 60) entry.rep += 5; entry.rep = clamp(entry.rep, 10, 99); S.walletDB.set(ca, entry); token._walletRep = entry.rep; }
+        function calcLiquidityFlowV96(token) { const h = token._liqH || []; if (h.length < 3) { token._liqFlowScore = 50; token._liqFlowLabel = '-'; token._liqFake = false; return; } const recent = h.slice(-5); const oldest = recent[0].v || 0; const newest = recent[recent.length - 1].v || 0; const delta = newest - oldest; const pct = oldest > 0 ? (delta / oldest) * 100 : 0; token._liqFlowScore = clamp(Math.round(50 + pct * 2), 0, 100); token._liqFlowLabel = pct > 20 ? 'IN++' : pct > 10 ? 'IN+' : pct < -20 ? 'OUT--' : pct < -10 ? 'OUT-' : '-'; const spikes = recent.filter(p => p.v > (oldest * 2)).length; token._liqFake = spikes > 2; }
+        function calcVolumeAccelerationV96(token) { const h = token._volH || []; if (h.length < 4) { token._volAccel = 0; token._volAccelLabel = '-'; return; } const v1 = h[h.length - 4].v || 0, v2 = h[h.length - 3].v || 0, v3 = h[h.length - 2].v || 0, v4 = h[h.length - 1].v || 0; const accel1 = v2 > 0 ? (v2 - v1) / v1 * 100 : 0, accel2 = v3 > 0 ? (v3 - v2) / v2 * 100 : 0, accel3 = v4 > 0 ? (v4 - v3) / v3 * 100 : 0; token._volAccel = Math.round((accel1 + accel2 + accel3) / 3); token._volAccelLabel = token._volAccel > 20 ? 'ACCEL' : token._volAccel < -20 ? 'DECEL' : '-'; }
+        function calcMarketStructureV98(token) { const h = token._priceH || []; if (h.length < 10) { token._mktStructure = 'NEUTRAL'; return; } const prices = h.map(p => p.p); let hh = 0, hl = 0, lh = 0, ll = 0, bos = 0, choch = 0; for (let i = 10; i < prices.length; i++) { if (prices[i] > prices[i - 1] && prices[i] > prices[i - 2] && prices[i] > prices[i - 3]) hh++; if (prices[i] < prices[i - 1] && prices[i] < prices[i - 2] && prices[i] > prices[i - 5]) hl++; if (prices[i] < prices[i - 1] && prices[i] < prices[i - 2] && prices[i] < prices[i - 3]) lh++; if (prices[i] > prices[i - 1] && prices[i] > prices[i - 2] && prices[i] < prices[i - 5]) ll++; const swingHigh = Math.max(...prices.slice(-5, -1)); const swingLow = Math.min(...prices.slice(-5, -1)); if (prices[prices.length - 1] > swingHigh * 1.01) bos++; if (prices[prices.length - 1] < swingLow * 0.99) choch++; } if (hh > hl && hh > lh && bos > 0) token._mktStructure = 'BULLISH'; else if (lh > ll && lh > hh && choch > 0) token._mktStructure = 'BEARISH'; else if (hh > lh) token._mktStructure = 'S.BULLISH'; else if (lh > hh) token._mktStructure = 'S.BEARISH'; else token._mktStructure = 'NEUTRAL'; }
+        function calcVolatilityV96(token) { const h = token._priceH || []; if (h.length < 5) { token._volatility = 'NORMAL'; return; } const returns = []; for (let i = 1; i < h.length; i++) { if (h[i - 1].p > 0) returns.push(Math.abs((h[i].p - h[i - 1].p) / h[i - 1].p)); } const avgRet = returns.reduce((a, b) => a + b, 0) / returns.length || 0; token._volatility = avgRet > 0.1 ? 'HIGH' : avgRet > 0.03 ? 'NORMAL' : 'LOW'; }
         function detectNarrative(t) { const txt = (getName(t) + (t.identity?.symbol || '')).toLowerCase(); const n = []; for (let k in C.NARRATIVE) if (C.NARRATIVE[k].some(kw => txt.includes(kw))) n.push(k); t._narr = n; }
         function detectWhale(t) { const hd = t._hel || {}; const d = hd.dist || {}; let s = 0; if (d.top5 > 60) s += 30; if (d.top10 > 80) s += 25; if (d.top1 > 30) s += 20; if (hd.hc < 20 && hd.hc > 0) s += 15; if ((t.liq || 0) > 10000) s += 10; t._whale = clamp(s, 0, 100); t._whaleLabel = t._whale > 70 ? 'HEAVY' : t._whale > 40 ? 'MODERATE' : 'LIGHT'; }
         function calcNarrativeIntel(token) { const n = token._narr || []; if (!n.length) { token._nHeat = 10; token._nVelocity = 0; token._nGrowth = 0; token._nSaturation = 0; return; } const fc = feedBus.filter(x => x._narr?.some(y => n.includes(y))).length; token._nHeat = Math.min(100, Math.round(fc / Math.max(1, feedBus.length) * 100 + n.length * 15)); if (!token._nHeatHistory) token._nHeatHistory = []; token._nHeatHistory.push(token._nHeat); if (token._nHeatHistory.length > 10) token._nHeatHistory.shift(); if (token._nHeatHistory.length >= 3) { token._nVelocity = token._nHeat - token._nHeatHistory[0]; token._nGrowth = token._nHeatHistory[0] > 0 ? Math.round((token._nHeat - token._nHeatHistory[0]) / token._nHeatHistory[0] * 100) : 0; } token._nSaturation = token._nHeat > 80 ? 'HIGH' : token._nHeat > 50 ? 'MEDIUM' : 'LOW'; }
         function calcRugProb(t) { const rugStatus = classifyRugStatus(t); if (rugStatus.status === 'UNKNOWN') { t._rugProb = 50; t._rugLabel = 'UNKNOWN'; return; } let s = 0; const r = t._rug || {}; if (r.mint) s += 20; if (r.freeze) s += 25; if ((r.lpLock || 0) < 30) s += 20; else if ((r.lpLock || 0) < 60) s += 10; if ((r.score || 0) > 50) s += 15; if ((t._hel?.dist?.top10 || 0) > 80) s += 15; if ((t.liq || 0) < 300) s += 15; if (t.age < 3) s += 10; t._rugProb = clamp(s, 0, 100); t._rugLabel = rugStatus.label; }
         function calcSmartWallet(t) { const hd = t._hel || {}; const hc = hd.hc || 0; let s = 0; if (hd.smc > 5) s += 25; else if (hd.smc > 2) s += 15; if (hd.rtx > 20) s += 20; else if (hd.rtx > 10) s += 10; if (hc > 50) s += 20; else if (hc > 20) s += 10; if (t.age < 10 && hc > 10) s += 15; if ((hd.dist?.top10 || 0) < 50) s += 10; if (t._whale > 50) s += 10; t._swScore = clamp(s, 0, 100); t._swLabel = t._swScore > 60 ? 'ELITE' : t._swScore > 35 ? 'GOOD' : 'NEW'; }
-        function calcScoreV96(t, mode, risk, dw) {
-          const w = S.learning.weights; let liq = logScore(t.liq || 0, 500, 25), vol = logScore(t.vol1h || 0, 300, 20), age = t.age < 5 ? 90 : t.age < 15 ? 70 : t.age < 30 ? 50 : t.age < 60 ? 30 : 10;
-          let holder = sigmoid(t._hel?.hc || 0, 25, 0.3), wallet = t.wallet?.score || 0, momentum = Math.round(clamp((t.velocity || 20) * 0.7 + 50 * 0.3, 5, 100)), security = calcSec(t);
-          wallet *= dw.wallet; security *= dw.security; momentum *= dw.momentum; liq *= risk.liqMult; security *= risk.secMult;
-          let ns = liq * w.liq + vol * w.vol + age * w.age + holder * w.holder + wallet * w.wallet + momentum * w.momentum + security * w.security;
-          if ((t._narr || []).length) ns *= 1.02 * dw.narrative; if (t._whale > 60) ns *= 1.03; if ((t._rugProb || 100) < 20) ns *= 1.02;
-          if (t._volAccel > 20) ns *= 1.02; if (t._mktStructure === 'BULLISH') ns *= 1.03; if (t._walletCluster === 1) ns *= 1.02;
-          if (t._obSignal === 'BULLISH') ns *= 1.02; if (t._fvgSignal === 'FVG UP') ns *= 1.02;
-          ns = clamp(ns, 1, 99.99); if (t._prevScore != null) ns = +(t._prevScore * 0.7 + ns * 0.3).toFixed(2);
-          t._prevScore = ns; return ns;
-        }
-        function calcProbV96(t, mode, dw) {
-          const liq = logScore(t.liq || 0, 500, 25), holder = sigmoid(t._hel?.hc || 0, 25, 0.3), wallet = t.wallet?.score || 0, momentum = Math.round(clamp((t.velocity || 20) * 0.7 + 50 * 0.3, 5, 100)), security = calcSec(t);
-          let p = (liq * 0.18 + holder * 0.22 + wallet * 0.2 * dw.wallet + momentum * 0.18 * dw.momentum + security * 0.12 * dw.security + (t.flow || 50) * 0.1) * detectMarketRegimeFactor();
-          if ((t._narr || []).length) p *= 1.05 * dw.narrative; if (t._volAccel > 20) p *= 1.05;
-          return +clamp(sigmoid(p, 60, 0.18), 1, 99.99).toFixed(2);
-        }
-        function makeDecisionV96(t, score, prob, conf, security, mode, risk) {
-          const lp = t.liq || 0, hc = t._hel?.hc || 0; const minLP = mode.minLP * risk.liqMult;
-          if (security < 50 || lp < minLP || hc < mode.minHolder) return 'AVOID';
-          if (score >= 85 && prob >= 80 && conf >= mode.minConfidence * risk.confMult && security >= 80) return 'STRONG BUY';
-          if (score >= 70) return 'BUY'; if (score >= 60) return 'ACCUMULATE'; if (score >= 50) return 'WATCH HIGH';
-          if (score >= 35) return 'WATCH LOW'; if (score >= 20) return 'WAIT'; return 'AVOID';
-        }
+        function calcScoreV96(t, mode, risk, dw) { const w = S.learning.weights; let liq = logScore(t.liq || 0, 500, 25), vol = logScore(t.vol1h || 0, 300, 20), age = t.age < 5 ? 90 : t.age < 15 ? 70 : t.age < 30 ? 50 : t.age < 60 ? 30 : 10; let holder = sigmoid(t._hel?.hc || 0, 25, 0.3), wallet = t.wallet?.score || 0, momentum = Math.round(clamp((t.velocity || 20) * 0.7 + 50 * 0.3, 5, 100)), security = calcSec(t); wallet *= dw.wallet; security *= dw.security; momentum *= dw.momentum; liq *= risk.liqMult; security *= risk.secMult; let ns = liq * w.liq + vol * w.vol + age * w.age + holder * w.holder + wallet * w.wallet + momentum * w.momentum + security * w.security; if ((t._narr || []).length) ns *= 1.02 * dw.narrative; if (t._whale > 60) ns *= 1.03; if ((t._rugProb || 100) < 20) ns *= 1.02; if (t._volAccel > 20) ns *= 1.02; if (t._mktStructure === 'BULLISH') ns *= 1.03; if (t._walletCluster === 1) ns *= 1.02; if (t._obSignal === 'BULLISH') ns *= 1.02; if (t._fvgSignal === 'FVG UP') ns *= 1.02; ns = clamp(ns, 1, 99.99); if (t._prevScore != null) ns = +(t._prevScore * 0.7 + ns * 0.3).toFixed(2); t._prevScore = ns; return ns; }
+        function calcProbV96(t, mode, dw) { const liq = logScore(t.liq || 0, 500, 25), holder = sigmoid(t._hel?.hc || 0, 25, 0.3), wallet = t.wallet?.score || 0, momentum = Math.round(clamp((t.velocity || 20) * 0.7 + 50 * 0.3, 5, 100)), security = calcSec(t); let p = (liq * 0.18 + holder * 0.22 + wallet * 0.2 * dw.wallet + momentum * 0.18 * dw.momentum + security * 0.12 * dw.security + (t.flow || 50) * 0.1) * detectMarketRegimeFactor(); if ((t._narr || []).length) p *= 1.05 * dw.narrative; if (t._volAccel > 20) p *= 1.05; return +clamp(sigmoid(p, 60, 0.18), 1, 99.99).toFixed(2); }
+        function makeDecisionV96(t, score, prob, conf, security, mode, risk) { const lp = t.liq || 0, hc = t._hel?.hc || 0; const minLP = mode.minLP * risk.liqMult; if (security < 50 || lp < minLP || hc < mode.minHolder) return 'AVOID'; if (score >= 85 && prob >= 80 && conf >= mode.minConfidence * risk.confMult && security >= 80) return 'STRONG BUY'; if (score >= 70) return 'BUY'; if (score >= 60) return 'ACCUMULATE'; if (score >= 50) return 'WATCH HIGH'; if (score >= 35) return 'WATCH LOW'; if (score >= 20) return 'WAIT'; return 'AVOID'; }
         function calcSec(t) { const rugStatus = classifyRugStatus(t); if (rugStatus.status === 'UNKNOWN') return 40; const r = t._rug || {}; let s = 100; if (r.score > 50) s -= 20; if (r.score > 70) s -= 30; if ((r.lpLock || 0) < 50) s -= 15; if (r.mint) s -= 25; if (r.freeze) s -= 35; if ((t.liq || 0) < 100) s -= 20; if ((t._hel?.dist?.top10 || 0) > 80) s -= 20; return clamp(s, 5, 100); }
         function calcRawConf(t) { const ap = C.ENDPOINTS.reduce((s, n) => s + (eph[n]?.sr || 50), 0) / C.ENDPOINTS.length; const dq = Math.min(100, (t._dexDone ? 25 : 0) + (t._helDone ? 25 : 0) + (t._rugDone ? 20 : 0) + (t.identity ? 15 : 0) + (t._state === 'DONE' ? 15 : 0)); let cf = ap * 0.2 + dq * 0.2 + (t.wallet?.score || 40) * 0.2 + (S.market.regime === 'BULL' ? 90 : 50) * 0.15 + (S.learning.accuracy) * 0.15 + (t._hel?.hq || 40) * 0.1; if (!safeValue(t.price)) cf -= 20; if (!safeValue(t.liq)) cf -= 20; return +clamp(cf, 5, 99.99).toFixed(2); }
         function calibrateConfidence(rawConf) { if (!S.learning.calibrationReady) return rawConf; const binIdx = Math.min(9, Math.floor(rawConf / 10)); const binData = S.learning.confidenceBins[binIdx]; if (binData && binData.actualTotal >= 5) { return +clamp(rawConf * 0.6 + (binData.actualWins / binData.actualTotal) * 100 * 0.4, 5, 99.99).toFixed(2); } return rawConf; }
@@ -1262,42 +1176,45 @@
         function regimeAwareMC(token, er) { const cacheKey = token.ca + '_' + Math.floor(Date.now() / 60000) + '_' + S.market.regime; if (S.simulationCache.has(cacheKey)) return S.simulationCache.get(cacheKey); const price = token.price || 1; const regimeVol = { BULL: 0.06, RECOVERY: 0.05, SIDEWAY: 0.04, BEAR: 0.08 }; const regimeDrift = { BULL: 0.02, RECOVERY: 0.01, SIDEWAY: 0, BEAR: -0.02 }; const vol = regimeVol[S.market.regime] || 0.04; const drift = regimeDrift[S.market.regime] || 0; const sims = 1000; let up = 0, down = 0; const returns = []; const histReturns = (token._priceH || []).slice(-20).map((p, i, arr) => i > 0 ? (p.p - arr[i - 1].p) / arr[i - 1].p : 0).filter(v => !isNaN(v) && isFinite(v)); const useHist = histReturns.length >= 10; for (let i = 0; i < sims; i++) { let shock; if (useHist) { shock = histReturns[Math.floor(Math.random() * histReturns.length)] + (Math.random() - 0.5) * vol; } else { shock = drift + (Math.random() - 0.5) * vol * 2; } const simPrice = price * (1 + shock); const simRet = (simPrice - price) / price * 100; returns.push(simRet); if (simRet > 0) up++; else down++; } const avgRet = returns.reduce((a, b) => a + b, 0) / sims; const result = { upPct: Math.round(up / sims * 100), downPct: Math.round(down / sims * 100), avgReturn: Math.round(avgRet * 100) / 100, regime: S.market.regime }; S.simulationCache.set(cacheKey, result); if (S.simulationCache.size > 100) S.simulationCache.delete(S.simulationCache.keys().next().value); return result; }
         function detectMarketRegimeFactor() { if (feedBus.length < 5) return S.market.regime = 'SIDEWAY', S.market.heat = 50, 1.0; const medFlow = median(feedBus, 'flow'), medVol = median(feedBus, 'vol1h'), medRug = median(feedBus, '_rugProb'); const medWallet = median(feedBus.map(t => t.wallet?.score || 0), null), medHq = median(feedBus.map(t => t._hel?.hq || 30), null); if (medFlow > 65 && medVol > 500 && medWallet > 50 && medHq > 50) S.market.regime = 'BULL'; else if (medFlow > 55 && medVol > 200) S.market.regime = 'RECOVERY'; else if (medFlow < 35 && medRug > 60) S.market.regime = 'BEAR'; else S.market.regime = 'SIDEWAY'; S.market.heat = S.market.regime === 'BULL' ? 80 : S.market.regime === 'RECOVERY' ? 60 : S.market.regime === 'BEAR' ? 20 : 50; return S.market.regime === 'BULL' ? 1.2 : S.market.regime === 'RECOVERY' ? 1.1 : S.market.regime === 'BEAR' ? 0.85 : 1.0; }
 
-        // ========== V103.2 NEW: AI MULTIPLIER ENGINE ==========
-        function calcMultiplierScore(token) {
-          // Normalize each component to 0-100
+        // ========== V103.2 P1: AI MULTIPLIER ENGINE ==========
+        function calculateQualityScore(token) {
           const walletDNA = token._walletRep || 50;
           const security = calcSec(token);
-          const narrative = token._nHeat || 30;
-          const liquidity = Math.min(100, logScore(token.liq || 0, 500, 25) * 0.5 + token._liqFlowScore * 0.5);
-          const momentum = token._volAccel > 20 ? 80 : token._volAccel > 0 ? 60 : 30;
-          const marketRegimeScore = S.market.regime === 'BULL' ? 90 : S.market.regime === 'RECOVERY' ? 65 : S.market.regime === 'SIDEWAY' ? 40 : 20;
           const holderQuality = Math.min(100, (token._hel?.hq || 30) * 0.7 + (token._hel?.dh || 20) * 0.3);
-          const volume = Math.min(100, logScore(token.vol1h || 0, 300, 20));
-          const orderFlow = Math.min(100, token.flow || 50);
-          const marketStructure = token._mktStructure === 'BULLISH' ? 90 : token._mktStructure === 'BEARISH' ? 20 : 50;
-          const ageScore = token.age < 30 ? 100 : token.age < 360 ? 70 : token.age < 2880 ? 40 : 20;
-
-          const w = S.aiMultiplierWeights;
-          let score = walletDNA * w.walletDNA + security * w.security + narrative * w.narrative + liquidity * w.liquidity +
-            momentum * w.momentum + marketRegimeScore * w.marketRegime + holderQuality * w.holderQuality +
-            volume * w.volume + orderFlow * w.orderFlow + marketStructure * w.marketStructure + ageScore * w.age;
-          return +clamp(score, 0, 100).toFixed(2);
+          const liquidityQuality = Math.min(100, logScore(token.liq || 0, 500, 25) * 0.4 + token._liqFlowScore * 0.4 + (token._liqFake ? 0 : 20));
+          const developerScore = token._rug?.lpLock > 50 ? 80 : 40;
+          return clamp(walletDNA * 0.35 + security * 0.25 + holderQuality * 0.15 + liquidityQuality * 0.15 + developerScore * 0.10, 0, 100);
         }
 
-        function getBaseMultiplier(score) {
-          const s = +score;
-          if (s >= 99) return 50000;
-          if (s >= 97) return 10000;
-          if (s >= 94) return 5000;
-          if (s >= 90) return 2500;
-          if (s >= 85) return 1000;
-          if (s >= 78) return 500;
-          if (s >= 70) return 250;
-          if (s >= 60) return 100;
-          if (s >= 50) return 50;
-          if (s >= 40) return 20;
-          if (s >= 30) return 10;
-          if (s >= 20) return 5;
+        function calculateOpportunityScore(token) {
+          const momentum = token._volAccel > 20 ? 90 : token._volAccel > 0 ? 60 : 30;
+          const narrative = token._nHeat || 30;
+          const ageScore = token.age < 30 ? 100 : token.age < 360 ? 70 : token.age < 2880 ? 40 : 20;
+          const volume = Math.min(100, logScore(token.vol1h || 0, 300, 20));
+          const orderFlow = Math.min(100, token.flow || 50);
+          const marketHeat = S.market.heat || 50;
+          return clamp(momentum * 0.30 + narrative * 0.25 + ageScore * 0.15 + volume * 0.15 + orderFlow * 0.10 + marketHeat * 0.05, 0, 100);
+        }
+
+        function calculateAIScore(token) {
+          const quality = calculateQualityScore(token);
+          const opportunity = calculateOpportunityScore(token);
+          return clamp(opportunity * 0.6 + quality * 0.4, 0, 100);
+        }
+
+        function getBaseMultiplierFromScore(score) {
+          if (score >= 99) return 50000;
+          if (score >= 97) return 10000;
+          if (score >= 94) return 5000;
+          if (score >= 90) return 2500;
+          if (score >= 85) return 1000;
+          if (score >= 78) return 500;
+          if (score >= 70) return 250;
+          if (score >= 60) return 100;
+          if (score >= 50) return 50;
+          if (score >= 40) return 20;
+          if (score >= 30) return 10;
+          if (score >= 20) return 5;
           return 2;
         }
 
@@ -1314,16 +1231,21 @@
           return Math.round(multiplier * 0.50);
         }
 
-        function calculateProbability(multiplier) {
-          // Decay curve: P = 99 * exp(-k * log(multiplier))
-          const k = 0.42; // calibrated agar P(2)=99%, P(1000)=3%
+        function calculateProbabilityDecay(multiplier) {
+          const k = 0.42;
           const prob = 99 * Math.exp(-k * Math.log(multiplier));
           return +clamp(prob, 1, 99).toFixed(1);
         }
 
-        function calculateConfidence(token) {
-          // Confidence = kelengkapan data * 40% + konsistensi sinyal * 60%
-          const dataCompleteness = (token._dexDone ? 25 : 0) + (token._helDone ? 25 : 0) + (token._rugDone ? 20 : 0) + (token.identity ? 15 : 0) + (token._state === 'DONE' ? 15 : 0);
+        function calculateDynamicConfidence(token) {
+          let dataCompleteness = 0;
+          if (token._dexDone) dataCompleteness += 25;
+          if (token._helDone) dataCompleteness += 25;
+          if (token._rugDone) dataCompleteness += 20;
+          if (token.identity) dataCompleteness += 15;
+          if (token._state === 'DONE') dataCompleteness += 15;
+          dataCompleteness = Math.min(100, dataCompleteness);
+
           let signalConsistency = 50;
           const strongSignals = [];
           if ((token._walletRep || 0) > 70) strongSignals.push('wallet');
@@ -1334,19 +1256,20 @@
           if (strongSignals.length >= 3) signalConsistency = 90;
           else if (strongSignals.length >= 2) signalConsistency = 75;
           else if (strongSignals.length >= 1) signalConsistency = 60;
-          return clamp(Math.round(dataCompleteness * 0.4 + signalConsistency * 0.6), 10, 99);
+
+          const endpointHealth = C.ENDPOINTS.reduce((s, n) => s + (eph[n]?.sr || 50), 0) / C.ENDPOINTS.length;
+          return clamp(Math.round(dataCompleteness * 0.3 + signalConsistency * 0.5 + endpointHealth * 0.2), 10, 99);
         }
 
-        function buildMultiplierObject(token) {
-          const score = calcMultiplierScore(token);
-          const baseMult = getBaseMultiplier(score);
+        function buildMultiplierObjectV2(token) {
+          const aiScore = calculateAIScore(token);
+          const baseMult = getBaseMultiplierFromScore(aiScore);
           const regimeMult = applyRegimeMultiplier(baseMult);
-          const ageMinutes = token.age;
-          const expectedMult = applyAgeModifier(regimeMult, ageMinutes);
+          const expectedMult = applyAgeModifier(regimeMult, token.age);
           const minMult = Math.round(expectedMult * 0.4);
           const optimisticMult = Math.round(expectedMult * 1.8);
-          const prob = calculateProbability(expectedMult);
-          const confidence = calculateConfidence(token);
+          const prob = calculateProbabilityDecay(expectedMult);
+          const confidence = calculateDynamicConfidence(token);
           const expectedReturn = (expectedMult - 1) * 100;
           const reasons = [];
           if ((token._walletRep || 0) > 70) reasons.push('Wallet Elite');
@@ -1361,63 +1284,15 @@
             expected: expectedMult,
             optimistic: optimisticMult,
             confidence: confidence,
-            probability: { 2: 99, 5: 96, 10: 91, 20: 80, 50: 63, 100: 41, 250: 19, 500: 8, 1000: 3 },
-            score: +score,
+            probability: prob,
+            score: +aiScore.toFixed(2),
             regime: S.market.regime,
             reason: reasons.slice(0, 4),
             expectedReturn: expectedReturn
           };
         }
 
-        function evaluateActual(token, highestPrice) {
-          if (!token._firstSeenPrice) token._firstSeenPrice = token.price;
-          const entry = token._firstSeenPrice;
-          if (!entry || !highestPrice || entry <= 0) return null;
-          const actualMult = highestPrice / entry;
-          token.actualMultiplier = actualMult;
-          S.predictionHistory.push({
-            ca: token.ca,
-            predictedMultiplier: token.multiplier?.expected || 0,
-            actualMultiplier: actualMult,
-            entryPrice: entry,
-            highestPrice: highestPrice,
-            evaluatedAt: Date.now()
-          });
-          if (S.predictionHistory.length > 500) S.predictionHistory.shift();
-          S.calibrationCount++;
-          if (S.calibrationCount >= 100) {
-            autoCalibrate();
-            S.calibrationCount = 0;
-          }
-          return actualMult;
-        }
-
-        function autoCalibrate() {
-          const recent = S.predictionHistory.slice(-100);
-          if (recent.length < 10) return;
-          let mae = 0, rmse = 0, bias = 0;
-          recent.forEach(r => {
-            const error = r.predictedMultiplier - r.actualMultiplier;
-            mae += Math.abs(error);
-            rmse += error * error;
-            bias += error;
-          });
-          mae /= recent.length;
-          rmse = Math.sqrt(rmse / recent.length);
-          bias /= recent.length;
-          // Simple weight adjustment: if bias positive (overestimate), reduce walletDNA & increase security
-          if (bias > 0) {
-            S.aiMultiplierWeights.walletDNA = clamp(S.aiMultiplierWeights.walletDNA - 0.01, 0.10, 0.30);
-            S.aiMultiplierWeights.security = clamp(S.aiMultiplierWeights.security + 0.01, 0.05, 0.25);
-          } else if (bias < 0) {
-            S.aiMultiplierWeights.walletDNA = clamp(S.aiMultiplierWeights.walletDNA + 0.01, 0.10, 0.30);
-            S.aiMultiplierWeights.security = clamp(S.aiMultiplierWeights.security - 0.01, 0.05, 0.25);
-          }
-          normW(S.aiMultiplierWeights);
-          addAILog('Auto-calibrated: MAE=' + mae.toFixed(2) + ' RMSE=' + rmse.toFixed(2) + ' Bias=' + bias.toFixed(2), 'ai');
-        }
-
-        // ========== V103.1 Continued ==========
+        // ... (V103.1 remaining functions unchanged: updateWalletGraph, runBacktest, etc.)
         function updateWalletGraph(token) { const hd = token._hel || {}; const ca = token.ca; const top10Addrs = (hd._topAddrs || []).slice(0, 10); if (!S.walletGraph.has(ca)) S.walletGraph.set(ca, { addrs: top10Addrs, links: new Set(), cluster: 0 }); const node = S.walletGraph.get(ca); node.addrs = top10Addrs; feedBus.forEach(other => { if (other.ca === ca) return; const otherAddrs = (other._hel?._topAddrs || []).slice(0, 10); const overlap = top10Addrs.filter(a => otherAddrs.includes(a)).length; if (overlap >= 2) { node.links.add(other.ca); S.walletGraph.get(other.ca)?.links.add(ca); } }); if (node.links.size >= 3) node.cluster = 1; else if (node.links.size >= 1) node.cluster = 2; else node.cluster = 0; token._walletCluster = node.cluster; token._walletClusterLabel = node.cluster === 1 ? 'CLUSTER' : node.cluster === 2 ? 'LINKED' : 'SOLO'; token._walletLinkCount = node.links.size; }
         function runBacktest(token) { const history = token._priceH || []; if (history.length < 10) return null; const entryPrice = history[Math.floor(history.length / 2)]?.p || token.price; const exitPrice = token.price || entryPrice; const pnl = ((exitPrice - entryPrice) / entryPrice) * 100; const maxPrice = Math.max(...history.map(h => h.p)); const minPrice = Math.min(...history.map(h => h.p)); const maxDrawdown = ((maxPrice - minPrice) / maxPrice) * 100; const entryTime = token._entryTime || token._firstSeen || Date.now(); const result = { entryPrice: fmtPrice(entryPrice), exitPrice: fmtPrice(exitPrice), pnl: Math.round(pnl * 100) / 100, maxDrawdown: Math.round(maxDrawdown * 100) / 100, holdingPeriod: Math.round((Date.now() - entryTime) / 3600000 * 10) / 10 }; S.learning.backtestHistory.push({ ca: token.ca, result, time: Date.now() }); if (S.learning.backtestHistory.length > 50) S.learning.backtestHistory.shift(); return result; }
         function updatePredictionStats(prediction, actual, confidence) { if (actual === 'WIN' && (prediction === 'BUY' || prediction === 'STRONG_BUY')) S.learning.predictionStats.tp++; if (actual === 'WIN' && prediction !== 'BUY' && prediction !== 'STRONG_BUY') S.learning.predictionStats.fn++; if (actual === 'LOSE' && (prediction === 'BUY' || prediction === 'STRONG_BUY')) S.learning.predictionStats.fp++; if (actual === 'LOSE' && prediction !== 'BUY' && prediction !== 'STRONG_BUY') S.learning.predictionStats.tn++; S.learning.predictionStats.brierSum += Math.pow((confidence / 100) - (actual === 'WIN' ? 1 : 0), 2); S.learning.predictionStats.brierCount++; S.learning.bayesianPrior.alpha += (actual === 'WIN' ? 1 : 0); S.learning.bayesianPrior.beta += (actual === 'LOSE' ? 1 : 0); }
@@ -1451,7 +1326,7 @@
           enrichPipeline, updateHero, addToEvalQueue, processEvalQueue, adaptiveLoop, selfEvaluateV3,
           detectCapitalFlow, getOptimizedPortfolio, calcExplain, classifyWalletDNA, calcEntryScoreEngine,
           calcDynamicExitAI, updateCorrelationMatrix, calcInstitutionalRisk, updateFlowMap,
-          getPredictionMetrics, classifyRugStatus, evaluateActual
+          getPredictionMetrics, classifyRugStatus, buildMultiplierObjectV2
         };
       })();
 
@@ -1482,7 +1357,7 @@
         return { pushToFeed, connectWS, performScan, requestScan, flushWsBuffer };
       })();
 
-      // ========== RENDER ENGINE (V103.2 UPGRADED UI) ==========
+      // ========== RENDER ENGINE (V103.2) ==========
       const RenderEngine = (() => {
         const rendered = new Map();
         function markDirty(t) { t._dirty = true; S.rq.add(t.ca); Scheduler.wakeVisual(); }
@@ -1506,10 +1381,8 @@
             div.className = 'hud-card card-' + (d.toLowerCase().replace(/\s/g, '-')) + (hero && t.ca === hero.ca ? ' hero-card' : '') + (t._enrichError ? ' enrich-error' : '') + (t._fromCache ? ' cached' : '') + ' no-anim';
             div.dataset.ca = t.ca;
 
-            // Base info (V103.1)
             let innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px"><div style="display:flex;align-items:center;gap:2px;min-width:0;flex:1"><span class="token-name">#' + alphaRank + ' ' + getName(t) + '</span>' + getConfBadge(t) + getWalletBadge(t) + getClusterBadge(t) + getOBBadge(t) + getFVGBadge(t) + getRugBadge(t) + (t._fromCache ? '<span class="cache-badge">CACHE</span>' : '') + '</div><div style="display:flex;align-items:center;gap:2px"><span class="decision-tag decision-' + d.toLowerCase().replace(/\s/g, '-') + '">' + d + '</span>' + createRing(q.final || 0) + '</div></div>';
 
-            // V103.2 Multiplier line
             if (t.multiplier) {
               const mult = t.multiplier;
               const riskLabel = mult.expected > 100 ? 'HIGH' : mult.expected > 20 ? 'MEDIUM' : 'LOW';
@@ -1535,9 +1408,8 @@
         }
 
         function renderDetail(t) {
-          const hd = t._hel || {}; const r = t._rug || {}; const rs = t._reasons || { pros: [], cons: [] }; const exit = t._exitPlan; const mc = t._mcResult || {}; const backtest = t._backtest; const correlations = t._correlations || []; const obs = t._orderBlocks || []; const fvgs = t._fvgs || []; const exp = t._explain || AiEngine.calcExplain(t);
+          const hd = t._hel || {}; const rs = t._reasons || { pros: [], cons: [] }; const exit = t._exitPlan; const mc = t._mcResult || {}; const backtest = t._backtest; const exp = t._explain || AiEngine.calcExplain(t);
           const dexUrl = getTokenDexUrl(t);
-          const rugStatus = t._rugStatus || AiEngine.classifyRugStatus(t);
           let detail = '<div class="detail-section"><div class="section-title">DATA</div><div class="hud-gauge"><span class="gauge-label">PRICE</span><span class="gauge-value" style="color:#ffd700;width:auto">' + fmtPrice(t.price) + '</span></div><div class="hud-gauge"><span class="gauge-label">LIQ</span><span class="gauge-value" style="color:#0f6;width:auto">' + (safeValue(t.liq) ? '$' + fmtNum(t.liq) : '--') + '</span></div><div class="hud-gauge"><span class="gauge-label">WALLET</span><span class="gauge-value" style="width:auto">' + getWalletBadge(t) + getClusterBadge(t) + (t._fromCache ? ' <span class="cache-badge">CACHE</span>' : '') + '</span></div><div class="hud-gauge"><span class="gauge-label">RUG</span><span class="gauge-value" style="width:auto">' + getRugBadge(t) + '</span></div><div style="margin-top:4px;text-align:center"><a class="dex-link-btn" href="' + dexUrl + '" target="_blank">DEXSCREENER</a></div></div>';
 
           if (t.multiplier) {
@@ -1558,7 +1430,6 @@
             detail += '<div class="hud-gauge"><span class="gauge-label">' + k.toUpperCase() + '</span><div class="gauge-track"><div class="gauge-fill" style="width:' + v + '%;background:#0f6"></div></div><span class="gauge-value">' + v + '%</span></div>';
           }
           detail += '</div>';
-
           return detail;
         }
 
@@ -1567,15 +1438,12 @@
           if (div.classList.contains('skeleton-card')) { buildCard(t); return; }
           const d = t.decision || '...', hero = S.hero;
           div.className = 'hud-card card-' + (d.toLowerCase().replace(/\s/g, '-')) + (hero && t.ca === hero.ca ? ' hero-card' : '') + (t._enrichError ? ' enrich-error' : '') + (t._fromCache ? ' cached' : '');
-          // Update decision tag
           const dt = div.querySelector('.decision-tag'); if (dt) { dt.textContent = d; dt.className = 'decision-tag decision-' + d.toLowerCase().replace(/\s/g, '-'); }
-          // Update ring
           const ringVal = div.querySelector('.score-ring-value'); if (ringVal) ringVal.textContent = Math.round(t.quad?.final || 0);
-          // V103.2: add/update multiplier line if missing
           if (t.multiplier && !div.querySelector('.multiplier-line')) {
-            const inner = div.querySelector('.card-detail-section')?.previousSibling;
-            // simple approach: rebuild card (less efficient but ensures consistency)
-            div.innerHTML = buildCard(t).innerHTML;
+            // rebuild simple: we can replace innerHTML but better to re-render only if needed
+            const newCard = buildCard(t);
+            div.innerHTML = newCard.innerHTML;
           }
         }
 
@@ -1622,7 +1490,7 @@
       function exportCSV() { const rows = [['Name', 'CA', 'Price', 'Decision', 'Expected Multiplier', 'Confidence', 'Expected Return', 'Risk', 'Reasons']]; feedBus.forEach(t => { const mult = t.multiplier; rows.push([getName(t), t.ca, t.price || '', t.decision || '', mult?.expected || '', mult?.confidence || '', mult?.expectedReturn || '', mult?.expected > 100 ? 'HIGH' : mult?.expected > 20 ? 'MEDIUM' : 'LOW', (mult?.reason || []).join('; ')]); }); const csv = rows.map(r => r.map(c => '"' + (c + '').replace(/"/g, '""') + '"').join(',')).join('\n'); downloadFile('nebula_export.csv', csv, 'text/csv'); }
       function exportJSON() { const data = feedBus.map(t => { return { name: getName(t), ca: t.ca, price: t.price, decision: t.decision, multiplier: t.multiplier?.expected, confidence: t.multiplier?.confidence, expectedReturn: t.multiplier?.expectedReturn, reasons: t.multiplier?.reason }; }); downloadFile('nebula_export.json', JSON.stringify(data, null, 2), 'application/json'); }
       function downloadFile(filename, content, mime) { const blob = new Blob([content], { type: mime }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }
-      function showAuditPanel() { const pred = AiEngine.getPredictionMetrics(); let html = '<div class="section-title">AUDIT V103.2</div>'; html += '<div style="font-size:0.5rem;">API Status</div>'; C.ENDPOINTS.forEach(n => { const cbStatus = CircuitBreaker.getStatus(n); html += '<div style="font-size:0.45rem;">' + (ep[n] === 'on' ? 'O' : 'X') + ' ' + n + ': ' + eph[n].sr + '%' + (cbStatus === 'disabled' ? ' [CB]' : '') + '</div>'; }); html += '<div style="font-size:0.5rem;margin-top:6px;">AI Metrics</div>'; html += '<div style="font-size:0.45rem;">Accuracy: ' + S.learning.accuracy + '% F1: ' + pred.f1 + '%</div>'; html += '<div style="font-size:0.45rem;">Prediction History: ' + S.predictionHistory.length + ' tokens</div>'; html += '<div style="font-size:0.45rem;">Calibration Count: ' + S.calibrationCount + '/100</div>'; html += '<div style="font-size:0.45rem;">Market: ' + S.market.regime + ' | Tokens: ' + feedBus.length + '</div>'; document.getElementById('overlayContent').innerHTML = html; document.getElementById('overlayPanel').style.display = 'block'; }
+      function showAuditPanel() { const pred = AiEngine.getPredictionMetrics(); let html = '<div class="section-title">AUDIT V103.2</div>'; html += '<div style="font-size:0.5rem;">API Status</div>'; C.ENDPOINTS.forEach(n => { const cbStatus = CircuitBreaker.getStatus(n); html += '<div style="font-size:0.45rem;">' + (ep[n] === 'on' ? 'O' : 'X') + ' ' + n + ': ' + eph[n].sr + '%' + (cbStatus === 'disabled' ? ' [CB]' : '') + '</div>'; }); html += '<div style="font-size:0.5rem;margin-top:6px;">AI Metrics</div>'; html += '<div style="font-size:0.45rem;">Accuracy: ' + S.learning.accuracy + '% F1: ' + pred.f1 + '%</div>'; html += '<div style="font-size:0.45rem;">Prediction History: ' + S.predictionHistory.length + ' tokens</div>'; html += '<div style="font-size:0.45rem;">Market: ' + S.market.regime + ' | Tokens: ' + feedBus.length + '</div>'; document.getElementById('overlayContent').innerHTML = html; document.getElementById('overlayPanel').style.display = 'block'; }
 
       function startup() {
         try {
@@ -1653,7 +1521,7 @@
           $('watchlistBtn').onclick = showWatchlistPanel;
           $('exportBtn').onclick = showExportPanel;
           $('auditBtn').onclick = showAuditPanel;
-          $('debugBtn').onclick = () => { const pred = AiEngine.getPredictionMetrics(); let html = '<div><b>V103.2</b></div><div>Helius via Proxy</div>'; C.ENDPOINTS.forEach(n => { const cb = CircuitBreaker.getStatus(n); html += '<div>' + ep[n] + ' ' + n + ':' + eph[n].sr + '%' + (cb === 'disabled' ? ' [CB]' : '') + '</div>'; }); html += '<div style="margin-top:6px">Acc:' + S.learning.accuracy + '% F1:' + pred.f1 + '%</div>'; html += '<div>Mkt:' + S.market.regime + ' Tokens:' + feedBus.length + '</div>'; html += '<div>Prediction History:' + S.predictionHistory.length + '</div>'; html += '<div>AI Weights: ' + JSON.stringify(S.aiMultiplierWeights) + '</div>'; document.getElementById('overlayContent').innerHTML = html; document.getElementById('overlayPanel').style.display = 'block'; };
+          $('debugBtn').onclick = () => { const pred = AiEngine.getPredictionMetrics(); let html = '<div><b>V103.2</b></div><div>Helius via Proxy</div>'; C.ENDPOINTS.forEach(n => { const cb = CircuitBreaker.getStatus(n); html += '<div>' + ep[n] + ' ' + n + ':' + eph[n].sr + '%' + (cb === 'disabled' ? ' [CB]' : '') + '</div>'; }); html += '<div style="margin-top:6px">Acc:' + S.learning.accuracy + '% F1:' + pred.f1 + '%</div>'; html += '<div>Mkt:' + S.market.regime + ' Tokens:' + feedBus.length + '</div>'; html += '<div>Prediction History:' + S.predictionHistory.length + '</div>'; document.getElementById('overlayContent').innerHTML = html; document.getElementById('overlayPanel').style.display = 'block'; };
           $('overlayClose').onclick = () => { $('overlayPanel').style.display = 'none'; };
           document.addEventListener('click', function(e) { const btn = e.target.closest('[data-action]'); if (!btn) return; e.stopPropagation(); const a = btn.dataset.action, ca = btn.dataset.ca; if (a === 'watch') { const idx = S.watchlist.findIndex(w => w.ca === ca); if (idx >= 0) { S.watchlist.splice(idx, 1); btn.classList.remove('watch-active'); } else { S.watchlist.push({ ca, added: Date.now() }); btn.classList.add('watch-active'); } } else if (a === 'copyca') { copyToClipboard(ca); btn.textContent = 'OK'; setTimeout(() => btn.textContent = 'CA', 1000); } else if (a === 'phantom') { window.open('https://phantom.app/ul/v1/swap/' + ca, '_blank'); } else if (a === 'pump') { window.open('https://pump.fun/coin/' + ca, '_blank'); } else if (a === 'dex') { const t = feedMap.get(ca); if (t) openDexLink(t); } else if (a === 'buy') { const t = feedMap.get(ca); if (t) AiEngine.addToEvalQueue(ca, t.price || 0, t.decision || 'BUY'); } });
         } catch (e) { console.error('Binding Error:', e); }
