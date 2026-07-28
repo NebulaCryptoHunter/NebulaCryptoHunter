@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#000a14">
-  <title>NEBULA CRYPTO HUNTER V107</title>
+  <title>NEBULA CRYPTO HUNTER</title>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -45,11 +45,10 @@
     .dash-panel { background:rgba(0,0,0,.5); border-radius:4px; padding:3px 1px; text-align:center; border:1px solid rgba(255,255,255,.08); }
     .dash-panel .val { font-size:0.85rem; font-weight:900; } .dash-panel .lbl { font-size:0.42rem; color:#8cf; margin-top:1px; }
     .radar-grid { display:flex; flex-direction:column; gap:4px; padding-bottom:60px; }
-    .hud-card { background:var(--card-bg); border:1.5px solid var(--border-glow); border-left:3px solid cyan; border-radius:6px; padding:4px; box-shadow:0 4px 10px rgba(0,0,0,.5); animation:cardSpawn .2s ease; }
-    .hud-card.no-anim { animation:none; }
+    .hud-card { background:var(--card-bg); border:1.5px solid var(--border-glow); border-left:3px solid cyan; border-radius:6px; padding:4px; box-shadow:0 4px 10px rgba(0,0,0,.5); }
+    .hud-card.skeleton-card { height:60px; background:rgba(0,255,255,0.03); border:1px dashed rgba(0,255,255,0.1); animation:none; }
     .hud-card.enrich-error { border-left:3px solid #f44!important; opacity:0.7; }
     .hud-card.cached { border-left-style:dashed!important; }
-    @keyframes cardSpawn { 0%{opacity:0;transform:translateY(3px) scale(.97)} 100%{opacity:1;transform:translateY(0) scale(1)} }
     .card-strong_buy { background:linear-gradient(135deg,rgba(255,215,0,0.08),transparent); border-left:3px solid #ffd700!important; }
     .card-buy { background:linear-gradient(135deg,rgba(0,255,100,0.06),transparent); border-left:3px solid #0f6!important; }
     .card-accumulate { background:linear-gradient(135deg,rgba(0,255,170,0.06),transparent); border-left:3px solid #0fa!important; }
@@ -104,7 +103,6 @@
     .sparkline { display:inline-flex; align-items:flex-end; gap:1px; height:12px; margin-left:4px; }
     .sparkline-bar { width:3px; background:currentColor; border-radius:1px; }
     .watch-alert-up { color:#0f6; margin-left:2px; } .watch-alert-down { color:#f44; margin-left:2px; }
-    .skeleton-card { height:60px; background:rgba(0,255,255,0.03); border:1px dashed rgba(0,255,255,0.1); border-radius:6px; margin-bottom:4px; }
     .unified-dash { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; padding:4px; background:rgba(0,5,15,.9); border:1px solid rgba(0,255,255,.2); border-radius:8px; margin-bottom:3px; }
     .unified-item { font-size:0.42rem; text-align:center; padding:2px; }
     .unified-item .val { font-size:0.7rem; font-weight:900; }
@@ -120,7 +118,7 @@
 <div class="app">
   <div class="sticky-nav">
     <div class="header-row-2">NEBULA CRYPTO HUNTER</div>
-    <div class="header-row-1">V107 • Adaptive AI • Heru Prasetyo</div>
+    <div class="header-row-1">Intelligent Trading System • Engineered by Heru Prasetyo</div>
     <div class="endpoint-bar" id="endpointBar"></div>
     <div class="hud-controls">
       <select class="hud-select" id="modeSelect"><option value="balanced" selected>BALANCED</option><option value="safe">SAFE</option><option value="aggressive">AGGRESSIVE</option><option value="sniper">SNIPER</option></select>
@@ -157,10 +155,10 @@ const RISK_LEVEL = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
 
 // ==================== CONFIGURATION ====================
 const CONFIG = {
-  VERSION: 'V107',
+  VERSION: 'V108.8',
   WORKER_URL: 'https://nebula-api.nebula-crypto-proxy.workers.dev',
   KV_ENABLED: false,
-  CACHE_PREFIX: 'nebula_v107_',
+  CACHE_PREFIX: 'nebula_v108_',
   MAX_TOKENS: 500, TIMEOUT: 10000, EVAL_DELAY: 180000,
   ENDPOINTS: ['PUMP', 'DEX', 'HELIUS', 'RUGCHECK'],
   NARRATIVE: { AI: ['ai','agent'], MEME: ['meme','doge'], RWA: ['real','world'], GAMING: ['game','play'], DEPIN: ['depin','node'], LAYER2: ['layer2'], SOCIALFI: ['social','friend'], STAKING: ['stake','staking'] },
@@ -178,7 +176,8 @@ const CONFIG = {
   RISK_PROFILES: { safe:{kellyMult:0.4,posMax:2}, balanced:{kellyMult:0.6,posMax:5}, aggressive:{kellyMult:1.0,posMax:10}, degen:{kellyMult:1.6,posMax:25} },
   MEMORY_CAPS: { predictionHistory:5000,heroHistory:50,walletDB:200,walletGraph:100,simulationCache:200,correlationMatrix:50,flowMap:30,capitalFlowHistory:100,outcomes:200,maeHistory:50,seasonHistory:50,rotationHistory:20,aiMemory:200,outcomeMemory:200,predictionMemory:200 },
   ROTATING_SCAN: { enabled:true, intervalMs:60000, batchSize:200 },
-  API: { baseURL: 'https://nebula-api.nebula-crypto-proxy.workers.dev/api/v1', apiKey: 'nebula-v107-production-key-2026' }
+  API: { baseURL: 'https://nebula-api.nebula-crypto-proxy.workers.dev/api/v1', apiKey: 'nebula-v107-production-key-2026' },
+  ENRICHMENT_QUEUE: { maxParallel: 3, delayMs: 300 }
 };
 
 // ==================== UTILITIES ====================
@@ -228,7 +227,9 @@ const S = {
   predictionHistory:[], calibrationCount:0, maeHistory:[], evaluationCount:0, outcomes:[],
   requestSemaphore:{count:0,max:4,queue:[]},
   evalLocks:new Set(), tokenVersions:new Map(),
-  rotatingOffset:0
+  rotatingOffset:0,
+  // Enrichment Queue
+  enrichQueue: [], enrichRunning: 0
 };
 
 // ==================== STORAGE & CIRCUIT BREAKER ====================
@@ -420,6 +421,31 @@ const DeveloperEngine = (() => {
   function getDevAdjustment(token) { const devAddr = getDevAddress(token); if (!devAddr) return CONFIG.AI.devRepAdjustments.unknown; const entry = S.learning.developerDB.get(devAddr); if (!entry) return CONFIG.AI.devRepAdjustments.unknown; return CONFIG.AI.devRepAdjustments[getDevRepLevel(entry.reputation)]; }
   return { getDevAddress, updateDevReputation, getDevAdjustment };
 })();
+
+// ==================== ENRICHMENT QUEUE ====================
+async function processEnrichmentQueue() {
+  if (S.enrichRunning >= CONFIG.ENRICHMENT_QUEUE.maxParallel) return;
+  if (S.enrichQueue.length === 0) return;
+  const batch = S.enrichQueue.splice(0, CONFIG.ENRICHMENT_QUEUE.maxParallel - S.enrichRunning);
+  S.enrichRunning += batch.length;
+  await Promise.all(batch.map(async (token) => {
+    try {
+      await AiEngine.enrichPipeline(token);
+    } catch(e) {
+      addAILog('Enrichment error: ' + e.message, 'error');
+    }
+  }));
+  S.enrichRunning -= batch.length;
+  if (S.enrichQueue.length > 0) {
+    setTimeout(() => processEnrichmentQueue(), CONFIG.ENRICHMENT_QUEUE.delayMs);
+  }
+}
+
+function enqueueEnrichment(token) {
+  S.enrichQueue.push(token);
+  processEnrichmentQueue();
+}
+
 // ==================== AI ENGINE ====================
 const AiEngine = (() => {
   function getMode() {
@@ -495,11 +521,10 @@ const AiEngine = (() => {
   async function enrichHelius(token) {
     if (token._helDone) return;
     try {
-      const [supplyR, holdersR, sigsR] = await Promise.all([
-        rpc('getTokenSupply', [token.ca]),
-        rpc('getTokenLargestAccounts', [token.ca]),
-        rpc('getSignaturesForAddress', [token.ca, { limit: 30 }])
-      ]);
+      // Sequential RPC calls to avoid rate limiting
+      const supplyR = await rpc('getTokenSupply', [token.ca]);
+      const holdersR = await rpc('getTokenLargestAccounts', [token.ca]);
+      const sigsR = await rpc('getSignaturesForAddress', [token.ca, { limit: 30 }]);
       const largest = (holdersR?.result?.value || []).filter(a => !['11111111111111111111111111111111', '5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1'].includes(a.address));
       const topAddrs = largest.slice(0, 10).map(a => a.address);
       const hc = largest.length;
@@ -799,6 +824,7 @@ const AiEngine = (() => {
     evaluateAllCheckpoints, detectMarketRegime, detectSeason, computeAccuracy, getAIHealth
   };
 })();
+
 // ==================== SCANNER ====================
 const Scanner = (() => {
   function connectWS() {
@@ -825,10 +851,10 @@ const Scanner = (() => {
     }
     if (feedMap.has(token.ca)) {
       const ex = feedMap.get(token.ca); ex.source = src; RenderEngine.markDirty(ex);
-      if (!ex._enriched) AiEngine.enrichPipeline(ex);
+      if (!ex._enriched) enqueueEnrichment(ex);
     } else {
       RenderEngine.renderSkeleton(token.ca); feedMap.set(token.ca, token); feedBus.push(token);
-      AiEngine.enrichPipeline(token);
+      enqueueEnrichment(token);
     }
     smartMemoryCleanup();
   }
@@ -863,7 +889,7 @@ const RenderEngine = (() => {
 
   function markDirty(t) { t._dirty = true; S.rq.add(t.ca); Scheduler.wakeVisual(); }
   function removeCard(ca) { const div = rendered.get(ca); if (div) { div.remove(); rendered.delete(ca); } }
-  function renderSkeleton(ca) { const grid = $('radarFeed'); if (!grid) return; const div = document.createElement('div'); div.className = 'skeleton-card'; div.dataset.ca = ca; grid.prepend(div); rendered.set(ca, div); }
+  function renderSkeleton(ca) { const grid = $('radarFeed'); if (!grid) return; const div = document.createElement('div'); div.className = 'hud-card skeleton-card'; div.dataset.ca = ca; grid.prepend(div); rendered.set(ca, div); }
 
   function createRing(score) {
     const s = Math.round(score), color = s >= 80 ? '#0f6' : s >= 60 ? '#ffd700' : s >= 40 ? '#f80' : '#f44';
@@ -898,7 +924,7 @@ const RenderEngine = (() => {
       const rank = allSorted.findIndex(x => x.ca === t.ca) + 1;
       const div = document.createElement('div');
       const decClass = d.toLowerCase().replace(/\s/g, '-');
-      div.className = 'hud-card card-' + decClass + (hero && t.ca === hero.ca ? ' hero-card' : '') + (t._enrichError ? ' enrich-error' : '') + (t._fromCache ? ' cached' : '') + ' no-anim';
+      div.className = 'hud-card card-' + decClass + (hero && t.ca === hero.ca ? ' hero-card' : '') + (t._enrichError ? ' enrich-error' : '') + (t._fromCache ? ' cached' : '');
       div.dataset.ca = t.ca;
 
       let innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">' +
@@ -934,8 +960,7 @@ const RenderEngine = (() => {
       '<div class="hud-gauge"><span class="gauge-label">PRICE</span><span class="gauge-value" style="color:#ffd700;width:auto">' + fmtPrice(t.price) + '</span></div>' +
       '<div class="hud-gauge"><span class="gauge-label">LIQ</span><span class="gauge-value" style="color:#0f6;width:auto">' + (safeValue(t.liq) ? '$' + fmtNum(t.liq) : '--') + '</span></div>' +
       '<div class="hud-gauge"><span class="gauge-label">WALLET</span><span class="gauge-value" style="width:auto">' + getWalletBadge(t) + getClusterBadge(t) + '</span></div>' +
-      '<div class="hud-gauge"><span class="gauge-label">RUG</span><span class="gauge-value" style="width:auto">' + getRugBadge(t) + '</span></div>' +
-      '<div style="margin-top:4px;text-align:center"><a class="dex-link-btn" href="' + dexUrl + '" target="_blank">DEXSCREENER</a></div></div>';
+      '<div class="hud-gauge"><span class="gauge-label">RUG</span><span class="gauge-value" style="width:auto">' + getRugBadge(t) + '</span></div></div>';
 
     detail += '<div class="detail-section"><div class="section-title">XAI</div>';
     for (const [k, v] of Object.entries(exp)) detail += '<div class="hud-gauge"><span class="gauge-label">' + k.toUpperCase() + '</span><div class="gauge-track"><div class="gauge-fill" style="width:' + v + '%;background:#0f6"></div></div><span class="gauge-value">' + v + '%</span></div>';
@@ -1001,6 +1026,7 @@ const RenderEngine = (() => {
 
   return { markDirty, removeCard, renderSkeleton, buildCard, patchCard, flushRQ, initHeroPanel, initDashboard, patchHeroPanel };
 })();
+
 // ==================== UI FUNCTIONS ====================
 function addAILog(msg, type = 'info') {
   const el = $('aiConsole');
@@ -1176,7 +1202,7 @@ function autoRefreshEnrichment() {
         now - token.lastMetricsUpdate > 300000 &&
         (token.decision === DECISION.BUY || token.decision === DECISION.STRONG_BUY || S.watchlist.some(w => w.ca === token.ca))) {
       token._dexDone = false; token._helDone = false; token._rugDone = false; token._enriched = false;
-      AiEngine.enrichPipeline(token);
+      enqueueEnrichment(token);
     }
   });
 }
@@ -1254,7 +1280,7 @@ function startup() {
 
     Scheduler.startVisual();
     Scheduler.startBackground();
-    addAILog('[' + new Date().toLocaleTimeString() + '] NEBULA CRYPTO HUNTER V107 ONLINE', 'success');
+    addAILog('[' + new Date().toLocaleTimeString() + '] NEBULA CRYPTO HUNTER ONLINE', 'success');
     if (S.isAuto) Scanner.requestScan();
   } catch (e) {
     console.error('Startup Error:', e);
