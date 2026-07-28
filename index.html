@@ -155,10 +155,10 @@ const RISK_LEVEL = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
 
 // ==================== CONFIGURATION ====================
 const CONFIG = {
-  VERSION: 'V108.8',
+  VERSION: 'V109.1',
   WORKER_URL: 'https://nebula-api.nebula-crypto-proxy.workers.dev',
   KV_ENABLED: false,
-  CACHE_PREFIX: 'nebula_v108_',
+  CACHE_PREFIX: 'nebula_v109_',
   MAX_TOKENS: 500, TIMEOUT: 10000, EVAL_DELAY: 180000,
   ENDPOINTS: ['PUMP', 'DEX', 'HELIUS', 'RUGCHECK'],
   NARRATIVE: { AI: ['ai','agent'], MEME: ['meme','doge'], RWA: ['real','world'], GAMING: ['game','play'], DEPIN: ['depin','node'], LAYER2: ['layer2'], SOCIALFI: ['social','friend'], STAKING: ['stake','staking'] },
@@ -228,7 +228,6 @@ const S = {
   requestSemaphore:{count:0,max:4,queue:[]},
   evalLocks:new Set(), tokenVersions:new Map(),
   rotatingOffset:0,
-  // Enrichment Queue
   enrichQueue: [], enrichRunning: 0
 };
 
@@ -277,7 +276,7 @@ async function rpc(method,params){ for(const r of RPC){ try{ const st=Date.now()
 
 // ==================== FEED & HELPERS ====================
 const feedMap=new Map(); let feedBus=[];
-const getName=t=>t.identity?.name||t.name||t.ca.slice(0,6);
+const getName=t=>t.identity?.name||t.name||t.ca?.slice(0,6)||'???';
 function getTokenDexUrl(token){ if(token.dexUrl)return token.dexUrl; if(token.pair)return'https://dexscreener.com/solana/'+token.pair; return'https://dexscreener.com/solana/'+token.ca; }
 function openDexLink(token){ const url=getTokenDexUrl(token); try{window.open(url,'_blank','noopener,noreferrer')}catch(e){window.location.href=url} }
 
@@ -333,6 +332,15 @@ async function apiPost(path, data) {
   } catch(e) { return null; }
 }
 
+async function apiGet(path) {
+  try {
+    const res = await fetch(`${CONFIG.API.baseURL}${path}`, {
+      headers: { 'Authorization': `Bearer ${CONFIG.API.apiKey}` }
+    });
+    return await res.json();
+  } catch(e) { return null; }
+}
+
 function sendPredictionToWorker(token) {
   apiPost('/predictions', {
     token_ca: token.ca,
@@ -349,6 +357,79 @@ function sendPredictionToWorker(token) {
     risk_index: token._riskIndex || 0,
     passed_gate: token._passedGate ? 1 : 0
   });
+}
+
+// ==================== RESTORE STATE ====================
+async function restoreState() {
+  try {
+    addAILog('Loading database...', 'info');
+    await Promise.all([
+      loadPredictions(),
+      loadStats(),
+      loadHeroes(),
+      loadWatchlist(),
+      loadLearning()
+    ]);
+    RenderEngine.renderAll();
+    updateDashboard();
+    addAILog('Database restored', 'success');
+  } catch(err) {
+    console.error(err);
+    addAILog('Restore failed', 'error');
+  }
+}
+
+async function loadPredictions() {
+  const json = await apiGet('/predictions?limit=500');
+  if (!json || !json.success) return;
+  feedBus = [];
+  feedMap.clear();
+  S.predictionHistory = [];
+  json.data.predictions.forEach(p => {
+    const token = {
+      ca: p.token_ca,
+      identity: { name: p.token_name, symbol: p.token_symbol },
+      decision: p.decision,
+      price: p.entry_price,
+      _conf: p.confidence,
+      _finalAIScore: p.ai_score,
+      _riskIndex: p.risk_index,
+      _passedGate: p.passed_gate === 1,
+      multiplier: { expected: p.predicted_multiplier },
+      _reasons: { quality: p.quality, opportunity: p.opportunity },
+      _state: 'RESTORED',
+      restored: true
+    };
+    feedBus.push(token);
+    feedMap.set(token.ca, token);
+    S.predictionHistory.push(token);
+  });
+}
+
+async function loadStats() {
+  const json = await apiGet('/stats');
+  if (!json || !json.success) return;
+  S.dash = json.data;
+  updateDashboard();
+}
+
+async function loadHeroes() {
+  const json = await apiGet('/heroes');
+  if (!json || !json.success || !json.data) return;
+  S.hero = json.data;
+  RenderEngine.patchHeroPanel();
+}
+
+async function loadWatchlist() {
+  const json = await apiGet('/watchlist');
+  if (!json || !json.success) return;
+  S.watchlist = json.data.watchlist || [];
+}
+
+async function loadLearning() {
+  const json = await apiGet('/learning');
+  if (!json || !json.success) return;
+  S.learning.weights = json.data.weights || S.learning.weights;
 }
 
 // ==================== PERFORMANCE MANAGER ====================
@@ -442,6 +523,7 @@ async function processEnrichmentQueue() {
 }
 
 function enqueueEnrichment(token) {
+  if (token.restored) return;
   S.enrichQueue.push(token);
   processEnrichmentQueue();
 }
@@ -464,7 +546,6 @@ const AiEngine = (() => {
     return { status: RUG_STATUS.RISK, class: 'rug-risk', label: RUG_STATUS.RISK };
   }
 
-  // ==================== ENRICHMENT ====================
   async function enrichDex(token) {
     if (token._dexDone) return;
     const cacheKey = 'dex_' + token.ca;
@@ -521,7 +602,6 @@ const AiEngine = (() => {
   async function enrichHelius(token) {
     if (token._helDone) return;
     try {
-      // Sequential RPC calls to avoid rate limiting
       const supplyR = await rpc('getTokenSupply', [token.ca]);
       const holdersR = await rpc('getTokenLargestAccounts', [token.ca]);
       const sigsR = await rpc('getSignaturesForAddress', [token.ca, { limit: 30 }]);
@@ -571,7 +651,6 @@ const AiEngine = (() => {
     token._rug = { score: -1, lpLock: 0, mint: false, freeze: false }; token._rugError = true; token._rugDone = true; window.setEp('RUGCHECK', 'off');
   }
 
-  // ==================== MAIN PIPELINE ====================
   async function enrichPipeline(token) {
     if (S.evalLocks.has(token.ca)) return;
     S.evalLocks.add(token.ca);
@@ -589,7 +668,6 @@ const AiEngine = (() => {
     addAILog('[' + new Date().toLocaleTimeString() + '] ' + getName(token) + ' = ' + token.decision, token._enrichError ? 'error' : token._fromCache ? 'info' : 'ai');
   }
 
-  // ==================== METRICS & DECISION ====================
   function calcMetricsV107(token) {
     try {
       const mode = getMode();
@@ -672,8 +750,6 @@ const AiEngine = (() => {
       S.predictionHistory.push(predEntry);
       if (S.predictionHistory.length > CONFIG.MEMORY_CAPS.predictionHistory) S.predictionHistory.shift();
       recordOutcomeCheckpoint(predEntry, token, '30m');
-
-      // Kirim ke Worker D1
       sendPredictionToWorker(token);
     } catch (e) { console.error('calcMetricsV107', e); }
   }
@@ -742,7 +818,6 @@ const AiEngine = (() => {
   function getNarrativeBonus(token) { const nb = CONFIG.AI.narrativeBonuses; let bonus = 0; (token._narr || []).forEach(n => { bonus += nb[n] || 0; }); return Math.min(bonus, 15); }
   function getDecision(score, thresh) { if (score >= thresh.strong_buy) return DECISION.STRONG_BUY; if (score >= thresh.buy) return DECISION.BUY; if (score >= thresh.accumulate) return DECISION.ACCUMULATE; if (score >= thresh.watch) return DECISION.WATCH; if (score >= thresh.wait) return DECISION.WAIT; return DECISION.AVOID; }
 
-  // ==================== SCORING ====================
   function calculateQualityScore(token) { const walletDNA = token._walletRep || 50; const security = calcSec(token); const holderQuality = Math.min(100, (token._hel?.hq || 30) * 0.7 + (token._hel?.dh || 20) * 0.3); const liquidityQuality = Math.min(100, logScore(token.liq || 0, 500, 25) * 0.4 + token._liqFlowScore * 0.4 + (token._liqFake ? 0 : 20)); const developerScore = token._rug?.lpLock > 50 ? 80 : 40; return clamp(walletDNA * 0.35 + security * 0.25 + holderQuality * 0.15 + liquidityQuality * 0.15 + developerScore * 0.10, 0, 100); }
   function calculateOpportunityScore(token) { const momentum = token._volAccel > 20 ? 90 : token._volAccel > 0 ? 60 : 30; const narrative = token._nHeat || 30; const ageScore = token.age < 30 ? 100 : token.age < 360 ? 70 : token.age < 2880 ? 40 : 20; const volume = Math.min(100, logScore(token.vol1h || 0, 300, 20)); const orderFlow = Math.min(100, token.flow || 50); const marketHeat = S.market.heat || 50; return clamp(momentum * 0.30 + narrative * 0.25 + ageScore * 0.15 + volume * 0.15 + orderFlow * 0.10 + marketHeat * 0.05, 0, 100); }
 
@@ -752,7 +827,6 @@ const AiEngine = (() => {
   function calculateDynamicConfidence(token) { let dc = 0; if (token._dexDone) dc += 25; if (token._helDone) dc += 25; if (token._rugDone) dc += 20; if (token.identity) dc += 15; if (token._state === 'DONE') dc += 15; dc = Math.min(100, dc); let sc = 50; const ss = []; if ((token._walletRep || 0) > 70) ss.push('w'); if (calcSec(token) > 70) ss.push('s'); if ((token._nHeat || 0) > 50) ss.push('n'); if ((token._liqFlowScore || 50) > 60) ss.push('l'); if (token._volAccel > 20) ss.push('m'); if (ss.length >= 3) sc = 90; else if (ss.length >= 2) sc = 75; else if (ss.length >= 1) sc = 60; const eh = CONFIG.ENDPOINTS.reduce((s, n) => s + (eph[n]?.sr || 50), 0) / CONFIG.ENDPOINTS.length; return clamp(Math.round(dc * 0.3 + sc * 0.5 + eh * 0.2), 10, 99); }
   function calcKelly(token, prob, er, confidence, riskProfile, mcResult) { const kellyBase = Math.min(riskProfile.kellyMult * (prob / 100) * (confidence / 100) * (er / 100) * 100, riskProfile.posMax); return +kellyBase.toFixed(2); }
 
-  // ==================== REASONS ====================
   function genMultiplierReasons(token) { const reasons = []; if ((token._walletRep || 0) > 70) reasons.push('Wallet Elite'); if (token._whale > 60) reasons.push('Whale'); if ((token._narr || []).length > 0) reasons.push('Narrative:' + token._narr.join(',')); if (token._liqFlowScore > 60) reasons.push('Liq Flow'); if (token._volAccel > 20) reasons.push('Vol Accel'); if (calcSec(token) > 70) reasons.push('Secure'); if (token._obSignal === 'BULLISH') reasons.push('OB'); if (token._fvgSignal === 'FVG UP') reasons.push('FVG'); if (token._mktStructure === 'BULLISH') reasons.push('Structure'); return reasons.slice(0, 5); }
 
   function genReasonsV107(token, dec, quality, opportunity, confidence, passedGate, marketAdj, devAdj, riskAdj, contextAdj, qWeight, oWeight) {
@@ -775,7 +849,6 @@ const AiEngine = (() => {
     return { pros: p.slice(0, 8), cons: c.slice(0, 3) };
   }
 
-  // ==================== HELPERS ====================
   function updateWalletDB(token) { const hd = token._hel || {}; const smc = hd.smc || 0; const ca = token.ca; let entry = S.walletDB.get(ca) || { wins: 0, total: 0, rep: 50, smc: 0 }; entry.smc = Math.max(entry.smc, smc); const recentOutcome = S.learning.outcomeMemory.filter(r => r.ca === ca).slice(-5); entry.total = recentOutcome.length; entry.wins = recentOutcome.filter(r => r.outcome === 'WIN').length; entry.rep = entry.total > 0 ? Math.round((entry.wins / entry.total) * 100) : (smc > 10 ? 90 : smc > 5 ? 75 : smc > 2 ? 60 : smc > 0 ? 40 : 20); if (token._whale > 70) entry.rep += 10; if (token._swScore > 60) entry.rep += 5; entry.rep = clamp(entry.rep, 10, 99); S.walletDB.set(ca, entry); token._walletRep = entry.rep; }
   function calcLiquidityFlowV96(token) { const h = token._liqH || []; if (h.length < 3) { token._liqFlowScore = 50; token._liqFlowLabel = '-'; token._liqFake = false; return; } const recent = h.slice(-5); const oldest = recent[0].v || 0; const newest = recent[recent.length - 1].v || 0; const delta = newest - oldest; const pct = safeDivide(delta, oldest) * 100; token._liqFlowScore = clamp(Math.round(50 + pct * 2), 0, 100); token._liqFlowLabel = pct > 20 ? 'IN++' : pct > 10 ? 'IN+' : pct < -20 ? 'OUT--' : pct < -10 ? 'OUT-' : '-'; const spikes = recent.filter(p => p.v > (oldest * 2)).length; token._liqFake = spikes > 2; }
   function calcVolumeAccelerationV96(token) { const h = token._volH || []; if (h.length < 4) { token._volAccel = 0; token._volAccelLabel = '-'; return; } const v1 = h[h.length - 4].v || 0, v2 = h[h.length - 3].v || 0, v3 = h[h.length - 2].v || 0, v4 = h[h.length - 1].v || 0; const accel1 = safeDivide(v2 - v1, v1) * 100, accel2 = safeDivide(v3 - v2, v2) * 100, accel3 = safeDivide(v4 - v3, v3) * 100; token._volAccel = Math.round((accel1 + accel2 + accel3) / 3); token._volAccelLabel = token._volAccel > 20 ? 'ACCEL' : token._volAccel < -20 ? 'DECEL' : '-'; }
@@ -804,12 +877,10 @@ const AiEngine = (() => {
   function detectSeason() { const narrCounts = {}; feedBus.forEach(t => { (t._narr || []).forEach(n => { narrCounts[n] = (narrCounts[n] || 0) + 1; }); }); let top = '', max = 0; for (const [k, v] of Object.entries(narrCounts)) { if (v > max) { max = v; top = k; } } if (top === 'MEME') S.market.season = 'MEME_SEASON'; else if (top === 'AI') S.market.season = 'AI_SEASON'; else if (top === 'RWA') S.market.season = 'RWA_SEASON'; else if (top === 'DEPIN') S.market.season = 'DEPIN_SEASON'; else if (top === 'LAYER2') S.market.season = 'LAYER2_SEASON'; else S.market.season = S.market.regime; }
   function regimeAwareMC(token, er) { const cacheKey = token.ca + '_' + Math.floor(Date.now() / 60000) + '_' + S.market.regime; if (S.simulationCache.has(cacheKey)) return S.simulationCache.get(cacheKey); const price = token.price || 1; const regimeVol = { BULL: 0.06, RECOVERY: 0.05, SIDEWAY: 0.04, BEAR: 0.08 }; const regimeDrift = { BULL: 0.02, RECOVERY: 0.01, SIDEWAY: 0, BEAR: -0.02 }; const vol = regimeVol[S.market.regime] || 0.04; const drift = regimeDrift[S.market.regime] || 0; const sims = 1000; let up = 0, down = 0; const returns = []; const histReturns = (token._priceH || []).slice(-20).map((p, i, arr) => i > 0 ? (p.p - arr[i - 1].p) / arr[i - 1].p : 0).filter(v => !isNaN(v) && isFinite(v)); const useHist = histReturns.length >= 10; for (let i = 0; i < sims; i++) { let shock; if (useHist) { shock = histReturns[Math.floor(Math.random() * histReturns.length)] + (Math.random() - 0.5) * vol; } else { shock = drift + (Math.random() - 0.5) * vol * 2; } const simPrice = price * (1 + shock); const simRet = (simPrice - price) / price * 100; returns.push(simRet); if (simRet > 0) up++; else down++; } const avgRet = returns.reduce((a, b) => a + b, 0) / sims; const result = { upPct: Math.round(up / sims * 100), downPct: Math.round(down / sims * 100), avgReturn: Math.round(avgRet * 100) / 100, regime: S.market.regime }; S.simulationCache.set(cacheKey, result); return result; }
 
-  // ==================== HERO ====================
   function calcHeroScore(t) { return +((t._walletRep || 50) * 0.35 + (t._nHeat || 0) * 0.25 + (t._alphaScore || 0) * 0.20 + (t._finalAIScore || 0) * 0.20).toFixed(2); }
   function findHeroCandidate() { const mode = getMode(); const candidates = feedBus.filter(t => (t.decision === DECISION.BUY || t.decision === DECISION.STRONG_BUY) && (t._conf || 0) >= 55 && (t.wallet?.score || 0) >= 50); let best = null, bs = -1; for (const t of candidates) { const ns = calcHeroScore(t); if (!S.candidateEMAs.has(t.ca)) S.candidateEMAs.set(t.ca, ns); const ema = S.candidateEMAs.get(t.ca); const newEma = +(ema * 0.8 + ns * 0.2).toFixed(2); S.candidateEMAs.set(t.ca, newEma); if (newEma > bs) { bs = newEma; best = t; } } return best; }
   function updateHero() { const cand = findHeroCandidate(); if (!cand) { S.hero = null; RenderEngine.patchHeroPanel(); return; } const candEma = S.candidateEMAs.get(cand.ca) || calcHeroScore(cand); S.heroEMA = +(S.heroEMA * 0.9 + candEma * 0.1).toFixed(2); if (!S.hero) { S.hero = cand; S.heroScore = candEma; S.heroHistory.unshift({ ca: cand.ca, name: getName(cand), score: candEma, time: Date.now() }); if (S.heroHistory.length > 50) S.heroHistory.shift(); RenderEngine.patchHeroPanel(); return; } if (cand.ca === S.hero.ca) return; if (candEma >= S.heroEMA * 1.1) { S.heroPromotionCounter++; if (S.heroPromotionCounter >= 2) { S.hero = cand; S.heroScore = candEma; S.heroPromotionCounter = 0; RenderEngine.patchHeroPanel(); } } else { S.heroPromotionCounter = Math.max(0, S.heroPromotionCounter - 1); } }
 
-  // ==================== EVAL QUEUE ====================
   function addToEvalQueue(ca, buyPrice, decision = DECISION.BUY) { S.evalQueue = S.evalQueue.filter(e => e.ca !== ca); S.evalQueue.push({ ca, buyPrice, buyTime: Date.now(), status: 'PENDING', decision }); }
   async function processEvalQueue() { const now = Date.now(); for (const item of S.evalQueue) { if (item.status !== 'PENDING') continue; if (now - item.buyTime < CONFIG.EVAL_DELAY) continue; let token = feedMap.get(item.ca); if (!token || !safeValue(token.price)) { item.status = 'NEUTRAL'; continue; } const pnl = ((token.price - item.buyPrice) / item.buyPrice) * 100; item.status = pnl >= 1 ? 'WIN' : pnl <= -2 ? 'LOSE' : 'NEUTRAL'; item.pnl = +pnl.toFixed(2); S.learning.outcomeMemory.push({ ca: item.ca, outcome: item.status, decision: item.decision, time: Date.now() }); } if (S.evalQueue.length > 50) S.evalQueue = S.evalQueue.slice(-50); }
 
@@ -924,7 +995,7 @@ const RenderEngine = (() => {
       const rank = allSorted.findIndex(x => x.ca === t.ca) + 1;
       const div = document.createElement('div');
       const decClass = d.toLowerCase().replace(/\s/g, '-');
-      div.className = 'hud-card card-' + decClass + (hero && t.ca === hero.ca ? ' hero-card' : '') + (t._enrichError ? ' enrich-error' : '') + (t._fromCache ? ' cached' : '');
+      div.className = 'hud-card card-' + decClass + (hero && t.ca === hero.ca ? ' hero-card' : '') + (t._enrichError ? ' enrich-error' : '') + (t._fromCache ? ' cached' : '') + (t.restored ? ' restored' : '');
       div.dataset.ca = t.ca;
 
       let innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">' +
@@ -979,7 +1050,7 @@ const RenderEngine = (() => {
 
     if (t.multiplier) {
       const mult = t.multiplier;
-      detail += '<div class="detail-section"><div class="section-title">AI PREDICTION V107</div>' +
+      detail += '<div class="detail-section"><div class="section-title">AI PREDICTION</div>' +
         '<div class="hud-gauge"><span class="gauge-label">EXPECTED</span><span class="gauge-value" style="color:#ffd700;width:auto">' + mult.expected + 'X</span></div>' +
         '<div class="hud-gauge"><span class="gauge-label">MIN</span><span class="gauge-value" style="color:#0f6;width:auto">' + mult.minimum + 'X</span></div>' +
         '<div class="hud-gauge"><span class="gauge-label">OPTIMISTIC</span><span class="gauge-value" style="color:#0ff;width:auto">' + mult.optimistic + 'X</span></div>' +
@@ -1006,8 +1077,40 @@ const RenderEngine = (() => {
   function patchHeroPanel() { const panel = $('heroPanel'); if (!panel) return; if (!S.hero) { panel.style.display = 'none'; return; } panel.style.display = 'flex'; const nameEl = $('heroName'); if (nameEl) nameEl.textContent = getName(S.hero); const scoreEl = $('heroScore'); if (scoreEl) scoreEl.textContent = 'AI:' + (S.hero._finalAIScore || 0).toFixed(1) + ' M:' + (S.hero.multiplier ? S.hero.multiplier.expected + 'X' : '?'); const confEl = $('heroConfidence'); if (confEl) confEl.textContent = 'Conf:' + (S.hero._conf || 0) + '% Risk:' + (S.hero._riskIndex || 0); }
   function initHeroPanel() { const panel = $('heroPanel'); panel.innerHTML = '<div class="hero-info"><div class="hero-name" id="heroName"></div><div style="display:flex;gap:8px;font-size:0.55rem;margin-top:2px"><span style="color:#ffd700" id="heroScore"></span><span style="color:#0ff" id="heroConfidence"></span></div></div>'; }
   function initDashboard() { const dash = $('cockpitDashboard'); const panels = [{ id: 'dash-sb', lbl: 'ST.BUY', color: '#ffd700' }, { id: 'dash-buy', lbl: 'BUY', color: '#0f6' }, { id: 'dash-acc', lbl: 'ACC', color: '#0fa' }, { id: 'dash-watch', lbl: 'WATCH', color: '#0ff' }, { id: 'dash-wait', lbl: 'WAIT', color: '#f80' }, { id: 'dash-avoid', lbl: 'AVOID', color: '#f66' }, { id: 'dash-scam', lbl: 'SCAM', color: '#f00' }, { id: 'dash-hero', lbl: 'HERO', color: '#ffd700' }, { id: 'dash-total', lbl: 'TOT', color: '#fff' }, { id: 'dash-pred', lbl: 'PRED', color: '#0ff' }, { id: 'dash-win', lbl: 'WIN%', color: '#ffd700' }, { id: 'dash-mae', lbl: 'MAE', color: '#b0f' }, { id: 'dash-prec', lbl: 'PREC', color: '#0f6' }, { id: 'dash-rec', lbl: 'REC', color: '#0ff' }, { id: 'dash-avgROI', lbl: 'ROI', color: '#ffd700' }]; panels.forEach(p => { const div = document.createElement('div'); div.className = 'dash-panel'; div.id = p.id; div.innerHTML = '<div class="val" style="color:' + p.color + '">0</div><div class="lbl">' + p.lbl + '</div>'; dash.appendChild(div); }); }
-  function patchDashboard() { const c = S.dash; const acc = AiEngine.computeAccuracy ? AiEngine.computeAccuracy() : null; updatePanel('dash-sb', c.sb, '#ffd700'); updatePanel('dash-buy', c.buy, '#0f6'); updatePanel('dash-acc', c.acc, '#0fa'); updatePanel('dash-watch', c.watch, '#0ff'); updatePanel('dash-wait', c.wait, '#f80'); updatePanel('dash-avoid', c.av, '#f66'); updatePanel('dash-scam', c.sc, '#f00'); updatePanel('dash-hero', S.hero ? S.hero._finalAIScore?.toFixed(1) || 0 : 0, '#ffd700'); updatePanel('dash-total', c.tot, '#fff'); updatePanel('dash-pred', S.predictionHistory.length, '#0ff'); const evaluated = S.predictionHistory.filter(p => p.evaluated); const wins = evaluated.filter(p => p.actualMultiplier >= p.multiplier).length; const winRate = evaluated.length > 0 ? Math.round(wins / evaluated.length * 100) : 0; updatePanel('dash-win', winRate + '%', '#ffd700'); const mae = S.maeHistory.length > 0 ? S.maeHistory[S.maeHistory.length - 1].toFixed(1) : '-'; updatePanel('dash-mae', mae, '#b0f'); updatePanel('dash-prec', acc ? Math.round(acc.precision * 100) + '%' : '-', '#0f6'); updatePanel('dash-rec', acc ? Math.round(acc.recall * 100) + '%' : '-', '#0ff'); updatePanel('dash-avgROI', acc ? Math.round(acc.avgROI) + '%' : '-', '#ffd700'); patchHeroPanel(); }
+  function updateDashboard() {
+    const acc = AiEngine.computeAccuracy ? AiEngine.computeAccuracy() : null;
+    updatePanel('dash-sb', S.dash.sb, '#ffd700');
+    updatePanel('dash-buy', S.dash.buy, '#0f6');
+    updatePanel('dash-acc', S.dash.acc, '#0fa');
+    updatePanel('dash-watch', S.dash.watch, '#0ff');
+    updatePanel('dash-wait', S.dash.wait, '#f80');
+    updatePanel('dash-avoid', S.dash.av, '#f66');
+    updatePanel('dash-scam', S.dash.sc, '#f00');
+    updatePanel('dash-hero', S.hero ? S.hero._finalAIScore?.toFixed(1) || 0 : 0, '#ffd700');
+    updatePanel('dash-total', S.dash.tot, '#fff');
+    updatePanel('dash-pred', S.predictionHistory.length, '#0ff');
+    const evaluated = S.predictionHistory.filter(p => p.evaluated);
+    const wins = evaluated.filter(p => p.actualMultiplier >= p.multiplier).length;
+    const winRate = evaluated.length > 0 ? Math.round(wins / evaluated.length * 100) : 0;
+    updatePanel('dash-win', winRate + '%', '#ffd700');
+    const mae = S.maeHistory.length > 0 ? S.maeHistory[S.maeHistory.length - 1].toFixed(1) : '-';
+    updatePanel('dash-mae', mae, '#b0f');
+    updatePanel('dash-prec', acc ? Math.round(acc.precision * 100) + '%' : '-', '#0f6');
+    updatePanel('dash-rec', acc ? Math.round(acc.recall * 100) + '%' : '-', '#0ff');
+    updatePanel('dash-avgROI', acc ? Math.round(acc.avgROI) + '%' : '-', '#ffd700');
+    patchHeroPanel();
+  }
   function updatePanel(id, val, color) { const el = $(id); if (!el) return; const valEl = el.querySelector('.val'); if (valEl && valEl.textContent !== String(val)) { valEl.textContent = val; valEl.style.color = color; valEl.classList.add('num-pop'); setTimeout(() => valEl.classList.remove('num-pop'), 300); } }
+
+  function renderAll() {
+    const grid = $('radarFeed');
+    if (!grid) return;
+    grid.innerHTML = '';
+    feedBus.forEach(t => {
+      const div = buildCard(t);
+      if (div) grid.appendChild(div);
+    });
+  }
 
   function flushRQ() {
     if (!S.rq.size) return;
@@ -1015,16 +1118,16 @@ const RenderEngine = (() => {
     batch.forEach(ca => { S.rq.delete(ca); const t = feedMap.get(ca); if (!t) return; let div = rendered.get(ca); if (!div || div.classList.contains('skeleton-card')) { div = buildCard(t); } else { patchCard(div, t); } });
     if (S.needsSort) {
       feedBus.sort((a, b) => (b._finalAIScore || 0) - (a._finalAIScore || 0));
-      const grid = $('radarFeed'); if (grid) { const frag = document.createDocumentFragment(); feedBus.forEach(t => { const div = rendered.get(t.ca); if (div && !div.classList.contains('skeleton-card')) frag.appendChild(div); }); grid.replaceChildren(frag); }
+      renderAll();
       S.needsSort = false;
     }
     S.dash = { sb: 0, buy: 0, acc: 0, watch: 0, wait: 0, av: 0, sc: 0, tot: 0 };
     feedBus.forEach(t => { S.dash.tot++; const d = t.decision; if (d === DECISION.STRONG_BUY) S.dash.sb++; else if (d === DECISION.BUY) S.dash.buy++; else if (d === DECISION.ACCUMULATE) S.dash.acc++; else if (d === DECISION.WATCH) S.dash.watch++; else if (d === DECISION.WAIT) S.dash.wait++; else if (d === DECISION.AVOID) S.dash.av++; else S.dash.sc++; });
-    patchDashboard();
+    updateDashboard();
     if (S.rq.size) requestAnimationFrame(flushRQ);
   }
 
-  return { markDirty, removeCard, renderSkeleton, buildCard, patchCard, flushRQ, initHeroPanel, initDashboard, patchHeroPanel };
+  return { markDirty, removeCard, renderSkeleton, buildCard, patchCard, flushRQ, renderAll, initHeroPanel, initDashboard, updateDashboard, patchHeroPanel };
 })();
 
 // ==================== UI FUNCTIONS ====================
@@ -1130,7 +1233,7 @@ function exportCSV() {
     rows.push([getName(t), t.ca, t.price || '', t.decision || '', t._finalAIScore?.toFixed(2) || '', mult?.expected || '', mult?.confidence || '', mult?.expectedReturn || '', t._riskIndex || '', (mult?.reason || []).join('; ')]);
   });
   const csv = rows.map(r => r.map(c => '"' + (c + '').replace(/"/g, '""') + '"').join(',')).join('\n');
-  downloadFile('nebula_v107_export.csv', csv, 'text/csv');
+  downloadFile('nebula_export.csv', csv, 'text/csv');
 }
 
 function exportJSON() {
@@ -1140,14 +1243,14 @@ function exportJSON() {
     confidence: t.multiplier?.confidence, expectedReturn: t.multiplier?.expectedReturn,
     risk: t._riskIndex, reasons: t.multiplier?.reason
   }));
-  downloadFile('nebula_v107_export.json', JSON.stringify(data, null, 2), 'application/json');
+  downloadFile('nebula_export.json', JSON.stringify(data, null, 2), 'application/json');
 }
 
 function exportAIReport() {
   const acc = AiEngine.computeAccuracy ? AiEngine.computeAccuracy() : null;
   const health = AiEngine.getAIHealth();
   const mem = PerformanceManager.memoryReport();
-  let report = 'NEBULA AI REPORT V107\n=============================\nGenerated: ' + new Date().toISOString() + '\n\n';
+  let report = 'NEBULA AI REPORT\n=============================\nGenerated: ' + new Date().toISOString() + '\n\n';
   report += 'AI STATUS\n---------\nAccuracy: ' + S.learning.accuracy + '%\n';
   if (health) {
     report += 'Precision: ' + health.precision + '%\nRecall: ' + health.recall + '%\nF1 Score: ' + health.f1 + '%\n';
@@ -1157,7 +1260,7 @@ function exportAIReport() {
   report += '\nMARKET\n------\nRegime: ' + S.market.regime + '\nSeason: ' + S.market.season + '\nHeat: ' + S.market.heat + '\n\n';
   report += 'PERFORMANCE\n-----------\nTokens: ' + feedBus.length + '\nPredictions: ' + S.predictionHistory.length + '\nOutcomes: ' + S.outcomes.length + '\n';
   report += 'RAM: ' + mem.ramMB + ' MB\nCache: ' + StorageInterface.getStats().ram + ' RAM / ' + StorageInterface.getStats().local + ' LS\n\n';
-  downloadFile('nebula_v107_report.txt', report, 'text/plain');
+  downloadFile('nebula_report.txt', report, 'text/plain');
 }
 
 function downloadFile(filename, content, mime) {
@@ -1173,7 +1276,7 @@ function showAuditPanel() {
   const acc = AiEngine.computeAccuracy ? AiEngine.computeAccuracy() : null;
   const health = AiEngine.getAIHealth();
   const mem = PerformanceManager.memoryReport();
-  let html = '<div class="section-title">AUDIT V107</div>';
+  let html = '<div class="section-title">AUDIT</div>';
   html += '<div style="font-size:0.5rem;">API Status</div>';
   CONFIG.ENDPOINTS.forEach(n => {
     const cbStatus = CircuitBreaker.getStatus(n);
@@ -1304,7 +1407,7 @@ setTimeout(() => {
       const acc = AiEngine.computeAccuracy ? AiEngine.computeAccuracy() : null;
       const health = AiEngine.getAIHealth();
       const mem = PerformanceManager.memoryReport();
-      let html = '<div><b>V107</b></div>';
+      let html = '<div><b>V109.1</b></div>';
       html += '<div>Tokens:' + feedBus.length + ' | Market:' + S.market.regime + ' | Season:' + S.market.season + '</div>';
       html += '<div>Rotating Offset:' + S.rotatingOffset + ' | Smart Memory: ACTIVE</div>';
       html += '<div>Outcomes:' + S.outcomes.length + ' | Cal:' + S.learning.shortCalibrationCount + '</div>';
@@ -1334,8 +1437,12 @@ setTimeout(() => {
       else if (a === 'dex') { const t = feedMap.get(ca); if (t) openDexLink(t); }
       else if (a === 'buy') { const t = feedMap.get(ca); if (t) { AiEngine.addToEvalQueue(ca, t.price || 0, t.decision || DECISION.BUY); btn.textContent = '✓'; setTimeout(() => btn.textContent = 'BUY', 1000); } }
     });
+
+    // Restore state dari backend
+    restoreState().then(() => {
+      startup();
+    });
   } catch (e) { console.error('Binding Error:', e); }
-  startup();
 }, 300);
 })();
 </script>
