@@ -41,7 +41,9 @@
     .hero-name { font-family:'Orbitron',sans-serif; font-size:0.9rem; font-weight:900; color:#ffd700; }
     .ai-console { background:rgba(0,0,0,.6); border:1px solid rgba(0,255,255,.15); border-radius:6px; padding:4px; margin-bottom:4px; font-size:0.45rem; max-height:40px; overflow-y:auto; font-family:'Share Tech Mono',monospace; }
     .log-entry { margin:0; } .log-info { color:#8cf; } .log-success { color:#0f8; } .log-warning { color:#ff0; } .log-error { color:#f44; } .log-ai { color:#b0f; }
-    .cockpit-dashboard { display:grid; grid-template-columns:repeat(5,1fr); gap:2px; padding:4px; background:rgba(0,5,15,.9); border:1px solid rgba(0,255,255,.2); border-radius:8px; margin-bottom:3px; }
+    .cockpit-dashboard { display:flex; flex-direction:column; gap:3px; padding:4px; background:rgba(0,5,15,.9); border:1px solid rgba(0,255,255,.2); border-radius:8px; margin-bottom:3px; }
+    .dash-group-label { font-family:'Orbitron',sans-serif; font-size:0.45rem; color:#0ff; text-align:center; letter-spacing:2px; padding:2px 0; border-bottom:1px solid rgba(0,255,255,0.15); margin-bottom:2px; }
+    .dash-group { display:grid; grid-template-columns:repeat(auto-fit, minmax(40px, 1fr)); gap:2px; }
     .dash-panel { background:rgba(0,0,0,.5); border-radius:4px; padding:3px 1px; text-align:center; border:1px solid rgba(255,255,255,.08); }
     .dash-panel .val { font-size:0.85rem; font-weight:900; } .dash-panel .lbl { font-size:0.42rem; color:#8cf; margin-top:1px; }
     .radar-grid { display:flex; flex-direction:column; gap:4px; padding-bottom:60px; }
@@ -120,8 +122,8 @@
     <div class="header-row-1">Intelligent Trading System • Engineered by Heru Prasetyo</div>
     <div class="endpoint-bar" id="endpointBar"></div>
     <div class="hud-controls">
-      <select class="hud-select" id="modeSelect"><option value="balanced" selected>BALANCED</option><option value="safe">SAFE</option><option value="aggressive">AGGRESSIVE</option><option value="sniper">SNIPER</option></select>
-      <select class="hud-select" id="riskProfile"><option value="balanced" selected>BALANCED</option><option value="safe">SAFE</option><option value="aggressive">AGGRESSIVE</option><option value="degen">DEGEN</option></select>
+      <select class="hud-select" id="modeSelect"><option value="auto" selected>AUTO</option><option value="sniper">SNIPER</option><option value="hunter">HUNTER</option></select>
+      <select class="hud-select" id="riskProfile"><option value="safe">SAFE</option><option value="balanced" selected>BALANCED</option><option value="degen">DEGEN</option></select>
       <div class="action-row">
         <button id="scanBtn" class="scan-btn">SCAN</button>
         <button id="autoPumpToggleBtn" class="auto-pump-btn active">AUTO</button>
@@ -561,7 +563,7 @@ function enqueueEnrichment(token) {
 // ==================== AI ENGINE ====================
 const AiEngine = (() => {
   function getMode() {
-    const mode = $('modeSelect')?.value || 'balanced';
+    const mode = $('modeSelect')?.value || 'auto';
     return { minLP: 200, minHolder: 5, targetReturn: 1000, ...CONFIG.AI.weights[mode] };
   }
   function getRiskProfile() {
@@ -1108,42 +1110,74 @@ const RenderEngine = (() => {
   function initHeroPanel() { const panel = $('heroPanel'); panel.innerHTML = '<div class="hero-info"><div class="hero-name" id="heroName"></div><div style="display:flex;gap:8px;font-size:0.55rem;margin-top:2px"><span style="color:#ffd700" id="heroScore"></span><span style="color:#0ff" id="heroConfidence"></span></div></div>'; }
   function initDashboard() {
     const dash = $('cockpitDashboard');
-    const panels = [
-      { id: 'dash-sb', lbl: 'ST.BUY', color: '#ffd700' },
-      { id: 'dash-buy', lbl: 'BUY', color: '#0f6' },
-      { id: 'dash-acc', lbl: 'ACC', color: '#0fa' },
-      { id: 'dash-watch', lbl: 'WATCH', color: '#0ff' },
-      { id: 'dash-wait', lbl: 'WAIT', color: '#f80' },
-      { id: 'dash-avoid', lbl: 'AVOID', color: '#f66' },
-      { id: 'dash-scam', lbl: 'SCAM', color: '#f00' },
-      { id: 'dash-hero', lbl: 'HERO', color: '#ffd700' },
-      { id: 'dash-db', lbl: 'DB', color: '#b0f' },
-      { id: 'dash-total', lbl: 'TOT', color: '#fff' },
-      { id: 'dash-pred', lbl: 'PRED', color: '#0ff' },
-      { id: 'dash-win', lbl: 'WIN%', color: '#ffd700' },
-      { id: 'dash-mae', lbl: 'MAE', color: '#b0f' },
-      { id: 'dash-prec', lbl: 'PREC', color: '#0f6' },
-      { id: 'dash-rec', lbl: 'REC', color: '#0ff' },
-      { id: 'dash-avgROI', lbl: 'ROI', color: '#ffd700' }
+    dash.innerHTML = ''; // Bersihkan dashboard
+
+    // Group definitions
+    const groups = [
+      {
+        label: 'TRADING',
+        panels: [
+          { id: 'dash-sb', lbl: 'ST.BUY', color: '#ffd700' },
+          { id: 'dash-buy', lbl: 'BUY', color: '#0f6' },
+          { id: 'dash-watch', lbl: 'WATCH', color: '#0ff' },
+          { id: 'dash-wait', lbl: 'WAIT', color: '#f80' },
+          { id: 'dash-avoid', lbl: 'AVOID', color: '#f66' },
+          { id: 'dash-scam', lbl: 'SCAM', color: '#f00' },
+          { id: 'dash-hero', lbl: 'HERO', color: '#ffd700' }
+        ]
+      },
+      {
+        label: 'PERFORMANCE',
+        panels: [
+          { id: 'dash-win', lbl: 'WIN%', color: '#ffd700' },
+          { id: 'dash-avgROI', lbl: 'ROI', color: '#ffd700' },
+          { id: 'dash-acc', lbl: 'ACC', color: '#0fa' },
+          { id: 'dash-prec', lbl: 'PREC', color: '#0f6' },
+          { id: 'dash-rec', lbl: 'REC', color: '#0ff' },
+          { id: 'dash-mae', lbl: 'MAE', color: '#b0f' }
+        ]
+      },
+      {
+        label: 'DATABASE',
+        panels: [
+          { id: 'dash-db', lbl: 'DB', color: '#b0f' },
+          { id: 'dash-pred', lbl: 'PRED', color: '#0ff' },
+          { id: 'dash-total', lbl: 'TOT', color: '#fff' }
+        ]
+      }
     ];
-    panels.forEach(p => {
-      const div = document.createElement('div');
-      div.className = 'dash-panel';
-      div.id = p.id;
-      div.innerHTML = '<div class="val" style="color:' + p.color + '">0</div><div class="lbl">' + p.lbl + '</div>';
-      dash.appendChild(div);
+
+    // Render groups
+    groups.forEach(group => {
+      // Add group label
+      const label = document.createElement('div');
+      label.className = 'dash-group-label';
+      label.textContent = group.label;
+      dash.appendChild(label);
+
+      // Add group panels
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'dash-group';
+      group.panels.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'dash-panel';
+        div.id = p.id;
+        div.innerHTML = '<div class="val" style="color:' + p.color + '">0</div><div class="lbl">' + p.lbl + '</div>';
+        groupDiv.appendChild(div);
+      });
+      dash.appendChild(groupDiv);
     });
   }
   function updateDashboard() {
     const acc = AiEngine.computeAccuracy ? AiEngine.computeAccuracy() : null;
     updatePanel('dash-sb', S.dash.sb, '#ffd700');
     updatePanel('dash-buy', S.dash.buy, '#0f6');
-    updatePanel('dash-acc', S.dash.acc, '#0fa');
     updatePanel('dash-watch', S.dash.watch, '#0ff');
     updatePanel('dash-wait', S.dash.wait, '#f80');
     updatePanel('dash-avoid', S.dash.av, '#f66');
     updatePanel('dash-scam', S.dash.sc, '#f00');
     updatePanel('dash-hero', S.hero ? S.hero._finalAIScore?.toFixed(1) || 0 : 0, '#ffd700');
+    updatePanel('dash-acc', S.dash.acc, '#0fa');
     updatePanel('dash-db', S.dash.dbTotal || S.predictionHistory.length, '#b0f');
     updatePanel('dash-total', S.dash.tot, '#fff');
     updatePanel('dash-pred', S.predictionHistory.length, '#0ff');
