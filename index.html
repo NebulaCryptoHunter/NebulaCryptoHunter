@@ -169,9 +169,9 @@ const CONFIG = {
     marketAdjustments: { BULL:5, RECOVERY:2, SIDEWAY:0, BEAR:-8 },
     devRepAdjustments: { excellent:5, good:3, unknown:0, bad:-5, blacklist:-20 },
     riskAdjustments: { low:0, medium:-3, high:-10 },
-    buyGate: { qualityMin:90, securityMin:80, confidenceMinBase:70, confidenceMinEarly:50 },
+    buyGate: { qualityMin:80, securityMin:70, confidenceMinBase:60, confidenceMinEarly:45 },
     weights: { safe:{quality:0.80,opportunity:0.20}, balanced:{quality:0.70,opportunity:0.30}, aggressive:{quality:0.65,opportunity:0.35}, sniper:{quality:0.60,opportunity:0.40} },
-    thresholds: { BULL:{strong_buy:90,buy:80,accumulate:65,watch:50,wait:35}, BEAR:{strong_buy:95,buy:88,accumulate:75,watch:60,wait:45}, RECOVERY:{strong_buy:92,buy:84,accumulate:70,watch:55,wait:40}, SIDEWAY:{strong_buy:93,buy:85,accumulate:70,watch:55,wait:40} },
+    thresholds: { BULL:{strong_buy:85,buy:75,accumulate:60,watch:45,wait:30}, BEAR:{strong_buy:90,buy:80,accumulate:65,watch:50,wait:35}, RECOVERY:{strong_buy:88,buy:78,accumulate:63,watch:48,wait:33}, SIDEWAY:{strong_buy:90,buy:80,accumulate:65,watch:50,wait:35} },
     contextPenalties: { liq_low:-8,liq_very_low:-15,liq_critical:-25,holder_low:-6,holder_very_low:-12,holder_critical:-20,rug_unknown:-8,mint_penalty:-25,freeze_penalty:-30,early_bonus_v1:15,early_bonus_v2:10,early_bonus_v3:5,whale_bonus:5,smart_wallet_bonus:5 }
   },
   RISK_PROFILES: { safe:{kellyMult:0.4,posMax:2}, balanced:{kellyMult:0.6,posMax:5}, aggressive:{kellyMult:1.0,posMax:10}, degen:{kellyMult:1.6,posMax:25} },
@@ -281,6 +281,22 @@ const feedMap=new Map(); let feedBus=[];
 const getName=t=>t.identity?.name||t.name||t.ca?.slice(0,6)||'???';
 function getTokenDexUrl(token){ if(token.dexUrl)return token.dexUrl; if(token.pair)return'https://dexscreener.com/solana/'+token.pair; return'https://dexscreener.com/solana/'+token.ca; }
 function openDexLink(token){ const url=getTokenDexUrl(token); try{window.open(url,'_blank','noopener,noreferrer')}catch(e){window.location.href=url} }
+
+// ==================== FEED SORTING ====================
+function sortFeed() {
+  feedBus.sort((a, b) => {
+    const rankA = DECISION_RANK[a.decision] || 0;
+    const rankB = DECISION_RANK[b.decision] || 0;
+    if (rankA !== rankB) return rankB - rankA;
+    const scoreA = a._finalAIScore || 0;
+    const scoreB = b._finalAIScore || 0;
+    if (scoreA !== scoreB) return scoreB - scoreA;
+    const confA = a._conf || 0;
+    const confB = b._conf || 0;
+    if (confA !== confB) return confB - confA;
+    return (b._firstSeen || 0) - (a._firstSeen || 0);
+  });
+}
 
 // ==================== SMART MEMORY MANAGER ====================
 function smartMemoryCleanup() {
@@ -437,6 +453,7 @@ async function restoreState() {
       loadWatchlist(),
       loadLearning()
     ]);
+    sortFeed();
     RenderEngine.renderAll();
     RenderEngine.updateDashboard();
     addAILog('Database restored', 'success');
@@ -586,7 +603,8 @@ async function processEnrichmentQueue() {
 }
 
 function enqueueEnrichment(token) {
-  if (token.restored) return;
+  // Token restore juga boleh di-enrich ulang agar mendapatkan data terbaru
+  if (token.restored) token.restored = false;
   S.enrichQueue.push(token);
   processEnrichmentQueue();
 }
@@ -966,10 +984,7 @@ const Scanner = (() => {
       const ws = new WebSocket('wss://pumpportal.fun/api/data');
       ws.onopen = () => { ws.send(JSON.stringify({ method: 'subscribeNewToken' })); window.setEp('PUMP', 'on', Date.now()); };
       ws.onmessage = e => {
-        try {
-          const d = JSON.parse(e.data);
-          if (d?.mint) { if (S.wsBuffer.length < S.wsMaxBuffer) S.wsBuffer.push({ ca: d.mint, symbol: d.symbol, name: d.name }); }
-        } catch (e) {}
+        try { const d = JSON.parse(e.data); if (d?.mint) { if (S.wsBuffer.length < S.wsMaxBuffer) S.wsBuffer.push({ ca: d.mint, symbol: d.symbol, name: d.name }); } } catch (e) {}
       };
       ws.onerror = () => window.setEp('PUMP', 'off');
       ws.onclose = () => { window.setEp('PUMP', 'off'); setTimeout(connectWS, 10000); };
@@ -1242,7 +1257,7 @@ const RenderEngine = (() => {
     const batch = [...S.rq].slice(0, 10);
     batch.forEach(ca => { S.rq.delete(ca); const t = feedMap.get(ca); if (!t) return; let div = rendered.get(ca); if (!div || div.classList.contains('skeleton-card')) { div = buildCard(t); } else { patchCard(div, t); } });
     if (S.needsSort) {
-      feedBus.sort((a, b) => (b._finalAIScore || 0) - (a._finalAIScore || 0));
+      sortFeed();
       renderAll();
       S.needsSort = false;
     }
@@ -1313,9 +1328,8 @@ function showHistoryPanel() {
 
 function showWatchlistPanel() {
   let html = '<div class="section-title">WATCHLIST</div>';
-  if (S.watchlist.length === 0) {
-    html += '<div style="color:#8cf">No watched tokens.</div>';
-  } else {
+  if (S.watchlist.length === 0) { html += '<div style="color:#8cf">No watched tokens.</div>'; }
+  else {
     S.watchlist.forEach(w => {
       const t = feedMap.get(w.token_ca);
       const prevScore = w.lastScore || 0;
@@ -1367,11 +1381,7 @@ function exportAIReport() {
   const mem = PerformanceManager.memoryReport();
   let report = 'NEBULA AI REPORT\n=============================\nGenerated: ' + new Date().toISOString() + '\n\n';
   report += 'AI STATUS\n---------\nAccuracy: ' + S.learning.accuracy + '%\n';
-  if (health) {
-    report += 'Precision: ' + health.precision + '%\nRecall: ' + health.recall + '%\nF1 Score: ' + health.f1 + '%\n';
-    report += 'False Positive: ' + health.fp + '\nFalse Negative: ' + health.fn + '\n';
-    report += 'Win Rate: ' + health.winRate + '%\nAvg ROI: ' + health.avgROI + '%\nAvg Confidence: ' + (health.avgConfidence || 0) + '%\n';
-  }
+  if (health) { report += 'Precision: ' + health.precision + '%\nRecall: ' + health.recall + '%\nF1 Score: ' + health.f1 + '%\n'; report += 'False Positive: ' + health.fp + '\nFalse Negative: ' + health.fn + '\n'; report += 'Win Rate: ' + health.winRate + '%\nAvg ROI: ' + health.avgROI + '%\nAvg Confidence: ' + (health.avgConfidence || 0) + '%\n'; }
   report += '\nMARKET\n------\nRegime: ' + S.market.regime + '\nSeason: ' + S.market.season + '\nHeat: ' + S.market.heat + '\n\n';
   report += 'PERFORMANCE\n-----------\nTokens: ' + feedBus.length + '\nPredictions: ' + S.predictionHistory.length + '\nOutcomes: ' + S.outcomes.length + '\n';
   report += 'RAM: ' + mem.ramMB + ' MB\nCache: ' + StorageInterface.getStats().ram + ' RAM / ' + StorageInterface.getStats().local + ' LS\n\n';
@@ -1381,8 +1391,7 @@ function exportAIReport() {
 function downloadFile(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
+  const a = document.createElement('a'); a.href = url; a.download = filename;
   document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
 }
@@ -1401,11 +1410,7 @@ function showAuditPanel() {
   html += '<div style="font-size:0.45rem;">Accuracy: ' + S.learning.accuracy + '%</div>';
   html += '<div style="font-size:0.45rem;">Prediction History: ' + S.predictionHistory.length + ' tokens</div>';
   html += '<div style="font-size:0.45rem;">Outcomes: ' + S.outcomes.length + '</div>';
-  if (health) {
-    html += '<div style="font-size:0.45rem;">Precision: ' + health.precision + '% | Recall: ' + health.recall + '% | F1: ' + health.f1 + '%</div>';
-    html += '<div style="font-size:0.45rem;">False Positive: ' + health.fp + ' | False Negative: ' + health.fn + '</div>';
-    html += '<div style="font-size:0.45rem;">Win Rate: ' + health.winRate + '% | Avg ROI: ' + health.avgROI + '% | Avg Conf: ' + (health.avgConfidence || 0) + '%</div>';
-  }
+  if (health) { html += '<div style="font-size:0.45rem;">Precision: ' + health.precision + '% | Recall: ' + health.recall + '% | F1: ' + health.f1 + '%</div>'; html += '<div style="font-size:0.45rem;">False Positive: ' + health.fp + ' | False Negative: ' + health.fn + '</div>'; html += '<div style="font-size:0.45rem;">Win Rate: ' + health.winRate + '% | Avg ROI: ' + health.avgROI + '% | Avg Conf: ' + (health.avgConfidence || 0) + '%</div>'; }
   html += '<div style="font-size:0.45rem;">Market: ' + S.market.regime + ' | Season: ' + S.market.season + ' | Tokens: ' + feedBus.length + '</div>';
   html += '<div style="font-size:0.45rem;">RAM: ' + mem.ramMB + ' MB | Dev DB: ' + S.learning.developerDB.size + '</div>';
   html += '<div style="font-size:0.45rem;">API: ' + CONFIG.API.baseURL + '</div>';
