@@ -26,7 +26,14 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
  }
  return results.sort((a,b)=>(b.momentum.volumeLiquidityRatio??-1)-(a.momentum.volumeLiquidityRatio??-1));
 }
-export default {async fetch(request,env){
+export default {async scheduled(event,env,ctx){
+ ctx.waitUntil((async()=>{
+  const mint="AhBidGAgv6QbKSWfrSCegGrzFLcBx4E5FNYTKHNQQj6C";
+  const request=new Request("https://nebula-scanner.internal/pipeline?mint="+mint+"&persist=1",{headers:{"Authorization":"Bearer "+env.INTERNAL_TOKEN}});
+  const response=await this.fetch(request,env);
+  if(!response.ok)throw Error("STAGE2_PIPELINE_"+response.status);
+ })());
+},async fetch(request,env){
  const u=new URL(request.url);
  if(u.pathname==="/health")return reply({service:"nebula-scanner",status:"ok"});
  if(u.pathname==="/discover"&&request.method==="GET"){
