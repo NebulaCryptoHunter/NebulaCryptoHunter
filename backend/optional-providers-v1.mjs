@@ -39,3 +39,15 @@ export async function coinpaprikaToken(ca){
 }
 // WebSocket providers require a live socket lifecycle and cannot be truthfully checked with HTTP GET.
 export function pumpPortalWebSocketInfo(){return {ok:false,provider:'pump_ws',error:'WEBSOCKET_LIFECYCLE_REQUIRED'};}
+
+export async function optionalProviderRoute(path, env={}) {
+  const match=/^\/api\/v1\/providers\/(solana_rpc|ankr|coingecko|coinpaprika|pump_ws)(?:\/([^/]+))?$/.exec(path);
+  if(!match) return null;
+  const provider=match[1], mint=match[2];
+  if(provider==='solana_rpc') return solanaRpcHealth();
+  if(provider==='ankr') return ankrRpcHealth(env.ANKR_RPC_URL);
+  if(provider==='pump_ws') return pumpPortalWebSocketInfo();
+  if(!mint) return {ok:false,provider,error:'MINT_REQUIRED'};
+  if(provider==='coingecko') return coingeckoToken(mint,env.COINGECKO_API_KEY);
+  return coinpaprikaToken(mint);
+}
