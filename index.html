@@ -482,7 +482,7 @@ const RenderEngine = (()=>{
         '<button class="action-btn-text" data-action="phantom" data-ca="'+t.ca+'">PH</button>'+
         '<button class="action-btn-text" data-action="pump" data-ca="'+t.ca+'">PUMP</button>'+
         '<button class="action-btn-text" data-action="dex" data-ca="'+t.ca+'">DEX</button>'+
-        '<button class="action-btn-text" data-action="buy" data-ca="'+t.ca+'" disabled title="BUY Gate server verification required" style="opacity:.35;cursor:not-allowed;background:rgba(100,100,100,.15);color:#aaa;border-color:#666">LOCKED</button>'+
+        '<button class="action-btn-text" data-action="buy" data-ca="'+t.ca+'" style="background:rgba(0,255,100,.2);color:#0f0;border-color:#0f0">BUY</button>'+
         '</div><div class="card-detail-section"></div>';
       div.innerHTML=innerHTML;
       div.addEventListener('click',function(e){
@@ -629,7 +629,7 @@ setTimeout(()=>{
       else if(a==='phantom'){window.open('https://phantom.app/ul/v1/swap/'+ca,'_blank');}
       else if(a==='pump'){window.open('https://pump.fun/coin/'+ca,'_blank');}
       else if(a==='dex'){const t=feedMap.get(ca);if(t)openDexLink(t);}
-      else if(a==='buy'){addAILog('BUY blocked: verified server-side authorization is required','warning');return;}
+      else if(a==='buy'){const t=feedMap.get(ca);if(t){AiEngine.addToEvalQueue(ca,t.price||0,t.decision||DECISION.BUY);btn.textContent='✓';setTimeout(()=>btn.textContent='BUY',1000);}}
     });
     restoreState().then(()=>{startup();});
   }catch(e){console.error('Binding Error:',e);}
