@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {classifyEvaluation,evaluationCandidatesSql} from './evaluation-integrity-v1.mjs';
+const base={createdAt:'2026-10-26T00:00:00.000Z',windowKey:'30m',entryPrice:1,observedPrice:1.2};
+assert.equal(classifyEvaluation({...base,observedAt:'2026-10-26T00:30:00.000Z'}).status,'VALID');
+assert.equal(classifyEvaluation({...base,observedAt:'2026-10-26T00:30:00.000Z'}).roi,19.999999999999996);
+assert.equal(classifyEvaluation({...base,observedAt:'2026-10-26T01:30:00.000Z'}).status,'HISTORICAL_PRICE_REQUIRED');
+assert.equal(classifyEvaluation({...base,observedAt:'2026-10-26T00:20:00.000Z'}).status,'NOT_MATURE');
+assert.equal(classifyEvaluation({...base,observedAt:'2026-10-26T00:30:00.000Z',observedPrice:null}).status,'PRICE_UNAVAILABLE');
+assert.equal(evaluationCandidatesSql().includes('datetime(p.created_at) >='),false);
+console.log('evaluation integrity tests passed');
