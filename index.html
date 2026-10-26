@@ -219,7 +219,7 @@ const HELIUS_PROXY=CONFIG.WORKER_URL+'/helius/rpc', RUGCHECK_PROXY=CONFIG.WORKER
 const RPC=[{n:'HELIUS',u:HELIUS_PROXY}];
 S.endpointStats={}; CONFIG.ENDPOINTS.forEach(n=>{S.endpointStats[n]={success:0,fail:0,latency:0,retries:0}});
 const ep={},eph={};
-CONFIG.ENDPOINTS.forEach(n=>{ep[n]=['JUPITER','GECKO','BIRDEYE'].includes(n)?'pending':'on';eph[n]={hs:100,rt:200,sr:100};S.apiHealthHistory=S.apiHealthHistory||{};S.apiHealthHistory[n]=[]});
+CONFIG.ENDPOINTS.forEach(n=>{ep[n]=['JUPITER','GECKO','BIRDEYE','ANKR','SOLANA_RPC','PUMP_WS','COINGECKO','COINPAPRIKA'].includes(n)?'pending':'on';eph[n]={hs:100,rt:200,sr:100};S.apiHealthHistory=S.apiHealthHistory||{};S.apiHealthHistory[n]=[]});
 window.setEp=(n,s,rt)=>{
   if(!CONFIG.ENDPOINTS.includes(n))return; ep[n]=s;
   if(!S.apiHealthHistory[n])S.apiHealthHistory[n]=[];
