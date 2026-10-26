@@ -3,9 +3,10 @@ const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 export function scoreCandidate(c){
  const reasons=[],risk=c?.risk||{};
- const liq=Number(c?.liquidityUsd),vol=Number(c?.volume24h),change=Number(c?.change24h);
+ const numeric=x=>x===null||x===undefined||x===""?NaN:Number(x);
+ const liq=numeric(c?.liquidityUsd),vol=numeric(c?.volume24h),change=numeric(c?.change24h);
  if(!Number.isFinite(liq)||liq<=0||!Number.isFinite(vol)||vol<0||!Number.isFinite(change))
-  return {decision:"INSUFFICIENT_DATA",score:null,confidence:0,reasons:["Missing valid market data"],model:"heuristic-v1"};
+  return {decision:"INSUFFICIENT_DATA",score:null,confidence:null,confidenceReason:"NOT_CALIBRATED",reasons:["Missing valid market data"],model:"heuristic-v1"};
  const ratio=vol/liq;
  let score=clamp(Math.log10(1+ratio)*22+Math.min(Math.max(change,0),150)*0.18,0,100);
  const unknown=risk.rugCheck!=="SAFE"||risk.whaleConcentration==="UNKNOWN";
@@ -14,7 +15,7 @@ export function scoreCandidate(c){
  if(liq<50000)reasons.push("Thin liquidity");
  const gate=unknown||change>1000||liq<50000;
  return {decision:gate?"WATCH":score>=60?"REVIEW":"WATCH",
-  score:Math.round(score*100)/100,confidence:unknown?0.2:0.5,
+  score:Math.round(score*100)/100,confidence:null,confidenceReason:"NOT_CALIBRATED",
   reasons,model:"heuristic-v1",autoTrade:false};
 }
 export default {async fetch(request,env){
