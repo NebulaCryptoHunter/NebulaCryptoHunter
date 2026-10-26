@@ -1,0 +1,44 @@
+name: NEBULA safe validation
+on:
+  push:
+    branches: [fix/nebula-a-b-20261026]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prediction policy
+        run: node backend/prediction-engine-v2.test.mjs
+      - name: Evaluation integrity
+        run: node backend/evaluation-integrity-v1.test.mjs
+      - name: Frontend static security checks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          assert 'returns.reduce((sum,value)=>sum+value,0)/returns.length' in s
+          assert 'prices.slice(i-5,i)' in s
+          assert 'escapeHTML(getName(t))' in s
+          assert 'Math.abs(p.t-targetTime)<=120000' in s
+          print('Frontend static assertions passed')
+          PY
+      - name: Validate additive auth migration
+        run: |
+          python3 - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          con=sqlite3.connect(':memory:')
+          sql=Path('backend/migrations/0003_auth_multiuser.sql').read_text()
+          con.executescript(sql)
+          con.executescript(sql)
+          required={'auth_users','auth_sessions','auth_audit','auth_login_attempts','auth_activation_tokens'}
+          actual={r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          assert required<=actual,required-actual
+          print('Migration idempotency and tables passed')
+          PY
