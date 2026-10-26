@@ -1,5 +1,0 @@
-name = "nebula-ai-engine"
-main = "src/index.mjs"
-compatibility_date = "2026-10-26"
-workers_dev = true
-# No cron or D1 production binding until isolated staging validation.
