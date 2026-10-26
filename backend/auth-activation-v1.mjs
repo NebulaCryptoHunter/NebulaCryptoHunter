@@ -26,7 +26,7 @@ export async function activateAdmin(request,env){
  ];
  try{
   const result=await env.DB.batch(statements);
-  if(result?.[1]?.meta?.changes!==1)return json({error:'ACTIVATION_FAILED'},409);
+  if(result?.[0]?.meta?.changes!==1 || result?.[1]?.meta?.changes!==1)return json({error:'ACTIVATION_FAILED'},409);
   return json({success:true,email:t.email,role:'SUPER_ADMIN'});
  }catch{return json({error:'ACTIVATION_FAILED'},409);}
 }
