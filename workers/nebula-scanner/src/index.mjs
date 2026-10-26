@@ -1,13 +1,14 @@
 // NEBULA scanner: deterministic token identity and pool-specific discovery.
 // No trading, D1 writes or production dependencies.
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
-const number=x=>{const n=Number(x);return Number.isFinite(n)?n:null};
+const number=x=>{if(x===null||x===undefined||x==='')return null;const n=Number(x);return Number.isFinite(n)?n:null};
+const mintOk=s=>typeof s==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
 export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
  const results=[];
  for(const p of Array.isArray(pairs)?pairs:[]){
   if(p?.chainId!=="solana"||!p?.pairAddress)continue;
   const base=p.baseToken,quote=p.quoteToken;
-  if(!base?.address||!quote?.address)continue;
+  if(!base?.address||!quote?.address||!mintOk(base.address)||!mintOk(quote.address))continue;
   const liq=number(p.liquidity?.usd);
   if(liq===null||liq<minLiquidityUsd)continue;
   const change24h=number(p.priceChange?.h24),volume24h=number(p.volume?.h24);
@@ -28,6 +29,18 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
 export default {async fetch(request,env){
  const u=new URL(request.url);
  if(u.pathname==="/health")return reply({service:"nebula-scanner",status:"ok"});
+ if(u.pathname==="/discover"&&request.method==="GET"){
+  if(!env.INTERNAL_TOKEN||request.headers.get("Authorization")!=="Bearer "+env.INTERNAL_TOKEN)return reply({error:"UNAUTHORIZED"},401);
+  const mint=u.searchParams.get("mint");
+  if(!mintOk(mint))return reply({error:"INVALID_MINT"},400);
+  try{
+   const upstream=await fetch("https://api.dexscreener.com/token-pairs/v1/solana/"+encodeURIComponent(mint),{signal:AbortSignal.timeout(8000)});
+   if(!upstream.ok)return reply({error:"UPSTREAM_ERROR",status:upstream.status},502);
+   const data=await upstream.json();
+   const pairs=(Array.isArray(data)?data:[]).filter(p=>p.baseToken?.address===mint||p.quoteToken?.address===mint);
+   return reply({mint,items:scanPairs(pairs),totalPairs:pairs.length,source:"dexscreener"});
+  }catch{return reply({error:"UPSTREAM_UNAVAILABLE"},502);}
+ }
  if(u.pathname!=="/scan"||request.method!=="POST")return reply({error:"NOT_FOUND"},404);
  // Private Worker-to-Worker service token; do not expose public scan endpoint.
  if(!env.INTERNAL_TOKEN||request.headers.get("Authorization")!==`Bearer ${env.INTERNAL_TOKEN}`)return reply({error:"UNAUTHORIZED"},401);
