@@ -19,6 +19,8 @@ jobs:
         run: node workers/split-workers.test.mjs
       - name: Evaluation integrity
         run: node backend/evaluation-integrity-v1.test.mjs
+      - name: Split scanner and AI engine
+        run: node workers/split-workers.test.mjs
       - name: Frontend static security checks
         run: |
           python3 - <<'PY'
