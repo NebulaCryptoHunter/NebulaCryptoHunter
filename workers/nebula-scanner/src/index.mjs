@@ -28,6 +28,10 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
 }
 async function diagnostic(env,stage,status,detail){try{await env.STAGE_DB.prepare("INSERT INTO scanner_diagnostics (observed_at,stage,status,detail) VALUES (?,?,?,?)").bind(new Date().toISOString(),stage,status,String(detail).slice(0,300)).run()}catch(e){console.error("diagnostic_write_failed",String(e))}}
 export default {async scheduled(event,env,ctx){
+ // Scheduled probing is intentionally disabled until multi-token discovery and rate control are validated.
+ await diagnostic(env,"cron","DISABLED","Fixed LAUNCH probe disabled; no upstream request");
+ return;
+
  ctx.waitUntil((async()=>{
   await diagnostic(env,"cron","START","LAUNCH live probe");
   try{
@@ -47,7 +51,7 @@ export default {async scheduled(event,env,ctx){
   if(!mintOk(mint))return reply({error:"INVALID_MINT"},400);
   try{
    const upstream=await fetch("https://api.dexscreener.com/token-pairs/v1/solana/"+encodeURIComponent(mint),{signal:AbortSignal.timeout(8000)});
-   if(!upstream.ok)return reply({error:"UPSTREAM_ERROR",status:upstream.status},502);
+   if(!upstream.ok)return reply({error:upstream.status===429?"UPSTREAM_RATE_LIMITED":"UPSTREAM_ERROR",status:upstream.status},upstream.status===429?429:502);
    const data=await upstream.json();
    const pairs=(Array.isArray(data)?data:[]).filter(p=>p.baseToken?.address===mint||p.quoteToken?.address===mint);
    return reply({mint,items:scanPairs(pairs),totalPairs:pairs.length,source:"dexscreener"});
