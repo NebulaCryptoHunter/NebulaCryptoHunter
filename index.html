@@ -24,8 +24,8 @@
     .sticky-nav { position:sticky; top:0; z-index:999; background:rgba(0,10,25,.98); border-bottom:2px solid rgba(0,255,255,.4); padding:4px 6px; border-radius:0 0 10px 10px; backdrop-filter:blur(5px); }
     .header-row-1 { color:#7a9aba; font-size:0.58rem; font-weight:700; letter-spacing:1px; text-align:center; }
     .header-row-2 { font-family:'Orbitron',sans-serif; font-size:0.9rem; font-weight:900; text-align:center; background:linear-gradient(90deg,#fff,#0ff,#fff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-shadow:0 0 10px cyan; letter-spacing:2px; }
-    .endpoint-bar { display:flex; gap:2px; font-size:0.45rem; overflow-x:auto; max-height:14px; margin-top:1px; justify-content:center; }
-    .ep-mini { padding:1px 4px; border-radius:3px; border:1px solid rgba(255,255,255,.1); white-space:nowrap; }
+    .endpoint-bar { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; font-size:0.48rem; overflow:visible; max-height:none; margin:4px 5px 5px; width:calc(100% - 10px); align-items:center; }
+    .ep-mini { padding:3px 1px; min-width:0; text-align:center; border-radius:3px; border:1px solid rgba(255,255,255,.1); white-space:nowrap; font-size:clamp(7px,1.65vw,11px); letter-spacing:-.2px; }
     .ep-mini.online { color:#0f8; } .ep-mini.offline { color:#f44; animation:blink 1.2s infinite; }
     @keyframes blink { 50%{opacity:.4} }
     .hud-controls { display:flex; gap:2px; flex-wrap:wrap; align-items:center; margin-top:2px; }
