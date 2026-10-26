@@ -14,7 +14,7 @@ export function evaluatePrediction(input, policy = {}) {
   if (!finitePositive(input?.entry_price)) reasons.push('MISSING_VALID_PRICE');
   if (!finitePositive(input?.liquidity_usd) || input.liquidity_usd < p.minLiquidityUSD) reasons.push('INSUFFICIENT_LIQUIDITY');
   if (!Number.isInteger(input?.holder_count) || input.holder_count < p.minHolders) reasons.push('UNVERIFIED_HOLDERS');
-  if (input?.rug_status !== 'SAFE' || input?.mint_authority_enabled === true || input?.freeze_authority_enabled === true) reasons.push('SECURITY_NOT_VERIFIED');
+  if (input?.rug_status !== 'SAFE' || input?.mint_authority_enabled !== false || input?.freeze_authority_enabled !== false) reasons.push('SECURITY_NOT_VERIFIED');
   if (input?.dex_verified !== true || input?.helius_verified !== true || input?.rug_verified !== true) reasons.push('DATA_NOT_VERIFIED');
   const quality = Number(input?.quality_score), security = Number(input?.security_score), confidence = Number(input?.confidence_score), score = Number(input?.ai_score);
   if (!Number.isFinite(quality) || quality < p.minQuality) reasons.push('LOW_QUALITY');
