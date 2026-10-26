@@ -41,6 +41,24 @@ export default {async fetch(request,env){
    return reply({mint,items:scanPairs(pairs),totalPairs:pairs.length,source:"dexscreener"});
   }catch{return reply({error:"UPSTREAM_UNAVAILABLE"},502);}
  }
+ if(u.pathname==="/pipeline"&&request.method==="GET"){
+  if(!env.INTERNAL_TOKEN||request.headers.get("Authorization")!=="Bearer "+env.INTERNAL_TOKEN)return reply({error:"UNAUTHORIZED"},401);
+  if(!env.AI_ENGINE)return reply({error:"ENGINE_BINDING_MISSING"},503);
+  const mint=u.searchParams.get("mint");
+  if(!mintOk(mint))return reply({error:"INVALID_MINT"},400);
+  try{
+   const upstream=await fetch("https://api.dexscreener.com/token-pairs/v1/solana/"+encodeURIComponent(mint),{signal:AbortSignal.timeout(8000)});
+   if(!upstream.ok)return reply({error:"UPSTREAM_ERROR",status:upstream.status},502);
+   const pairs=await upstream.json();
+   const selected=(Array.isArray(pairs)?pairs:[]).filter(p=>p.baseToken?.address===mint);
+   const items=scanPairs(selected);
+   if(!items.length)return reply({mint,items:[],results:[],note:"NO_BASE_TOKEN_PAIRS"});
+   const scored=await env.AI_ENGINE.fetch("https://nebula-ai-engine.internal/score",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+env.INTERNAL_TOKEN},body:JSON.stringify({items})});
+   if(!scored.ok)return reply({error:"ENGINE_FAILED",status:scored.status},502);
+   const data=await scored.json();
+   return reply({mint,items,results:data.results||[],source:"dexscreener",persisted:false});
+  }catch{return reply({error:"PIPELINE_UNAVAILABLE"},502);}
+ }
  if(u.pathname!=="/scan"||request.method!=="POST")return reply({error:"NOT_FOUND"},404);
  // Private Worker-to-Worker service token; do not expose public scan endpoint.
  if(!env.INTERNAL_TOKEN||request.headers.get("Authorization")!==`Bearer ${env.INTERNAL_TOKEN}`)return reply({error:"UNAUTHORIZED"},401);
