@@ -26,12 +26,17 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
  }
  return results.sort((a,b)=>(b.momentum.volumeLiquidityRatio??-1)-(a.momentum.volumeLiquidityRatio??-1));
 }
+async function diagnostic(env,stage,status,detail){try{await env.STAGE_DB.prepare("INSERT INTO scanner_diagnostics (observed_at,stage,status,detail) VALUES (?,?,?,?)").bind(new Date().toISOString(),stage,status,String(detail).slice(0,300)).run()}catch(e){console.error("diagnostic_write_failed",String(e))}}
 export default {async scheduled(event,env,ctx){
  ctx.waitUntil((async()=>{
-  const mint="AhBidGAgv6QbKSWfrSCegGrzFLcBx4E5FNYTKHNQQj6C";
-  const request=new Request("https://nebula-scanner.internal/pipeline?mint="+mint+"&persist=1",{headers:{"Authorization":"Bearer "+env.INTERNAL_TOKEN}});
-  const response=await this.fetch(request,env);
-  if(!response.ok)throw Error("STAGE2_PIPELINE_"+response.status);
+  await diagnostic(env,"cron","START","LAUNCH live probe");
+  try{
+   const mint="AhBidGAgv6QbKSWfrSCegGrzFLcBx4E5FNYTKHNQQj6C";
+   const request=new Request("https://nebula-scanner.internal/pipeline?mint="+mint+"&persist=1",{headers:{"Authorization":"Bearer "+env.INTERNAL_TOKEN}});
+   const response=await this.fetch(request,env);
+   const body=await response.text();
+   await diagnostic(env,"pipeline",response.ok?"OK":"ERROR","HTTP "+response.status+" "+body.slice(0,220));
+  }catch(e){await diagnostic(env,"exception","ERROR",String(e))}
  })());
 },async fetch(request,env){
  const u=new URL(request.url);
