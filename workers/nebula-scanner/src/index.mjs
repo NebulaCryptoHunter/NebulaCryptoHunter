@@ -56,7 +56,20 @@ export default {async fetch(request,env){
    const scored=await env.AI_ENGINE.fetch("https://nebula-ai-engine.internal/score",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+env.INTERNAL_TOKEN},body:JSON.stringify({items})});
    if(!scored.ok)return reply({error:"ENGINE_FAILED",status:scored.status},502);
    const data=await scored.json();
-   return reply({mint,items,results:data.results||[],source:"dexscreener",persisted:false});
+   if(!Array.isArray(data.results)||data.results.length!==items.length)return reply({error:"ENGINE_RESPONSE_INVALID"},502);
+   const persist=u.searchParams.get("persist")==="1";
+   if(persist){
+    if(!env.STAGE_DB)return reply({error:"STAGING_DB_MISSING"},503);
+    try{
+     for(let i=0;i<items.length;i++){
+      const c=items[i],v=data.results[i];
+      if(v.mint!==c.base.mint||v.pairAddress!==c.pairAddress)return reply({error:"IDENTITY_MISMATCH"},502);
+      await env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_snapshots (mint,pair_address,observed_at,liquidity_usd,volume_24h,change_24h,payload_json) VALUES (?,?,?,?,?,?,?)").bind(c.base.mint,c.pairAddress,c.observedAt,c.liquidityUsd,c.volume24h,c.change24h,JSON.stringify(c)).run();
+      await env.STAGE_DB.prepare("INSERT INTO engine_scores (mint,pair_address,observed_at,model,decision,score,payload_json) VALUES (?,?,?,?,?,?,?)").bind(v.mint,v.pairAddress,c.observedAt,v.model,v.decision,v.score,JSON.stringify(v)).run();
+     }
+    }catch{return reply({error:"STAGING_WRITE_FAILED"},503);}
+   }
+   return reply({mint,items,results:data.results,source:"dexscreener",persisted:persist});
   }catch{return reply({error:"PIPELINE_UNAVAILABLE"},502);}
  }
  if(u.pathname!=="/scan"||request.method!=="POST")return reply({error:"NOT_FOUND"},404);
