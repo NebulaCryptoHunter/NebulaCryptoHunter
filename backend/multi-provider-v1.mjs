@@ -25,7 +25,7 @@ export async function jupiterToken(ca, apiKey) {
   const headers = apiKey ? {'x-api-key':apiKey} : {};
   const r = await jsonGet('https://api.jup.ag/tokens/v2/search?query='+encodeURIComponent(ca),headers,'jupiter');
   if (!r.ok) return r;
-  const token = Array.isArray(r.data) ? r.data.find(t=>t.id===ca) : null;
+  const token = Array.isArray(r.data) ? r.data.find(t=>t.id===ca || t.address===ca || t.mint===ca) : null;
   if (!token) return {ok:false,error:'TOKEN_NOT_FOUND',provider:'jupiter'};
   const holders = token.holderCount;
   return {ok:true,provider:'jupiter',token_ca:ca,holder_count:Number.isInteger(holders)&&holders>=0?holders:null,holder_count_verified:Number.isInteger(holders)&&holders>=0,price_usd:positive(token.usdPrice)?token.usdPrice:null,liquidity_usd:positive(token.liquidity)?token.liquidity:null,organic_score:token.organicScore??null,audit:token.audit??null,source_timestamp:Date.now()};
@@ -35,7 +35,7 @@ export async function geckoToken(ca) {
   const r = await jsonGet('https://api.geckoterminal.com/api/v2/networks/solana/tokens/'+encodeURIComponent(ca),{'Accept':'application/json;version=20230203'},'gecko',60000);
   if (!r.ok) return r;
   const a = r.data?.data?.attributes;
-  if (!a || r.data?.data?.id !== 'solana_'+ca) return {ok:false,error:'TOKEN_MISMATCH',provider:'gecko'};
+  if (!a || !['solana_'+ca,ca].includes(r.data?.data?.id)) return {ok:false,error:'TOKEN_MISMATCH',provider:'gecko'};
   return {ok:true,provider:'gecko',token_ca:ca,price_usd:positive(Number(a.price_usd))?Number(a.price_usd):null,source_timestamp:Date.now()};
 }
 export async function birdeyeToken(ca, apiKey) {
@@ -44,7 +44,7 @@ export async function birdeyeToken(ca, apiKey) {
   const r=await jsonGet('https://public-api.birdeye.so/defi/price?address='+encodeURIComponent(ca),{'X-API-KEY':apiKey,'x-chain':'solana'},'birdeye');
   if (!r.ok) return r;
   const price=Number(r.data?.data?.value);
-  return {ok:true,provider:'birdeye',token_ca:ca,price_usd:positive(price)?price:null,source_timestamp:Date.now()};
+  return positive(price) ? {ok:true,provider:'birdeye',token_ca:ca,price_usd:price,source_timestamp:Date.now()} : {ok:false,error:'PRICE_UNAVAILABLE',provider:'birdeye'};
 }
 export async function marketFallback(ca, keys={}) {
   const providers=[()=>jupiterToken(ca,keys.jupiter),()=>geckoToken(ca),()=>birdeyeToken(ca,keys.birdeye)];
