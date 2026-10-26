@@ -172,6 +172,7 @@ const CONFIG = {
   ENRICHMENT_QUEUE:{maxParallel:3,delayMs:300}, AUTO_REFRESH:{stats:30000,health:15000}
 };
 
+const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const $=id=>document.getElementById(id);
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const safeNum=v=>{const n=Number(v);return isFinite(n)?n:null};
@@ -398,8 +399,8 @@ const AiEngine = (()=>{
   function updateWalletDB(token){const hd=token._hel||{};const smc=hd.smc||0;const ca=token.ca;let entry=S.walletDB.get(ca)||{wins:0,total:0,rep:50,smc:0};entry.smc=Math.max(entry.smc,smc);const recentOutcome=S.learning.outcomeMemory.filter(r=>r.ca===ca).slice(-5);entry.total=recentOutcome.length;entry.wins=recentOutcome.filter(r=>r.outcome==='WIN').length;entry.rep=entry.total>0?Math.round((entry.wins/entry.total)*100):(smc>10?90:smc>5?75:smc>2?60:smc>0?40:20);if(token._whale>70)entry.rep+=10;if(token._swScore>60)entry.rep+=5;entry.rep=clamp(entry.rep,10,99);S.walletDB.set(ca,entry);token._walletRep=entry.rep;}
   function calcLiquidityFlowV96(token){const h=token._liqH||[];if(h.length<3){token._liqFlowScore=50;token._liqFlowLabel='-';token._liqFake=false;return;}const recent=h.slice(-5);const oldest=recent[0].v||0;const newest=recent[recent.length-1].v||0;const delta=newest-oldest;const pct=safeDivide(delta,oldest)*100;token._liqFlowScore=clamp(Math.round(50+pct*2),0,100);token._liqFlowLabel=pct>20?'IN++':pct>10?'IN+':pct<-20?'OUT--':pct<-10?'OUT-':'-';const spikes=recent.filter(p=>p.v>(oldest*2)).length;token._liqFake=spikes>2;}
   function calcVolumeAccelerationV96(token){const h=token._volH||[];if(h.length<4){token._volAccel=0;token._volAccelLabel='-';return;}const v1=h[h.length-4].v||0,v2=h[h.length-3].v||0,v3=h[h.length-2].v||0,v4=h[h.length-1].v||0;const accel1=safeDivide(v2-v1,v1)*100,accel2=safeDivide(v3-v2,v2)*100,accel3=safeDivide(v4-v3,v3)*100;token._volAccel=Math.round((accel1+accel2+accel3)/3);token._volAccelLabel=token._volAccel>20?'ACCEL':token._volAccel<-20?'DECEL':'-';}
-  function calcMarketStructureV98(token){const h=token._priceH||[];if(h.length<10){token._mktStructure='NEUTRAL';return;}const prices=h.map(p=>p.p);let hh=0,hl=0,lh=0,ll=0,bos=0,choch=0;for(let i=10;i<prices.length;i++){if(prices[i]>prices[i-1]&&prices[i]>prices[i-2]&&prices[i]>prices[i-3])hh++;if(prices[i]<prices[i-1]&&prices[i]<prices[i-2]&&prices[i]>prices[i-5])hl++;if(prices[i]<prices[i-1]&&prices[i]<prices[i-2]&&prices[i]<prices[i-3])lh++;if(prices[i]>prices[i-1]&&prices[i]>prices[i-2]&&prices[i]<prices[i-5])ll++;const swingHigh=Math.max(...prices.slice(-5,-1));const swingLow=Math.min(...prices.slice(-5,-1));if(prices[prices.length-1]>swingHigh*1.01)bos++;if(prices[prices.length-1]<swingLow*0.99)choch++;}if(hh>hl&&hh>lh&&bos>0)token._mktStructure='BULLISH';else if(lh>ll&&lh>hh&&choch>0)token._mktStructure='BEARISH';else if(hh>lh)token._mktStructure='S.BULLISH';else if(lh>hh)token._mktStructure='S.BEARISH';else token._mktStructure='NEUTRAL';}
-  function calcVolatilityV96(token){const h=token._priceH||[];if(h.length<5){token._volatility='NORMAL';return;}const returns=[];for(let i=1;i<h.length;i++){if(h[i-1].p>0)returns.push(Math.abs((h[i].p-h[i-1].p)/h[i-1].p));}const avgRet=safeAverage(returns,null,0);token._volatility=avgRet>0.1?'HIGH':avgRet>0.03?'NORMAL':'LOW';}
+  function calcMarketStructureV98(token){const h=token._priceH||[];if(h.length<10){token._mktStructure='NEUTRAL';return;}const prices=h.map(p=>p.p);let hh=0,hl=0,lh=0,ll=0,bos=0,choch=0;for(let i=10;i<prices.length;i++){if(prices[i]>prices[i-1]&&prices[i]>prices[i-2]&&prices[i]>prices[i-3])hh++;if(prices[i]<prices[i-1]&&prices[i]<prices[i-2]&&prices[i]>prices[i-5])hl++;if(prices[i]<prices[i-1]&&prices[i]<prices[i-2]&&prices[i]<prices[i-3])lh++;if(prices[i]>prices[i-1]&&prices[i]>prices[i-2]&&prices[i]<prices[i-5])ll++;const swingHigh=Math.max(...prices.slice(i-5,i));const swingLow=Math.min(...prices.slice(i-5,i));if(prices[i]>swingHigh*1.01)bos++;if(prices[i]<swingLow*0.99)choch++;}if(hh>hl&&hh>lh&&bos>0)token._mktStructure='BULLISH';else if(lh>ll&&lh>hh&&choch>0)token._mktStructure='BEARISH';else if(hh>lh)token._mktStructure='S.BULLISH';else if(lh>hh)token._mktStructure='S.BEARISH';else token._mktStructure='NEUTRAL';}
+  function calcVolatilityV96(token){const h=token._priceH||[];if(h.length<5){token._volatility='NORMAL';return;}const returns=[];for(let i=1;i<h.length;i++){if(h[i-1].p>0)returns.push(Math.abs((h[i].p-h[i-1].p)/h[i-1].p));}const avgRet=returns.length?returns.reduce((sum,value)=>sum+value,0)/returns.length:0;token._volatility=avgRet>0.1?'HIGH':avgRet>0.03?'NORMAL':'LOW';}
   function detectNarrative(t){const txt=(getName(t)+(t.identity?.symbol||'')).toLowerCase();const n=[];for(let k in CONFIG.NARRATIVE)if(CONFIG.NARRATIVE[k].some(kw=>txt.includes(kw)))n.push(k);t._narr=n;}
   function detectWhale(t){const hd=t._hel||{};const d=hd.dist||{};let s=0;if(d.top5>60)s+=30;if(d.top10>80)s+=25;if(d.top1>30)s+=20;if(hd.hc<20&&hd.hc>0)s+=15;if((t.liq||0)>10000)s+=10;t._whale=clamp(s,0,100);t._whaleLabel=t._whale>70?'HEAVY':t._whale>40?'MODERATE':'LIGHT';}
   function calcNarrativeIntel(token){const n=token._narr||[];if(!n.length){token._nHeat=10;token._nVelocity=0;token._nGrowth=0;token._nSaturation=0;return;}const fc=feedBus.filter(x=>x._narr?.some(y=>n.includes(y))).length;token._nHeat=Math.min(100,Math.round(safeDivide(fc,Math.max(1,feedBus.length))*100+n.length*15));if(!token._nHeatHistory)token._nHeatHistory=[];token._nHeatHistory.push(token._nHeat);if(token._nHeatHistory.length>10)token._nHeatHistory.shift();if(token._nHeatHistory.length>=3){token._nVelocity=token._nHeat-token._nHeatHistory[0];token._nGrowth=safeDivide(token._nHeat-token._nHeatHistory[0],token._nHeatHistory[0])*100;}token._nSaturation=token._nHeat>80?'HIGH':token._nHeat>50?'MEDIUM':'LOW';}
@@ -469,7 +470,7 @@ const RenderEngine = (()=>{
       div.dataset.ca=t.ca;
       let innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">'+
         '<div style="display:flex;align-items:center;gap:2px;min-width:0;flex:1">'+
-        getRankBadge(rank)+'<span class="token-name">'+getName(t)+'</span>'+
+        getRankBadge(rank)+'<span class="token-name">'+escapeHTML(getName(t))+'</span>'+
         getConfBadge(t)+getWalletBadge(t)+getClusterBadge(t)+getOBBadge(t)+getFVGBadge(t)+getRugBadge(t)+(t._fromCache?'<span class="cache-badge">CACHE</span>':'')+
         '</div><div style="display:flex;align-items:center;gap:3px">'+
         '<span class="decision-tag decision-'+decClass+'">'+d.replace(/_/g,' ')+'</span>';
@@ -496,7 +497,7 @@ const RenderEngine = (()=>{
           if(!token){det.innerHTML='<div style="color:#f44;font-size:0.45rem">Token tidak ditemukan</div>';det.style.display='block';return;}
           det.innerHTML=renderDetail(token);
           det.style.display='block';
-        }catch(err){console.error('DETAIL MODE ERROR:',err);det.innerHTML='<div style="color:#f44;font-size:0.45rem">Error: '+err.message+'</div>';det.style.display='block';}
+        }catch(err){console.error('DETAIL MODE ERROR:',err);det.innerHTML='<div style="color:#f44;font-size:0.45rem">Error: '+escapeHTML(err.message)+'</div>';det.style.display='block';}
       });
       rendered.set(t.ca,div);
       return div;
