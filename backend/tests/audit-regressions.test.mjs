@@ -35,7 +35,7 @@ test('scanner propagates upstream rate limit',async()=>{
 });
 test('scanner validates every identity before any persistence',async()=>{
  const saved=globalThis.fetch;globalThis.fetch=async()=>Response.json([pair,{...pair,pairAddress:'pair2'}]);
- try{const r=await scanner.fetch(new Request('https://test/pipeline?mint='+mint+'&persist=1',{headers:{Authorization:'Bearer test'}}),{INTERNAL_TOKEN:'test',STAGE_DB:noDB,AI_ENGINE:{fetch:async()=>Response.json({results:[{mint,pairAddress:'pair'}, {mint:'wrong',pairAddress:'pair2'}]})}});assert.equal(r.status,502);assert.equal((await r.json()).error,'IDENTITY_MISMATCH')}finally{globalThis.fetch=saved}
+ try{const r=await scanner.fetch(new Request('https://test/pipeline?mint='+mint+'&persist=1',{headers:{Authorization:'Bearer test'}}),{INTERNAL_TOKEN:'test',STAGE_DB:{prepare(sql){if(sql.includes('SELECT value FROM scanner_state'))return {first:async()=>null};throw Error('Unexpected DB write')}},AI_ENGINE:{fetch:async()=>Response.json({results:[{mint,pairAddress:'pair'}, {mint:'wrong',pairAddress:'pair2'}]})}});assert.equal(r.status,502);assert.equal((await r.json()).error,'IDENTITY_MISMATCH')}finally{globalThis.fetch=saved}
 });
 test('duplicate scheduled slot does not fetch or write again',async()=>{
  let pending;await scanner.scheduled({scheduledTime:1800000}, {STAGE_DB:{prepare(){return {bind(){return this},async run(){return {meta:{changes:0}}}}}}}, {waitUntil(p){pending=p}});await pending;

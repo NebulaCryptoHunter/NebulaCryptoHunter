@@ -1,0 +1,79 @@
+ice=Number(j.data.attributes?.price_usd);
+            }else{
+              if(j?.success!==true)return {provider,ok:false,error:'PROVIDER_REJECTED'};
+              price=Number(j.data?.value);
+            }
+            return {provider,ok:true,token_ca:mint,price_usd:Number.isFinite(price)&&price>0?price:null,holder_count:holders,holder_count_verified:provider==='jupiter'&&holders!==null,organic_score:organic,checked_at:new Date().toISOString()};
+          }catch(e){return {provider,ok:false,error:'UPSTREAM_UNAVAILABLE'};}
+        };
+        const order=kind==='holders'?['jupiter']:kind==='market'?['jupiter','gecko','birdeye']:[kind];
+        const attempts=[];let selected=null;
+        for(const p of order){const result=await query(p);attempts.push(result);if(result.ok&&(kind==='holders'?result.holder_count_verified:result.price_usd!==null)){selected=result;break;}}
+        return new Response(JSON.stringify({success:!!selected,data:selected,attempts:attempts.map(a=>({provider:a.provider,ok:a.ok,error:a.error||null})),verified:kind==='holders'?!!selected?.holder_count_verified:!!selected}),{status:selected?200:503,headers});
+      }
+      // ==================== PROXY ====================
+      // Helius RPC
+      if(path==='/helius/rpc'&&method==='POST') {
+        let body;
+        try { body = await request.json(); } catch(e) { return new Response(JSON.stringify(err('Invalid JSON','PARSE')),{status:400,headers:h}); }
+        if(!body?.jsonrpc||!body.method||!body.params) return new Response(JSON.stringify(err('Invalid JSON-RPC','VALIDATION')),{status:400,headers:h});
+        if(!ALLOWED_RPC.has(body.method)) return new Response(JSON.stringify(err(`Method ${body.method} not allowed`,'VALIDATION')),{status:400,headers:h});
+
+        if (!env.HELIUS_API_KEY) {
+          return new Response(JSON.stringify(err('HELIUS_API_KEY not configured','CONFIG_ERROR')),{status:500,headers:h});
+        }
+
+        const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${env.HELIUS_API_KEY}`;
+        let r = await rpcFetch(heliusUrl, body, env, db, rid);
+
+        if (!r.ok) {
+          const errorCode = r.errorCode || 'HELIUS_ERROR';
+          const errorMsg = r.errorMsg || 'Helius RPC failed';
+          return new Response(JSON.stringify(err(errorMsg, errorCode)),{status:503,headers:h});
+        }
+
+        return new Response(JSON.stringify(r.data),{headers:{...h,'Cache-Control':'public, max-age=30'}});
+      }
+
+      // DEX with caching and retry for rate limit
+      if(path.startsWith('/dex/')) {
+        const tk = path.split('/dex/')[1];
+        if (!tk) return new Response(JSON.stringify(err('Token required','VALIDATION')),{status:400,headers:h});
+        const result = await safeProxyFetch(`https://api.dexscreener.com/latest/dex/tokens/${tk}`, 'DEX', db, rid, true);
+        if (!result.ok) {
+          return new Response(JSON.stringify(err(result.error||'DEX proxy failed','PROXY_ERROR')),{status:result.status,headers:h});
+        }
+        return new Response(JSON.stringify(result.data||{}),{headers:{...h,'Cache-Control':'public, max-age=30'}});
+      }
+
+      // Rugcheck
+      if(path.startsWith('/rugcheck/')) {
+        const tk = path.split('/rugcheck/')[1];
+        if (!tk) return new Response(JSON.stringify(err('Token required','VALIDATION')),{status:400,headers:h});
+        const result = await safeProxyFetch(`https://api.rugcheck.xyz/v1/tokens/${tk}/report`, 'RUGCHECK', db, rid, false);
+        if (!result.ok) {
+          return new Response(JSON.stringify(err(result.error||'Rugcheck proxy failed','PROXY_ERROR')),{status:result.status,headers:h});
+        }
+        return new Response(JSON.stringify(result.data||{}),{headers:{...h,'Cache-Control':'public, max-age=300'}});
+      }
+
+      // Pumpfun
+      if(path==='/pumpfun/coins') {
+        const result = await safeProxyFetch(`https://frontend-api.pump.fun/coins${url.search}`, 'PUMPFUN', db, rid, false);
+        if (!result.ok) {
+          return new Response(JSON.stringify(err(result.error||'Pumpfun proxy failed','PROXY_ERROR')),{status:result.status,headers:h});
+        }
+        return new Response(JSON.stringify(result.data),{headers:{...h,'Cache-Control':'public, max-age=30'}});
+      }
+
+      return new Response(JSON.stringify(err('Not found','NOT_FOUND')),{status:404,headers:h});
+    } catch(e) {
+      await logSystem(db, 'ERROR', 'worker', e.message, rid);
+      return new Response(JSON.stringify(err('Internal error','INTERNAL')),{status:500,headers:h});
+    }
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(handleScheduled(env, ctx));
+  }
+};

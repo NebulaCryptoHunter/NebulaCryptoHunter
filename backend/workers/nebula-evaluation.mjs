@@ -1,3 +1,4 @@
+import {evaluateResearch} from './research-evaluation.mjs';
 // =====================================================
 // NEBULA WORKER 2: EVALUATION ENGINE (V110.2.1)
 // Deploy sebagai Worker terpisah: nebula-evaluation
@@ -399,6 +400,6 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(handleScheduled(env, ctx));
+    ctx.waitUntil(Promise.all([handleScheduled(env, ctx),evaluateResearch(env.RESEARCH_DB)]));
   }
 };

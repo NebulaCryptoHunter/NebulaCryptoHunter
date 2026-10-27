@@ -1,0 +1,140 @@
+decayFactor;
+      totalErrorWeight += errorWeight * direction;
+      if (c.success_score >= 60) successCount++;
+    }
+
+    const avgErrorWeight = totalErrorWeight / sampleCount;
+    const successRate = successCount / sampleCount;
+
+    const current = await db.prepare(`SELECT * FROM learning_weights WHERE feature_name=?`).bind(feat).first();
+    const oldWeight = current?.weight_value || 0.1;
+    const changeAmount = CFG.LEARNING_RATE_BASE * avgErrorWeight;
+    let newWeight = clamp(oldWeight + changeAmount, 0.01, 0.5);
+
+    await db.prepare(`UPDATE learning_weights SET weight_value=?, sample_count=?, success_count=?, success_rate=?, last_updated_at=datetime('now') WHERE feature_name=?`)
+      .bind(newWeight, sampleCount, successCount, Math.round(successRate*100), feat).run();
+    await db.prepare(`INSERT INTO learning_history (feature_name, old_weight, new_weight, change_reason, sample_size, success_rate, engine_version, created_at)
+      VALUES (?,?,?,?,?,?,?,datetime('now'))`)
+      .bind(feat, oldWeight, newWeight, 'refined-learning', sampleCount, Math.round(successRate*100), VERSION).run();
+  }
+}
+
+// ==================== ANALYTICS SERVICE ====================
+async function updateAnalyticsStats(db, runId) {
+  try {
+    const [tp,te,bw,tb,ar] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as c FROM predictions`).first(),
+      db.prepare(`SELECT COUNT(*) as c FROM evaluations`).first(),
+      db.prepare(`SELECT COUNT(*) as c FROM evaluations e JOIN predictions p ON e.prediction_id=p.id WHERE p.decision IN ('BUY','STRONG_BUY') AND e.success_score>=60`).first(),
+      db.prepare(`SELECT COUNT(*) as c FROM predictions WHERE decision IN ('BUY','STRONG_BUY')`).first(),
+      db.prepare(`SELECT AVG(actual_roi) as avg FROM evaluations`).first()
+    ]);
+
+    const totalPreds = tp?.c || 0;
+    const totalEvals = te?.c || 0;
+    const wins = bw?.c || 0;
+    const buyPreds = tb?.c || 0;
+    const avgROI = Math.round(ar?.avg || 0);
+
+    const precision = buyPreds > 0 ? wins / buyPreds : 0;
+    const recall = totalEvals > 0 ? wins / totalEvals : 0;
+    const f1 = (precision + recall) > 0 ? 2*(precision*recall)/(precision+recall) : 0;
+    const winRate = totalPreds > 0 ? wins / totalPreds : 0;
+
+    await db.prepare(`UPDATE ai_stats SET total_predictions=?, total_evaluations=?, overall_win_rate=?, overall_avg_roi=?, overall_precision=?, overall_recall=?, overall_f1=?, updated_at=datetime('now') WHERE id=1`)
+      .bind(totalPreds, totalEvals, Math.round(winRate*100), avgROI, Math.round(precision*100), Math.round(recall*100), Math.round(f1*100)).run();
+
+    await logSystem(db, 'INFO', 'analytics', `Stats updated: Predictions ${totalPreds}, F1 ${Math.round(f1*100)}%, ROI ${avgROI}%`, runId);
+  } catch(e) {
+    await logSystem(db, 'ERROR', 'analytics', `Failed to update stats: ${e.message}`, runId);
+    throw e;
+  }
+}
+
+// ==================== CRON HANDLER ====================
+async function handleScheduled(env, ctx) {
+  const db = env.DB;
+  const runId = UUID();
+  const startTime = Date.now();
+  const now = Date.now();
+  let totalEvaluated = 0;
+  let errors = 0;
+
+  for (const window of CFG.EVALUATION_WINDOWS) {
+    const threshold = new Date(now - window.ms).toISOString();
+    const { results } = await db.prepare(
+      `SELECT * FROM predictions WHERE learning_status='PENDING' AND created_at <= ?`
+    ).bind(threshold).all();
+
+    if (!results || results.length === 0) continue;
+
+    for (let i = 0; i < results.length; i += CFG.CRON_MAX_CONCURRENT) {
+      const batch = results.slice(i, i + CFG.CRON_MAX_CONCURRENT);
+      const promises = batch.map(pred =>
+        evaluatePrediction(db, pred, window.key, runId)
+          .then(result => { if (result) totalEvaluated++; })
+          .catch(e => { errors++; logSystem(db, 'ERROR', 'cron', `Eval failed ${pred.id}: ${e.message}`, runId); })
+      );
+      await Promise.all(promises);
+    }
+  }
+
+  try {
+    await updateLearningWeights(db, runId);
+    await updateAnalyticsStats(db, runId);
+  } catch(e) {
+    await logSystem(db, 'ERROR', 'cron', `Learning/analytics failed: ${e.message}`, runId);
+  }
+
+  const duration = Date.now() - startTime;
+  return new Response(`Cron ${VERSION} done [${runId}]. Evaluated ${totalEvaluated}, errors ${errors}, duration ${duration}ms`);
+}
+
+// ==================== SAFE PROXY FETCH (V109.1 – perbaikan logging status) ====================
+async function safeProxyFetch(url, serviceName, db, rid, useCache = false) {
+  const startTime = Date.now();
+  if (useCache && serviceName === 'DEX') {
+    const tokenCA = url.split('/tokens/')[1]?.split('?')[0];
+    if (tokenCA) {
+      const cached = getCachedDex(tokenCA);
+      if (cached) {
+        await logSystem(db, 'INFO', 'proxy', `DEX CACHE HIT | TOKEN=${tokenCA}`, rid);
+        return { ok: true, status: 200, data: cached };
+      }
+    }
+  }
+
+  let retries = 0;
+  const maxRetries = 2;
+  let lastError;
+
+  while (retries <= maxRetries) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), CFG.PROXY_TIMEOUT);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+
+      const status = res.status;
+      const contentType = res.headers.get('content-type') || '';
+      let text = '';
+      try { text = await res.text(); } catch(e) { text = '[STREAM READ ERROR]'; }
+      const duration = Date.now() - startTime;
+
+      if (status === 429) {
+        if (useCache && serviceName === 'DEX') {
+          const tokenCA = url.split('/tokens/')[1]?.split('?')[0];
+          if (tokenCA) {
+            const entry = dexCache.get(tokenCA);
+            if (entry) {
+              await logSystem(db, 'WARNING', 'proxy', `DEX 429, using stale cache for ${tokenCA}`, rid);
+              return { ok: true, status: 200, data: entry.data };
+            }
+          }
+        }
+        await new Promise(r => setTimeout(r, 2000 * (retries + 1)));
+        retries++;
+        continue;
+      }
+
+      if (!conte

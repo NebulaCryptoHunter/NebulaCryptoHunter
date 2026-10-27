@@ -1,0 +1,126 @@
+// =====================================================
+// NEBULA API WORKER V109.1 — "Production Polish"
+// =====================================================
+// Deploy sebagai single bundle Cloudflare Worker
+// Environment variables: API_KEY, HELIUS_API_KEY
+// Binding: DB (D1 Database)
+// Cron Trigger: */30 * * * *
+
+const VERSION = 'V109.3';
+function bestSolPrice(data, ca) {
+  const pairs = (data?.pairs || []).filter(p => p.chainId === 'solana' && p.baseToken?.address === ca);
+  pairs.sort((a,b) => (Number(b.liquidity?.usd)||0)-(Number(a.liquidity?.usd)||0));
+  const v = Number(pairs[0]?.priceUsd);
+  return Number.isFinite(v) && v>0 ? v : 0;
+}
+
+const BUILD = '2026-07-28';
+const API = '/api/v1';
+const MAX_PAYLOAD = 256 * 1024;
+
+// ==================== CONFIG ====================
+const ALLOWED_ORIGINS = [
+  'https://nebulacryptohunter.nebula-crypto-proxy.workers.dev',
+  'https://nebula-api.nebula-crypto-proxy.workers.dev',
+  'http://localhost:3000', 'http://localhost:5500', 'http://localhost:8080'
+];
+const ALLOWED_METHODS = ['GET', 'POST', 'OPTIONS'];
+const ALLOWED_RPC = new Set(['getAccountInfo','getTokenLargestAccounts','getSignaturesForAddress','getProgramAccounts','getTokenSupply','getBalance','getMultipleAccounts']);
+const AUTH_REQUIRED = [`${API}/predictions`,`${API}/evaluations`,`${API}/heroes`,`${API}/watchlist`,`${API}/learning`,`${API}/market-regime`];
+const DECISION = ['STRONG_BUY','BUY','ACCUMULATE','WATCH','WAIT','AVOID'];
+
+const CFG = {
+  TIMEOUT: 10000, MAX_RETRY: 3, CACHE_TTL: 60,
+  CB_TIMEOUT: 30000, RATE_WINDOW: 60, RATE_MAX: 5000,
+  MIN_SAMPLES_FOR_LEARNING: 50,
+  LEARNING_RATE_BASE: 0.02,
+  CONFIDENCE_FLOOR: 0.3,
+  CONFIDENCE_CEIL: 0.9,
+  DECAY_HALF_LIFE_DAYS: 30,
+  CRON_BATCH_SIZE: 25,
+  CRON_MAX_CONCURRENT: 10,
+  EVALUATION_WINDOWS: [
+    { key: '30m', ms: 30*60*1000 },
+    { key: '2h', ms: 2*60*60*1000 },
+    { key: '6h', ms: 6*60*60*1000 },
+    { key: '24h', ms: 24*60*60*1000 },
+    { key: '3d', ms: 3*24*60*60*1000 },
+    { key: '7d', ms: 7*24*60*60*1000 }
+  ],
+  FEATURES: ['liq','vol','age','holder','wallet','momentum','security'],
+  PRICE_RETRY_MAX: 2,
+  PRICE_RETRY_BACKOFF: 500,
+  RPC_TIMEOUT: 10000,
+  PROXY_TIMEOUT: 5000,
+  DEX_CACHE_TTL: 60000
+};
+
+// ==================== UTILITIES ====================
+function UUID() { return crypto.randomUUID(); }
+function clamp(v,min,max) { return Math.min(max, Math.max(min, v)); }
+function safeDivide(a,b,fallback=0) { if (!b || !a) return fallback; return a/b; }
+function currentTimestamp() { return new Date().toISOString(); }
+
+// ==================== SECURITY ====================
+function corsHdr(origin) {
+  const ao = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': ao,
+    'Vary':'Origin',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+    'Access-Control-Max-Age': '86400',
+    'X-Worker-Version': VERSION,
+    'Content-Type': 'application/json',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'X-Frame-Options': 'DENY',
+    'Strict-Transport-Security': 'max-age=31536000'
+  };
+}
+function ok(d) { return { success:true, data:d, version:VERSION, timestamp:currentTimestamp() }; }
+function err(m,c='ERROR') { return { success:false, error:{code:c,message:m}, version:VERSION, timestamp:currentTimestamp() }; }
+function isAuth(req,env) {
+  const a=req.headers.get('Authorization');
+  const k=req.headers.get('X-API-Key');
+  const t=a?.startsWith('Bearer ')?a.slice(7):k;
+  return typeof env.API_KEY==='string' && env.API_KEY.length>0 && typeof t==='string' && t.length>0 && t===env.API_KEY;
+}
+function vCA(ca) { return typeof ca==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca); }
+function enforcePredictionV2(b) { if(!b||typeof b!=='object'||Array.isArray(b))return {token_ca:'',decision:'WATCH',passed_gate:0}; const o={...b}; const buy=o.decision==='BUY'||o.decision==='STRONG_BUY'; const price=typeof o.entry_price==='number'&&Number.isFinite(o.entry_price)&&o.entry_price>0; const verified=o.dex_verified===true&&o.helius_verified===true&&o.rug_verified===true&&o.rug_status==='SAFE'&&Number.isInteger(o.holder_count)&&o.holder_count>0&&typeof o.liquidity_usd==='number'&&Number.isFinite(o.liquidity_usd)&&o.liquidity_usd>=1000&&o.mint_authority_enabled===false&&o.freeze_authority_enabled===false; if(buy&&(!(o.passed_gate===1||o.passed_gate===true)||!price||!verified)){o.decision='WATCH';o.passed_gate=0;o.predicted_multiplier=0;}return o; }
+function vDec(d) { return DECISION.includes(d); }
+
+// ==================== LOGGING ====================
+async function logSystem(db, level, source, message, runId='') {
+  try {
+    const msg = runId ? `[${runId}] ${message.substring(0, 400)}` : message.substring(0, 400);
+    await db.prepare(`INSERT INTO system_log (log_level, log_source, log_message) VALUES (?,?,?)`)
+      .bind(level, source, msg).run();
+  } catch(e){}
+}
+
+// ==================== CACHE (hanya untuk /config) ====================
+async function getCached(key) { try { const r=await caches.default.match(key); return r||null; } catch(e){ return null; } }
+async function setCached(key,data) { try { const r=new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}}); await caches.default.put(key,r); } catch(e){} }
+function ck(path) { return `https://cache.local/${VERSION}${path}`; }
+
+// ==================== DEX CACHE (in-memory, TTL 60s) ====================
+const dexCache = new Map();
+
+function getCachedDex(tokenCA) {
+  const entry = dexCache.get(tokenCA);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CFG.DEX_CACHE_TTL) {
+    dexCache.delete(tokenCA);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCachedDex(tokenCA, data) {
+  dexCache.set(tokenCA, { data, timestamp: Date.now() });
+}
+
+// ==================== PRICE SERVICE ====================
+async function getTokenPrice(ca) {
+  const cached

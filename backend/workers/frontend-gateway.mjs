@@ -1,3 +1,4 @@
+import {researchData} from './research-api.mjs';
 import {authenticate,validMutationOrigin} from '../auth-v1.mjs';
 import {handleAuth} from '../auth-routes-v1.mjs';
 import {activateAdmin} from '../auth-activation-v1.mjs';
@@ -11,7 +12,7 @@ export default {async fetch(request,env){
  const u=new URL(request.url),path=u.pathname,method=request.method;
  if(method==='POST'){
   if(!validMutationOrigin(request,[u.origin]))return json({error:'FORBIDDEN_ORIGIN'},403);
-  const text=await request.text();if(new TextEncoder().encode(text).length>262144)return json({error:'PAYLOAD_TOO_LARGE'},413);
+  const reader=request.body?.getReader(),chunks=[];let size=0;if(reader)for(;;){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>262144){await reader.cancel();return json({error:'PAYLOAD_TOO_LARGE'},413)}chunks.push(value)}const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength}const text=new TextDecoder().decode(bytes);
   try{JSON.parse(text)}catch{return json({error:'INVALID_JSON'},400)}
   request=new Request(request.url,{method,headers:request.headers,body:text});
  }
@@ -19,13 +20,15 @@ export default {async fetch(request,env){
  if(path==='/api/auth/activate')return activateAdmin(request,authEnv);
  if(path.startsWith('/api/auth/'))return await handleAuth(request,authEnv,{frontendOrigin:u.origin});
  if(path==='/account'&&method==='GET')return new Response(accountHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'}});
+ if(path==='/api/research/providers'&&method==='GET')return env.API.fetch('https://api.internal/provider-health');
+ if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API});
  if(path==='/api/research/latest'&&method==='GET'){
-  const {results}=await env.RESEARCH_DB.prepare(`SELECT s.mint,s.pair_address,s.observed_at,s.liquidity_usd,s.volume_24h,s.change_24h,e.decision,e.score,e.model FROM scanner_snapshots s LEFT JOIN engine_scores e ON e.id=(SELECT MAX(x.id) FROM engine_scores x WHERE x.mint=s.mint AND x.pair_address=s.pair_address AND x.observed_at=s.observed_at) WHERE s.id=(SELECT MAX(x.id) FROM scanner_snapshots x WHERE x.mint=s.mint AND x.pair_address=s.pair_address) ORDER BY s.id DESC LIMIT 50`).all();
-  const {results:runs}=await env.RESEARCH_DB.prepare("SELECT id,started_at,completed_at,status,selected_count,snapshot_count,error FROM scanner_runs ORDER BY id DESC LIMIT 10").all();
-  return json({items:results,runs,automaticScanning:true,intervalMinutes:30,modelCalibrated:false});
+  if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
+  return json({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null});
  }
  if(path==='/api/research/scan'&&method==='POST'){
   const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN')return json({error:'ADMIN_REQUIRED'},401);
+  if(!env.SCANNER||!env.INTERNAL_TOKEN)return json({error:'SCANNER_NOT_CONFIGURED'},503);
   const b=await request.json();if(!Array.isArray(b?.mints)||b.mints.length<1||b.mints.length>5||!b.mints.every(mintOK))return json({error:'INVALID_MINTS'},400);
   const results=[];for(const mint of [...new Set(b.mints)]){const r=await env.SCANNER.fetch('https://scanner.internal/pipeline?persist=1&mint='+mint,{headers:{Authorization:'Bearer '+env.INTERNAL_TOKEN}});const d=await r.json();results.push({mint,status:r.status,data:d});if(r.status===429)return json({error:'UPSTREAM_RATE_LIMITED',results},429);}
   return json({success:results.every(r=>r.status===200),results},results.every(r=>r.status===200)?200:502);
@@ -37,7 +40,8 @@ export default {async fetch(request,env){
    const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN')return json({error:'ADMIN_REQUIRED'},401);
   }
   if(method==='GET'&&path.startsWith('/api/v1/')&&!publicReads.has(path)&&!/^\/api\/v1\/(providers|holders)\//.test(path))return json({error:'NOT_FOUND'},404);
-  const headers=new Headers(request.headers);headers.delete('Cookie');headers.delete('Authorization');headers.delete('X-API-Key');
+  const headers=new Headers(request.headers);headers.delete('Cookie');headers.delete('Authorization');headers.delete('X-API-Key');headers.delete('Origin');
+  if(method==='POST'&&path.startsWith('/api/v1/')&&!env.API_KEY)return json({error:'WRITE_SERVICE_NOT_CONFIGURED'},503);
   if(method==='POST'&&path.startsWith('/api/v1/'))headers.set('Authorization','Bearer '+env.API_KEY);
   const response=await env.API.fetch(new Request('https://nebula-api.nebula-crypto-proxy.workers.dev'+path+u.search,{method,headers,body:method==='POST'?request.body:undefined,duplex:method==='POST'?'half':undefined}));
   const out=new Response(response.body,response);out.headers.set('Cache-Control','no-store');return out;

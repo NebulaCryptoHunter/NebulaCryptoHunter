@@ -1,3 +1,4 @@
+import {providerHealth} from './provider-health.mjs';
 // =====================================================
 // NEBULA API WORKER V109.1 — "Production Polish"
 // =====================================================
@@ -550,6 +551,7 @@ export default {
       request=new Request(request.url,{method,headers:request.headers,body:bytes});
     }
     try {
+      if(path==='/provider-health'&&method==='GET')return providerHealth(request,env,'production');
       if(path==='/health') {
         const dbOk = await db.prepare(`SELECT 1`).first();
         return new Response(JSON.stringify({status:dbOk?'healthy':'degraded',version:VERSION,build:BUILD,db:dbOk?'connected':'error'}),{headers:{...h,'Cache-Control':'no-store'}});
