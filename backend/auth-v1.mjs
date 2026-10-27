@@ -6,7 +6,8 @@ const hex = a => Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
 const unhex = h => { if(!/^(?:[a-f0-9]{2})+$/i.test(h)) throw Error('Invalid hex'); return Uint8Array.from(h.match(/../g), x=>parseInt(x,16)); };
 const digest = async s => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(s))));
 const eq = (a,b) => { if(a.length!==b.length)return false; let x=0;for(let i=0;i<a.length;i++)x|=a[i]^b[i];return x===0; };
-const ITERATIONS = 310000;
+// Workers Web Crypto rejects counts above 100000 (verified in live runtime).
+const ITERATIONS = 100000;
 export async function hashPassword(password,salt=hex(bytes(16)),iterations=ITERATIONS){
   if(typeof password!=='string'||password.length<12||password.length>1024)throw Error('Invalid password length');
   const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);

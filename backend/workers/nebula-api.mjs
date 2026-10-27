@@ -6,7 +6,7 @@
 // Binding: DB (D1 Database)
 // Cron Trigger: */30 * * * *
 
-const VERSION = 'V109.2.1';
+const VERSION = 'V109.3';
 function bestSolPrice(data, ca) {
   const pairs = (data?.pairs || []).filter(p => p.chainId === 'solana' && p.baseToken?.address === ca);
   pairs.sort((a,b) => (Number(b.liquidity?.usd)||0)-(Number(a.liquidity?.usd)||0));
@@ -66,6 +66,7 @@ function corsHdr(origin) {
   const ao = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': ao,
+    'Vary':'Origin',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
     'Access-Control-Max-Age': '86400',
@@ -541,6 +542,13 @@ export default {
       if(parseInt(request.headers.get('Content-Length')||'0')>MAX_PAYLOAD) return new Response(JSON.stringify(err('Payload too large','PAYLOAD')),{status:413,headers:h});
     }
 
+    if(method==='POST') {
+      const reader=request.body?.getReader();let size=0;const chunks=[];
+      if(reader)for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_PAYLOAD){await reader.cancel();return new Response(JSON.stringify(err('Payload too large','PAYLOAD')),{status:413,headers:h});}chunks.push(value);}
+      const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+      try{const parsed=JSON.parse(new TextDecoder().decode(bytes));if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw Error();}catch{return new Response(JSON.stringify(err('Invalid JSON object','VALIDATION')),{status:400,headers:h});}
+      request=new Request(request.url,{method,headers:request.headers,body:bytes});
+    }
     try {
       if(path==='/health') {
         const dbOk = await db.prepare(`SELECT 1`).first();

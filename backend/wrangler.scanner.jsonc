@@ -1,0 +1,28 @@
+{
+  "name": "nebula-scanner",
+  "main": "workers/nebula-scanner.mjs",
+  "compatibility_date": "2026-10-19",
+  "workers_dev": false,
+  "triggers": {
+    "crons": [
+      "*/30 * * * *"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "STAGE_DB",
+      "database_name": "nebula-scanner-stage",
+      "database_id": "0d565690-e6c0-4aa8-a8d4-17b91edc81dc",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "services": [
+    {
+      "binding": "AI_ENGINE",
+      "service": "nebula-ai-engine"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

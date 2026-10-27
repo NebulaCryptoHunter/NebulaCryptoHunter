@@ -45,11 +45,11 @@ export async function handleAuth(request,env,{frontendOrigin}={}){
    let body;
    try{body=await request.json();}catch{return json({success:false,error:'INVALID_JSON'},400);}
    if(!validEmail(body?.email)||typeof body?.password!=='string'||body.password.length>1024)return json({success:false,error:'INVALID_INPUT'},400);
-   const email=emailNorm(body.email),key=await hash(getIP(request)+'|'+email);
-   if(await throttle(env.DB,key))return json({success:false,error:'TOO_MANY_ATTEMPTS'},429);
+   const email=emailNorm(body.email),key=await hash(getIP(request)+'|'+email),ipKey=await hash('ip|'+getIP(request));
+   if(await throttle(env.DB,key)||await throttle(env.DB,ipKey))return json({success:false,error:'TOO_MANY_ATTEMPTS'},429);
    const user=await env.DB.prepare('SELECT * FROM auth_users WHERE email=? AND status=?').bind(email,'active').first();
    const verified=user?await verifyPassword(body.password,user):false;
-   if(!verified){await failure(env.DB,key);return json({success:false,error:'INVALID_CREDENTIALS'},401);}
+   if(!verified){await failure(env.DB,key);await failure(env.DB,ipKey);return json({success:false,error:'INVALID_CREDENTIALS'},401);}
    await clearFailures(env.DB,key);
    const session=await createSession(env.DB,user.id);
    return json({success:true,user:publicUser(user)},200,{'Set-Cookie':sessionCookie(session.token)});

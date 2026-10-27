@@ -1,0 +1,49 @@
+import {authenticate,validMutationOrigin} from '../auth-v1.mjs';
+import {handleAuth} from '../auth-routes-v1.mjs';
+import {activateAdmin} from '../auth-activation-v1.mjs';
+import {transformFrontend} from './frontend-transform.mjs';
+import {accountHTML} from './account-page.mjs';
+const json=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+const mintOK=s=>typeof s==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+const publicReads=new Set(['/api/v1/predictions','/api/v1/evaluations','/api/v1/stats','/api/v1/heroes','/api/v1/watchlist','/api/v1/learning','/api/v1/market-regime','/api/v1/config']);
+export default {async fetch(request,env){
+ try{
+ const u=new URL(request.url),path=u.pathname,method=request.method;
+ if(method==='POST'){
+  if(!validMutationOrigin(request,[u.origin]))return json({error:'FORBIDDEN_ORIGIN'},403);
+  const text=await request.text();if(new TextEncoder().encode(text).length>262144)return json({error:'PAYLOAD_TOO_LARGE'},413);
+  try{JSON.parse(text)}catch{return json({error:'INVALID_JSON'},400)}
+  request=new Request(request.url,{method,headers:request.headers,body:text});
+ }
+ const authEnv={DB:env.AUTH_DB};
+ if(path==='/api/auth/activate')return activateAdmin(request,authEnv);
+ if(path.startsWith('/api/auth/'))return await handleAuth(request,authEnv,{frontendOrigin:u.origin});
+ if(path==='/account'&&method==='GET')return new Response(accountHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'}});
+ if(path==='/api/research/latest'&&method==='GET'){
+  const {results}=await env.RESEARCH_DB.prepare(`SELECT s.mint,s.pair_address,s.observed_at,s.liquidity_usd,s.volume_24h,s.change_24h,e.decision,e.score,e.model FROM scanner_snapshots s LEFT JOIN engine_scores e ON e.id=(SELECT MAX(x.id) FROM engine_scores x WHERE x.mint=s.mint AND x.pair_address=s.pair_address AND x.observed_at=s.observed_at) WHERE s.id=(SELECT MAX(x.id) FROM scanner_snapshots x WHERE x.mint=s.mint AND x.pair_address=s.pair_address) ORDER BY s.id DESC LIMIT 50`).all();
+  const {results:runs}=await env.RESEARCH_DB.prepare("SELECT id,started_at,completed_at,status,selected_count,snapshot_count,error FROM scanner_runs ORDER BY id DESC LIMIT 10").all();
+  return json({items:results,runs,automaticScanning:true,intervalMinutes:30,modelCalibrated:false});
+ }
+ if(path==='/api/research/scan'&&method==='POST'){
+  const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN')return json({error:'ADMIN_REQUIRED'},401);
+  const b=await request.json();if(!Array.isArray(b?.mints)||b.mints.length<1||b.mints.length>5||!b.mints.every(mintOK))return json({error:'INVALID_MINTS'},400);
+  const results=[];for(const mint of [...new Set(b.mints)]){const r=await env.SCANNER.fetch('https://scanner.internal/pipeline?persist=1&mint='+mint,{headers:{Authorization:'Bearer '+env.INTERNAL_TOKEN}});const d=await r.json();results.push({mint,status:r.status,data:d});if(r.status===429)return json({error:'UPSTREAM_RATE_LIMITED',results},429);}
+  return json({success:results.every(r=>r.status===200),results},results.every(r=>r.status===200)?200:502);
+ }
+ const isProxy=path.startsWith('/api/v1/')||/^\/(helius|dex|rugcheck|pumpfun)(\/|$)/.test(path);
+ if(isProxy){
+  if(!['GET','POST'].includes(method))return json({error:'METHOD_NOT_ALLOWED'},405);
+  if(method==='POST'&&path!=='/helius/rpc'){
+   const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN')return json({error:'ADMIN_REQUIRED'},401);
+  }
+  if(method==='GET'&&path.startsWith('/api/v1/')&&!publicReads.has(path)&&!/^\/api\/v1\/(providers|holders)\//.test(path))return json({error:'NOT_FOUND'},404);
+  const headers=new Headers(request.headers);headers.delete('Cookie');headers.delete('Authorization');headers.delete('X-API-Key');
+  if(method==='POST'&&path.startsWith('/api/v1/'))headers.set('Authorization','Bearer '+env.API_KEY);
+  const response=await env.API.fetch(new Request('https://nebula-api.nebula-crypto-proxy.workers.dev'+path+u.search,{method,headers,body:method==='POST'?request.body:undefined,duplex:method==='POST'?'half':undefined}));
+  const out=new Response(response.body,response);out.headers.set('Cache-Control','no-store');return out;
+ }
+ const response=await env.ASSETS.fetch(request);
+ if(!response.headers.get('Content-Type')?.includes('text/html'))return response;
+ const html=transformFrontend(await response.text()),headers=new Headers(response.headers);headers.delete('Content-Length');headers.delete('ETag');headers.set('Cache-Control','no-store');headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','no-referrer');return new Response(html,{status:response.status,headers});
+ }catch(e){console.error('gateway_request_failed',e?.name);return json({error:'SERVICE_UNAVAILABLE'},503);}
+}};

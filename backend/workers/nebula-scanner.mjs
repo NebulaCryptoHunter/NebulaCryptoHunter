@@ -27,21 +27,42 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
  return results.sort((a,b)=>(b.momentum.volumeLiquidityRatio??-1)-(a.momentum.volumeLiquidityRatio??-1));
 }
 async function diagnostic(env,stage,status,detail){try{await env.STAGE_DB.prepare("INSERT INTO scanner_diagnostics (observed_at,stage,status,detail) VALUES (?,?,?,?)").bind(new Date().toISOString(),stage,status,String(detail).slice(0,300)).run()}catch(e){console.error("diagnostic_write_failed",String(e))}}
-export default {async scheduled(event,env,ctx){
- ctx.waitUntil((async()=>{
-  const recent=await env.STAGE_DB.prepare("SELECT observed_at FROM scanner_diagnostics WHERE stage='pipeline' AND status='RATE_LIMITED' ORDER BY id DESC LIMIT 1").first();
-  if(recent&&Date.now()-Date.parse(recent.observed_at)<5*60*1000)return;
-  await diagnostic(env,"cron","START","LAUNCH live probe");
-  try{
-   const mint="AhBidGAgv6QbKSWfrSCegGrzFLcBx4E5FNYTKHNQQj6C";
-   const request=new Request("https://nebula-scanner.internal/pipeline?mint="+mint+"&persist=1",{headers:{"Authorization":"Bearer "+env.INTERNAL_TOKEN}});
-   const response=await this.fetch(request,env);
-   const body=await response.text();
-   await diagnostic(env,"pipeline",response.status===429?"RATE_LIMITED":response.ok?"OK":"ERROR","HTTP "+response.status+" "+body.slice(0,220));
-  }catch(e){await diagnostic(env,"exception","ERROR",String(e))}
- })());
+export async function runScheduledScan(event,env){
+ const key='cron:'+Math.floor(event.scheduledTime/1800000),now=new Date().toISOString();
+ const inserted=await env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_runs(schedule_key,started_at,status) VALUES (?,?,'RUNNING')").bind(key,now).run();
+ if(!inserted.meta.changes)return;
+ const runId=inserted.meta.last_row_id,results=[];let status='COMPLETED',error=null,selected=[];
+ try{
+  const state=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
+  if(Number(state?.value)>Date.now()){status='RATE_LIMITED';error='Provider cooldown active';}
+  else {
+   const response=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(8000)});
+   if(!response.ok){if(response.status===429){status='RATE_LIMITED';await setCooldown(env);}throw Error('Discovery HTTP '+response.status);}
+   const profiles=await response.json();if(!Array.isArray(profiles))throw Error('Invalid discovery response');
+   const discovered=[...new Set(profiles.filter(p=>p.chainId==='solana'&&mintOk(p.tokenAddress)).map(p=>p.tokenAddress))];
+   const {results:tracked}=await env.STAGE_DB.prepare("SELECT mint,MAX(observed_at) last_seen FROM scanner_snapshots GROUP BY mint ORDER BY last_seen ASC LIMIT 2").all();
+   selected=[...new Set([...discovered.slice(0,3),...tracked.map(p=>p.mint),...discovered.slice(3)])].filter(mintOk).slice(0,5);
+   for(const mint of selected){
+    const r=await worker.fetch(new Request('https://scanner.internal/pipeline?persist=1&mint='+mint,{headers:{Authorization:'Bearer '+env.INTERNAL_TOKEN}}),env);
+    const d=await r.json();results.push({mint,status:r.status,snapshots:d.persisted?d.items?.length||0:0,error:d.error||null});
+    if(r.status===429){status='RATE_LIMITED';await setCooldown(env);break;}
+    if(!r.ok)status='PARTIAL';
+   }
+   if(!selected.length)status='EMPTY';
+  }
+ }catch(e){if(status!=='RATE_LIMITED')status='FAILED';error=String(e.message).slice(0,200);}
+ await env.STAGE_DB.prepare("UPDATE scanner_runs SET completed_at=?,status=?,selected_count=?,snapshot_count=?,results_json=?,error=? WHERE id=?").bind(new Date().toISOString(),status,selected.length,results.reduce((n,x)=>n+x.snapshots,0),JSON.stringify(results),error,runId).run();
+ await diagnostic(env,'scheduled',status,'Round '+runId+'; '+results.length+' tokens processed');
+}
+async function setCooldown(env){await env.STAGE_DB.prepare("INSERT INTO scanner_state(key,value) VALUES ('cooldown_until',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(Date.now()+30*60*1000)).run();}
+const worker={async scheduled(event,env,ctx){
+ ctx.waitUntil(runScheduledScan(event,env));
 },async fetch(request,env){
  const u=new URL(request.url);
+ if(u.pathname==='/run'&&request.method==='POST'){
+  if(!env.INTERNAL_TOKEN||request.headers.get('Authorization')!=='Bearer '+env.INTERNAL_TOKEN)return reply({error:'UNAUTHORIZED'},401);
+  await runScheduledScan({scheduledTime:Date.now()},env);return reply({success:true});
+ }
  if(u.pathname==="/health")return reply({service:"nebula-scanner",status:"ok"});
  if(u.pathname==="/discover"&&request.method==="GET"){
   if(!env.INTERNAL_TOKEN||request.headers.get("Authorization")!=="Bearer "+env.INTERNAL_TOKEN)return reply({error:"UNAUTHORIZED"},401);
@@ -49,7 +70,7 @@ export default {async scheduled(event,env,ctx){
   if(!mintOk(mint))return reply({error:"INVALID_MINT"},400);
   try{
    const upstream=await fetch("https://api.dexscreener.com/token-pairs/v1/solana/"+encodeURIComponent(mint),{signal:AbortSignal.timeout(8000)});
-   if(!upstream.ok)return reply({error:"UPSTREAM_ERROR",status:upstream.status},upstream.status===429?429:502);
+   if(!upstream.ok){if(upstream.status===429&&env.STAGE_DB)await setCooldown(env);return reply({error:"UPSTREAM_ERROR",status:upstream.status},upstream.status===429?429:502);}
    const data=await upstream.json();
    const pairs=(Array.isArray(data)?data:[]).filter(p=>p.baseToken?.address===mint||p.quoteToken?.address===mint);
    return reply({mint,items:scanPairs(pairs),totalPairs:pairs.length,source:"dexscreener"});
@@ -62,7 +83,7 @@ export default {async scheduled(event,env,ctx){
   if(!mintOk(mint))return reply({error:"INVALID_MINT"},400);
   try{
    const upstream=await fetch("https://api.dexscreener.com/token-pairs/v1/solana/"+encodeURIComponent(mint),{signal:AbortSignal.timeout(8000)});
-   if(!upstream.ok)return reply({error:"UPSTREAM_ERROR",status:upstream.status},upstream.status===429?429:502);
+   if(!upstream.ok){if(upstream.status===429&&env.STAGE_DB)await setCooldown(env);return reply({error:"UPSTREAM_ERROR",status:upstream.status},upstream.status===429?429:502);}
    const pairs=await upstream.json();
    const selected=(Array.isArray(pairs)?pairs:[]).filter(p=>p.baseToken?.address===mint);
    const items=scanPairs(selected).slice(0,200);
@@ -97,3 +118,5 @@ export default {async scheduled(event,env,ctx){
  return reply({items:scanPairs(payload.pairs),count:payload.pairs.length});
 }};
 
+
+export default worker;
