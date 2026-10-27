@@ -53,3 +53,11 @@ Status: **IN PROGRESS — kontrak disusun, implementasi belum lulus pengujian**.
 - Langkah `Syntax check` dan `Regression tests` keduanya **success**.
 - Bukti: https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/40473906171
 - **Batas cakupan**: source `workers/nebula-api/worker.mjs` dihapus dari PR karena salinan terpotong. Workflow ini tidak menguji API produksi maupun integrasi session/cookie. Tahap 02 belum FINAL.
+
+## Pemeriksaan implementasi sesi (2026-10-27)
+- Source API asli dipulihkan dari Cloudflare dalam 8 bagian, lalu direkonstruksi otomatis dan lolos syntax check.
+- Commit `4ae22b0` menambahkan `isSessionAdmin`: SHA-256 token cookie `nebula_session`, query `AUTH_DB.auth_sessions` + `auth_users`, expiry, revoked, status active, role SUPER_ADMIN.
+- GitHub Actions run 40474827233: **success** (rekonstruksi, sintaks, regresi).
+- Audit Cloudflare read-only: `nebula-api` saat ini memiliki binding `DB` ke production D1 tetapi **belum memiliki `AUTH_DB`**; `nebula-auth-stage` memakai database autentikasi sebagai `DB`.
+- **Release gate**: staging Worker dengan binding `AUTH_DB` ke D1 autentikasi; cocokkan nama cookie & hashing dengan auth Worker yang sesungguhnya; uji login/GET/POST/CSRF/role; baru rencanakan deployment produksi.
+- **Security note**: binding staging auth DB langsung ke produksi dapat membuat staging session menjadi otorisasi produksi. Gunakan database auth produksi tersendiri sebelum production rollout.
