@@ -179,6 +179,17 @@ body{background:radial-gradient(ellipse at 50% -20%,#143659 0,transparent 58%),l
 @media(min-width:610px){.hud-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:380px){.sticky-nav{padding:8px 6px}.endpoint-bar{gap:3px}.ep-mini{height:25px;font-size:7px}.ep-mini .indicator-dot{height:4px;width:4px;flex-basis:4px}.action-row{gap:3px}.action-row button{font-size:.5rem}.hud-card{padding:8px}}
 
+.archive-status{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:7px;width:100%;margin:6px 0 9px;padding:9px 12px;background:linear-gradient(120deg,rgba(16,26,48,.98),rgba(14,27,43,.94));border:1px solid rgba(189,121,255,.45);border-left:3px solid #ad73ff;border-radius:9px;color:#b7e4f2;font:600 .60rem 'Share Tech Mono',monospace;text-align:left;cursor:pointer}
+.archive-status strong{font-size:.98rem;color:#d9adff;text-shadow:0 0 10px rgba(190,130,255,.30)}
+.archive-status span:last-child{color:#72f7ff}
+.scan-feedback{padding:9px 12px;margin:5px 0 8px;border:1px solid rgba(255,178,65,.37);border-radius:8px;background:rgba(38,26,13,.70);color:#ffdc9a;font-size:.64rem;line-height:1.5;overflow-wrap:anywhere}
+.archive-record{padding:10px 5px;border-bottom:1px solid rgba(100,193,241,.19)}
+.archive-record strong{color:#e0f1ff;font-size:.75rem}
+.archive-record .archive-meta{display:flex;justify-content:space-between;gap:5px;flex-wrap:wrap;color:#91bbd7;margin-top:5px;font-size:.60rem}
+.archive-record .archive-mint{overflow-wrap:anywhere;color:#748fa4;margin-top:5px;font-size:.55rem}
+.archive-pager{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 2px}
+.archive-pager button{background:#133045;border:1px solid #1b9fbe;color:#bdf9fc;padding:9px 14px;border-radius:6px;font:inherit}
+.archive-pager button:disabled{opacity:.35}
 /* v110.1: all telemetry sections remain accessible; mobile scroll belongs to the page */
 .hud-module{min-width:0}
 .hud-module > summary{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;list-style:none;outline-offset:2px}
@@ -210,8 +221,8 @@ body{background:radial-gradient(ellipse at 50% -20%,#143659 0,transparent 58%),l
       <select class="hud-select" id="modeSelect"><option value="auto" selected>AUTO</option><option value="sniper">SNIPER</option><option value="hunter">HUNTER</option></select>
       <select class="hud-select" id="riskProfile"><option value="safe">SAFE</option><option value="balanced" selected>BALANCED</option><option value="degen">DEGEN</option></select>
       <div class="action-row">
-        <button id="scanBtn" class="scan-btn">SCAN</button>
-        <button id="autoPumpToggleBtn" class="auto-pump-btn active">AUTO</button>
+        <button id="scanBtn" class="scan-btn" title="Sinkronisasi hasil scanner dari server (mode baca), bukan pemindaian manual">SCAN</button>
+        <button id="autoPumpToggleBtn" class="auto-pump-btn active" title="Aktifkan/nonaktifkan sinkronisasi otomatis antarmuka, bukan jadwal cron server">AUTO</button>
         <button id="historyBtn" style="background:rgba(255,215,0,.15);border:1.5px solid #ffd700;color:#ffd700">HIST</button>
         <button id="watchlistBtn" style="background:rgba(255,200,0,.15);border:1.5px solid #ffd700;color:#ffd700">WATCH</button>
         <button id="exportBtn" style="background:rgba(0,255,200,.15);border:1.5px solid #0ff;color:#0ff">EXP</button>
@@ -225,6 +236,10 @@ body{background:radial-gradient(ellipse at 50% -20%,#143659 0,transparent 58%),l
   <div id="aiHealthDash" class="ai-health-grid"></div>
   <div id="aiConsole" class="ai-console"></div>
   <div id="cockpitDashboard" class="cockpit-dashboard"></div>
+  <button id="archiveStatus" class="archive-status" type="button" aria-label="Lihat arsip prediksi NEBULA lama">
+    <span>◈ ARSIP LAMA</span><strong id="archiveCount">Memuat…</strong><span id="archiveEvalCount">Evaluasi: —</span><span>HIST ▸</span>
+  </button>
+  <div id="scanFeedback" class="scan-feedback" role="status" aria-live="polite" hidden></div>
   <!-- RESEARCH_PANEL -->
   <div id="radarFeed" class="radar-grid"></div>
 </div>
@@ -471,6 +486,27 @@ async function loadPredictions(){
  feedBus=[];feedMap.clear();S.predictionHistory=[];
  for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
  S.serverResearchCounts=json.counts||{};S.dash.dbTotal=json.counts?.snapshots??0;S.dash.tot=json.counts?.tokens??0;S.dash.watch=feedBus.filter(t=>t.decision===DECISION.WATCH).length;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
+ return json;
+}
+
+let legacyArchiveCount=null,legacyArchiveEvaluations=null;
+async function loadHistoricalSummary(){
+  try{
+    const r=await fetch('/api/v1/stats',{cache:'no-store',signal:AbortSignal.timeout(12000)});
+    if(!r.ok)throw Error('HTTP '+r.status);
+    const d=await r.json();
+    if(!d.success)throw Error('Historical API unavailable');
+    const n=Number(d.data?.total_predictions),e=Number(d.data?.total_evaluations);
+    if(!Number.isInteger(n)||n<0)throw Error('Missing historical count');
+    legacyArchiveCount=n;
+    legacyArchiveEvaluations=Number.isInteger(e)&&e>=0?e:null;
+    const count=$('archiveCount'),evals=$('archiveEvalCount');
+    if(count)count.textContent=n.toLocaleString('id-ID')+' prediksi';
+    if(evals)evals.textContent='Evaluasi: '+(legacyArchiveEvaluations===null?'—':legacyArchiveEvaluations.toLocaleString('id-ID'));
+  }catch(err){
+    const count=$('archiveCount');if(count)count.textContent='Arsip sementara tidak terbaca';
+    addAILog('API arsip lama: '+err.message,'warning');
+  }
 }
 
 async function loadStats(){const json=await apiGet('/stats');if(!json||!json.success)return;S.dash=json.data;S.dash.dbTotal=json.data.total_predictions||S.predictionHistory.length;RenderEngine.updateDashboard();}
@@ -582,8 +618,36 @@ const Scanner = (()=>{
   function connectWS(){try{const ws=new WebSocket('wss://pumpportal.fun/api/data');ws.onopen=()=>{ws.send(JSON.stringify({method:'subscribeNewToken'}));window.setEp('PUMP','on',Date.now());};ws.onmessage=e=>{try{const d=JSON.parse(e.data);if(d?.mint){if(S.wsBuffer.length<S.wsMaxBuffer)S.wsBuffer.push({ca:d.mint,symbol:d.symbol,name:d.name});}}catch(e){}};ws.onerror=()=>window.setEp('PUMP','off');ws.onclose=()=>{window.setEp('PUMP','off');setTimeout(connectWS,10000);};}catch(e){window.setEp('PUMP','off');}}
   function pushToFeed(token,src){if(!token?.ca)return;/* Solana Base58 mint addresses are case-sensitive; preserve the original. */if(!token._firstSeen)token._firstSeen=Date.now();if(src==='pump'&&token.name&&token.name!=='UNKNOWN'&&!token.identity){token.identity={name:token.name,symbol:token.symbol,ca:token.ca};}if(feedMap.has(token.ca)){const ex=feedMap.get(token.ca);ex.source=src;RenderEngine.markDirty(ex);if(!ex._enriched)enqueueEnrichment(ex);}else{RenderEngine.renderSkeleton(token.ca);feedMap.set(token.ca,token);feedBus.push(token);enqueueEnrichment(token);}smartMemoryCleanup();}
   function flushWsBuffer(){const now=Date.now();if(now-S.wsLastFlush<S.wsFlushInterval)return;S.wsLastFlush=now;const batch=S.wsBuffer.splice(0,30);batch.forEach(t=>pushToFeed(t,'pump-ws'));}
-  async function performScan(){await loadPredictions();RenderEngine.renderAll();RenderEngine.updateDashboard();addAILog('Data scanner server diperbarui; jadwal server 30 menit','info');}
-  function requestScan(){if(S.scanStatus==='SCANNING')return;S.scanStatus='SCANNING';const btn=$('scanBtn');if(btn){btn.disabled=true;btn.textContent='...';}performScan().then(()=>{S.scanStatus='READY';if(btn){btn.disabled=false;btn.textContent='SCAN';}S.nextScan=Date.now()+30000;});}
+  async function performScan(){
+    // No public write endpoint: read-only session only refreshes persisted server data.
+    const was=Number(S.serverResearchCounts?.snapshots||0);
+    const state=await loadPredictions();
+    RenderEngine.renderAll();RenderEngine.updateDashboard();
+    const run=state.runs?.[0],now=Number(state.counts?.snapshots||0),delta=Math.max(0,now-was);
+    const feedback=$('scanFeedback');
+    if(feedback){
+      feedback.hidden=false;
+      const summary=delta?'+ '+delta+' snapshot baru sejak pembaruan sebelumnya.':'Belum ada snapshot baru sejak pembaruan sebelumnya.';
+      const runText=run?'Putaran #'+run.id+' '+run.status+(run.error?' ('+run.error+')':''):'Belum ada putaran server.';
+      feedback.textContent=summary+' '+runText+' Tombol SCAN saat ini memperbarui data tersimpan (mode baca), tidak memulai pemindaian server. Pemindaian otomatis dijadwalkan sekitar 30 menit; scan manual membutuhkan akun Admin dan backend scanner yang dikonfigurasi.';
+    }
+    addAILog('Sinkronisasi data: '+delta+' snapshot bertambah; '+(run?.status||'NO_RUN'),'info');
+    return state;
+  }
+  function requestScan(){
+    if(S.scanStatus==='SCANNING')return;
+    S.scanStatus='SCANNING';const btn=$('scanBtn');
+    if(btn){btn.disabled=true;btn.textContent='SYNC…';}
+    performScan().catch(e=>{
+      const feedback=$('scanFeedback');
+      if(feedback){feedback.hidden=false;feedback.textContent='Gagal menyegarkan data server: '+(e?.message||'Unknown error')+'. Tidak ada pemindaian manual dijalankan.';}
+      addAILog('Server scan refresh failed: '+e.message,'warning');
+    }).finally(()=>{
+      S.scanStatus='READY';
+      if(btn){btn.disabled=false;btn.textContent='SCAN';}
+      S.nextScan=Date.now()+60000;
+    });
+  }
   return{pushToFeed,connectWS,performScan,requestScan,flushWsBuffer};
 })();
 
@@ -771,7 +835,44 @@ function addAILog(msg,type='info'){const el=$('aiConsole');if(!el)return;el.styl
 function copyToClipboard(text){try{navigator.clipboard?.writeText(text);}catch(e){}}
 function showUnifiedDashboard(){const mem=PerformanceManager.memoryReport();const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const dash=$('unifiedDash');dash.innerHTML='<div class="unified-item"><div class="val" style="color:#0ff">'+S.market.regime+'</div><div class="lbl">REGIME</div></div><div class="unified-item"><div class="val" style="color:#ffd700">'+(acc?Math.round(acc.precision*100)+'%':'-')+'</div><div class="lbl">PRECISION</div></div><div class="unified-item"><div class="val" style="color:#0f6">'+S.learning.shortCalibrationCount+'</div><div class="lbl">CAL CYCLES</div></div><div class="unified-item"><div class="val" style="color:#b0f">'+mem.ramMB+'MB</div><div class="lbl">RAM</div></div>';}
 function showAIHealthDashboard(){const health=AiEngine.getAIHealth();const dash=$('aiHealthDash');if(!health){dash.innerHTML='<div class="ai-health-item" style="grid-column:1/-1;color:#888">Awaiting outcomes...</div>';return;}dash.innerHTML='<div class="ai-health-item"><div class="val" style="color:#0f6">'+health.precision+'%</div><div class="lbl">PRECISION</div></div><div class="ai-health-item"><div class="val" style="color:#0ff">'+health.recall+'%</div><div class="lbl">RECALL</div></div><div class="ai-health-item"><div class="val" style="color:#ffd700">'+health.f1+'%</div><div class="lbl">F1 SCORE</div></div><div class="ai-health-item"><div class="val" style="color:#f44">'+health.fp+'</div><div class="lbl">FALSE POS</div></div><div class="ai-health-item"><div class="val" style="color:#f80">'+health.fn+'</div><div class="lbl">FALSE NEG</div></div><div class="ai-health-item"><div class="val" style="color:#ffd700">'+health.winRate+'%</div><div class="lbl">WIN RATE</div></div><div class="ai-health-item"><div class="val" style="color:#0f6">'+health.avgROI+'%</div><div class="lbl">AVG ROI</div></div><div class="ai-health-item"><div class="val" style="color:#0ff">'+(health.avgConfidence||0)+'%</div><div class="lbl">AVG CONF</div></div><div class="ai-health-item"><div class="val" style="color:#b0f">'+health.total+'</div><div class="lbl">OUTCOMES</div></div><div class="ai-health-item"><div class="val" style="color:#0f6">'+health.tp+'</div><div class="lbl">TRUE POS</div></div>';}
-function showHistoryPanel(){let html='<div class="section-title">PREDICTION HISTORY</div>';const evaluated=S.predictionHistory.filter(p=>p.evaluated);html+='<div style="font-size:0.45rem;color:#8cf;margin-bottom:4px">Total:'+S.predictionHistory.length+' | Evaluated:'+evaluated.length+'</div>';html+='<div style="font-size:0.45rem;color:#ffd700">Outcomes:'+S.outcomes.length+' | Cal:'+S.learning.shortCalibrationCount+'</div>';S.predictionHistory.slice(-15).reverse().forEach(h=>{html+='<div style="font-size:0.45rem;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+h.ca.slice(0,8)+' | AI:'+(h.aiScore||0).toFixed(1)+' | Pred:'+(h.multiplier||0)+'X'+(h.evaluated?' | Actual:'+(h.actualMultiplier||0).toFixed(1)+'X | Error:'+(h.error||0).toFixed(1):'')+'</div>';});document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';}
+async function showHistoryPanel(offset=0){
+  const overlay=$('overlayPanel'),root=$('overlayContent');
+  if(!root||!overlay)return;
+  overlay.style.display='block';
+  const append=(parent,tag,content,className)=>{
+    const el=document.createElement(tag);el.textContent=String(content??'');if(className)el.className=className;parent.appendChild(el);return el;
+  };
+  root.replaceChildren();
+  append(root,'div','ARSIP PREDIKSI NEBULA · DATABASE LAMA','section-title');
+  append(root,'p','Arsip historis tersimpan di D1 produksi (nebula-db). Terpisah dari snapshot riset baru. Prediksi lama belum menjadi sinyal trading tervalidasi.','hud-module-subtext');
+  const info=append(root,'p','Memuat data historis…','hud-module-subtext');
+  const limit=25;
+  try{
+    const res=await fetch('/api/v1/predictions?limit='+limit+'&offset='+offset,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+    if(!res.ok)throw Error('HTTP '+res.status);
+    const out=await res.json();
+    if(!out.success||!Array.isArray(out.data?.predictions))throw Error('Respons API historis tidak sesuai');
+    if(!root.isConnected)return;
+    const items=out.data.predictions;
+    const total=legacyArchiveCount;
+    info.textContent=(total===null?'Riwayat prediksi':total.toLocaleString('id-ID')+' prediksi historis')+' · '+(items.length?'Menampilkan '+(offset+1)+'–'+(offset+items.length):'Tidak ada baris pada halaman ini');
+    for(const row of items){
+      const card=append(root,'div','', 'archive-record');card.textContent='';
+      const symbol=row.token_symbol||row.token_name||row.token_ca?.slice(0,12)||'Tanpa nama';
+      append(card,'strong',symbol+' · #'+row.id);
+      append(card,'div','', 'archive-meta').append(
+        Object.assign(document.createElement('span'),{textContent:'AI: '+(Number.isFinite(Number(row.ai_score))?Number(row.ai_score).toFixed(2):'—')}),
+        Object.assign(document.createElement('span'),{textContent:'Historis: '+(row.decision||'—')}),
+        Object.assign(document.createElement('span'),{textContent:row.created_at||'—'})
+      );
+      append(card,'div',row.token_ca||'—','archive-mint');
+    }
+    const pager=append(root,'div','','archive-pager');pager.textContent='';
+    const prev=append(pager,'button','◀ Sebelumnya');prev.type='button';prev.disabled=offset===0;prev.onclick=()=>showHistoryPanel(Math.max(0,offset-limit));
+    append(pager,'span','Halaman '+(Math.floor(offset/limit)+1));
+    const next=append(pager,'button','Berikutnya ▶');next.type='button';next.disabled=items.length<limit||(total!==null&&offset+items.length>=total);next.onclick=()=>showHistoryPanel(offset+limit);
+  }catch(e){info.textContent='Gagal membaca arsip: '+e.message+'. Data historis tetap berada di database produksi.'}
+}
 function showWatchlistPanel(){let html='<div class="section-title">WATCHLIST</div>';if(S.watchlist.length===0){html+='<div style="color:#8cf">No watched tokens.</div>';}else{S.watchlist.forEach(w=>{const t=feedMap.get(w.token_ca);const prevScore=w.lastScore||0;const currScore=t?t._finalAIScore||0:0;let change='';if(currScore>prevScore+1)change='<span class="watch-alert-up">↑</span>';else if(currScore<prevScore-1)change='<span class="watch-alert-down">↓</span>';if(t)w.lastScore=currScore;html+='<div style="font-size:0.45rem;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+escapeHTML(t?getName(t):w.token_ca?.slice(0,8)||'???')+change+' <span style="color:#8cf">Score:'+(currScore?currScore.toFixed(1):'?')+'</span></div>';});}document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';}
 function showExportPanel(){let html='<div class="section-title">EXPORT</div>';html+='<button class="export-btn" id="exportCSVBtn">Export CSV</button>';html+='<button class="export-btn" id="exportJSONBtn">Export JSON</button>';html+='<button class="export-btn" id="exportReportBtn" style="background:rgba(255,215,0,.15);border:1px solid #ffd700;color:#ffd700">Export AI Report</button>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';setTimeout(()=>{const csvBtn=document.getElementById('exportCSVBtn');if(csvBtn)csvBtn.onclick=exportCSV;const jsonBtn=document.getElementById('exportJSONBtn');if(jsonBtn)jsonBtn.onclick=exportJSON;const reportBtn=document.getElementById('exportReportBtn');if(reportBtn)reportBtn.onclick=exportAIReport;},100);}
 function exportCSV(){const rows=[['Name','CA','Price','Decision','Final AI Score','Expected Multiplier','Confidence','Expected Return','Risk','Reasons']];feedBus.forEach(t=>{const mult=t.multiplier;rows.push([getName(t),t.ca,t.price||'',t.decision||'',t._finalAIScore?.toFixed(2)||'',mult?.expected||'',mult?.confidence||'',mult?.expectedReturn||'',t._riskIndex||'',(mult?.reason||[]).join('; ')]);});const csv=rows.map(r=>r.map(c=>'"'+(c+'').replace(/"/g,'""')+'"').join(',')).join('\n');downloadFile('nebula_export.csv',csv,'text/csv');}
@@ -796,7 +897,7 @@ function startup(){
   try{
     RenderEngine.initDashboard();RenderEngine.initHeroPanel();RenderEngine.updateDashboard();updateEpBar();showUnifiedDashboard();showAIHealthDashboard();
     Scheduler.register('timer',()=>{updateEpBar();Scanner.flushWsBuffer();},1000,'background');
-    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},5000,'background');
+    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},60000,'background');
     // Server research candidates remain WATCH until risk verification.
     Scheduler.register('evalQueue',()=>AiEngine.processEvalQueue(),15000,'background');
 
@@ -810,6 +911,8 @@ function startup(){
     addAILog('['+new Date().toLocaleTimeString()+'] NEBULA CRYPTO HUNTER ONLINE','success');
     if(S.isAuto)Scanner.requestScan();
     startAutoRefresh();
+    void loadHistoricalSummary();
+    setInterval(loadHistoricalSummary,300000);
     void refreshProviderIndicators();
     setInterval(refreshProviderIndicators,600000);
   }catch(e){console.error('Startup Error:',e);document.getElementById('radarFeed').innerHTML='<div style="color:#f44;padding:20px;text-align:center">INIT ERROR: '+e.message+'</div>';}
@@ -819,7 +922,8 @@ setTimeout(()=>{
   try{
     $('scanBtn').onclick=Scanner.requestScan;
     $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;$('autoPumpToggleBtn').classList.toggle('active',S.isAuto);};
-    $('historyBtn').onclick=showHistoryPanel;$('watchlistBtn').onclick=showWatchlistPanel;$('exportBtn').onclick=showExportPanel;$('auditBtn').onclick=showAuditPanel;
+    $('historyBtn').onclick=()=>showHistoryPanel(0);
+    $('archiveStatus').onclick=()=>showHistoryPanel(0);$('watchlistBtn').onclick=showWatchlistPanel;$('exportBtn').onclick=showExportPanel;$('auditBtn').onclick=showAuditPanel;
     $('debugBtn').onclick=()=>{const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let html='<div><b>V109.2</b></div>';html+='<div>Tokens:'+feedBus.length+' | Market:'+S.market.regime+' | Season:'+S.market.season+'</div>';html+='<div>Rotating Offset:'+S.rotatingOffset+' | Smart Memory: ACTIVE</div>';html+='<div>Outcomes:'+S.outcomes.length+' | Cal:'+S.learning.shortCalibrationCount+'</div>';if(health){html+='<div>F1:'+health.f1+'% | Prec:'+health.precision+'% | Rec:'+health.recall+'%</div>';html+='<div>FP:'+health.fp+' | FN:'+health.fn+' | Win:'+health.winRate+'% | ROI:'+health.avgROI+'%</div>';}html+='<div>RAM:'+mem.ramMB+'MB | Dev DB:'+S.learning.developerDB.size+'</div>';html+='<div>API: '+CONFIG.API.baseURL+'</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';};
     $('overlayClose').onclick=()=>{$('overlayPanel').style.display='none';};
     document.addEventListener('click',function(e){
