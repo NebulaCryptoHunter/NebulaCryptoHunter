@@ -15,3 +15,9 @@ test('401 and 403 are terminal responses, not retryable errors',()=>{
  assert.match(html,/\[401,403,404\]\.includes\(r\.status\)/);
  assert.match(html,/NEBULA API access denied/);
 });
+
+test('protected API routes require authorization on GET and POST',()=>{
+ const api=readFileSync(new URL('../workers/nebula-api/worker.mjs',import.meta.url),'utf8');
+ assert.match(api,/AUTH_REQUIRED\.some\(p=>path===p\|\|path\.startsWith\(p\+'\/'\)\)\&\&!isAuth\(request,env\)/);
+ assert.doesNotMatch(api,/AUTH_REQUIRED\.some\([^\n]*method==='POST'/);
+});
