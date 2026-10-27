@@ -21,4 +21,4 @@ jobs:
           node --check workers/nebula-api/worker.mjs
           node --check workers/nebula-scanner/worker.mjs
       - name: Regression tests
-        run: node --test tests/scanner.test.mjs tests/api-auth-contract.test.mjs
+        run: node --test tests/scanner.test.mjs tests/scanner-integration.test.mjs tests/api-auth-contract.test.mjs
