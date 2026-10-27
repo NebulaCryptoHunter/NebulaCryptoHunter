@@ -1,0 +1,38 @@
+{
+  "name": "nebulacryptohunter",
+  "main": "backend/workers/frontend-entry.mjs",
+  "compatibility_date": "2026-10-26",
+  "rules": [
+    {
+      "type": "Text",
+      "globs": [
+        "**/*.html"
+      ],
+      "fallthrough": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "RESEARCH_DB",
+      "database_name": "nebula-scanner-stage",
+      "database_id": "0d565690-e6c0-4aa8-a8d4-17b91edc81dc"
+    },
+    {
+      "binding": "AUTH_DB",
+      "database_name": "nebula-auth-stage",
+      "database_id": "9b09e549-5532-4019-ac72-a0a0f6c755be"
+    }
+  ],
+  "services": [
+    {
+      "binding": "API",
+      "service": "nebula-api"
+    }
+  ],
+  "vars": {
+    "SCANNER_CRON": "enabled"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

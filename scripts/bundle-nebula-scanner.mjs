@@ -1,12 +1,6 @@
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-const root=new URL('../',import.meta.url);
-const adapter=readFileSync(new URL('workers/nebula-scanner/prediction-adapter.mjs',root),'utf8');
-const scanner=readFileSync(new URL('workers/nebula-scanner/worker.mjs',root),'utf8');
-const importLine="import {toPredictionCandidates} from './prediction-adapter.mjs';";
-if(scanner.split(importLine).length!==2)throw Error('Scanner import anchor missing or repeated');
-if(!adapter.includes('export function toPredictionCandidates('))throw Error('Prediction adapter export missing');
-const bundled=adapter.replace('export function toPredictionCandidates(','function toPredictionCandidates(')+'\n'+scanner.replace(importLine,'');
-if(bundled.includes('--- TRUNCATED ---')||bundled.includes("from './prediction-adapter.mjs'"))throw Error('Invalid scanner bundle');
-mkdirSync(new URL('dist/',root),{recursive:true});
-writeFileSync(new URL('dist/nebula-scanner.mjs',root),bundled);
-console.log('Scanner staging bundle ready:',bundled.length,'characters');
+const base=new URL('../backend/workers/',import.meta.url);
+const scanner=readFileSync(new URL('nebula-scanner.mjs',base),'utf8').replace("import {evaluateResearch} from './research-evaluation.mjs';",'');
+const evaluation=readFileSync(new URL('research-evaluation.mjs',base),'utf8').replace('export async function','async function');
+mkdirSync(new URL('../dist/',import.meta.url),{recursive:true});
+writeFileSync(new URL('../dist/nebula-scanner.mjs',import.meta.url),evaluation+'\n'+scanner);

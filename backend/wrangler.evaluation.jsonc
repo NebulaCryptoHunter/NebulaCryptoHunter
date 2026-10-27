@@ -1,0 +1,25 @@
+{
+  "name": "nebula-evaluation",
+  "main": "workers/nebula-evaluation.mjs",
+  "compatibility_date": "2026-10-26",
+  "triggers": {
+    "crons": [
+      "*/30 * * * *"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nebula-db",
+      "database_id": "6eeadd5e-5e58-4a8c-90d9-92d039438a8f"
+    },
+    {
+      "binding": "RESEARCH_DB",
+      "database_name": "nebula-scanner-stage",
+      "database_id": "0d565690-e6c0-4aa8-a8d4-17b91edc81dc"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

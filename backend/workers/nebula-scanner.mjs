@@ -1,3 +1,4 @@
+import {evaluateResearch} from './research-evaluation.mjs';
 // NEBULA scanner: deterministic token identity and pool-specific discovery.
 // Research-only: staging D1 snapshots and scores; no trading.
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
@@ -28,17 +29,21 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
 }
 async function diagnostic(env,stage,status,detail){try{await env.STAGE_DB.prepare("INSERT INTO scanner_diagnostics (observed_at,stage,status,detail) VALUES (?,?,?,?)").bind(new Date().toISOString(),stage,status,String(detail).slice(0,300)).run()}catch(e){console.error("diagnostic_write_failed",String(e))}}
 export async function runScheduledScan(event,env){
+ await env.STAGE_DB.prepare("UPDATE scanner_runs SET status='FAILED',completed_at=?,error='RUN_TIMEOUT_RECOVERED' WHERE status='RUNNING' AND started_at<?").bind(new Date().toISOString(),new Date(Date.now()-15*60*1000).toISOString()).run();
  const key='cron:'+Math.floor(event.scheduledTime/1800000),now=new Date().toISOString();
  const inserted=await env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_runs(schedule_key,started_at,status) VALUES (?,?,'RUNNING')").bind(key,now).run();
  if(!inserted.meta.changes)return;
  const runId=inserted.meta.last_row_id,results=[];let status='COMPLETED',error=null,selected=[];
  try{
-  const state=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
+  const state=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key='discovery_cooldown_until'").first();
+  let profiles=[];
   if(Number(state?.value)>Date.now()){status='RATE_LIMITED';error='Provider cooldown active';}
   else {
    const response=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(8000)});
-   if(!response.ok){if(response.status===429){status='RATE_LIMITED';await setCooldown(env);}throw Error('Discovery HTTP '+response.status);}
-   const profiles=await response.json();if(!Array.isArray(profiles))throw Error('Invalid discovery response');
+   if(!response.ok){if(response.status===429){status='RATE_LIMITED';await env.STAGE_DB.prepare("INSERT INTO scanner_state(key,value) VALUES ('discovery_cooldown_until',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(Date.now()+1800000)).run();error='Discovery HTTP 429';}else throw Error('Discovery HTTP '+response.status);}
+   else profiles=await response.json();if(!Array.isArray(profiles))throw Error('Invalid discovery response');
+  }
+  {
    const discovered=[...new Set(profiles.filter(p=>p.chainId==='solana'&&mintOk(p.tokenAddress)).map(p=>p.tokenAddress))];
    const {results:tracked}=await env.STAGE_DB.prepare("SELECT mint,MAX(observed_at) last_seen FROM scanner_snapshots GROUP BY mint ORDER BY last_seen ASC LIMIT 2").all();
    selected=[...new Set([...discovered.slice(0,3),...tracked.map(p=>p.mint),...discovered.slice(3)])].filter(mintOk).slice(0,5);
@@ -48,7 +53,7 @@ export async function runScheduledScan(event,env){
     if(r.status===429){status='RATE_LIMITED';await setCooldown(env);break;}
     if(!r.ok)status='PARTIAL';
    }
-   if(!selected.length)status='EMPTY';
+   if(status==='COMPLETED'&&(!selected.length||results.every(x=>x.status===200&&x.snapshots===0)))status='EMPTY';
   }
  }catch(e){if(status!=='RATE_LIMITED')status='FAILED';error=String(e.message).slice(0,200);}
  await env.STAGE_DB.prepare("UPDATE scanner_runs SET completed_at=?,status=?,selected_count=?,snapshot_count=?,results_json=?,error=? WHERE id=?").bind(new Date().toISOString(),status,selected.length,results.reduce((n,x)=>n+x.snapshots,0),JSON.stringify(results),error,runId).run();
@@ -56,7 +61,7 @@ export async function runScheduledScan(event,env){
 }
 async function setCooldown(env){await env.STAGE_DB.prepare("INSERT INTO scanner_state(key,value) VALUES ('cooldown_until',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(Date.now()+30*60*1000)).run();}
 const worker={async scheduled(event,env,ctx){
- ctx.waitUntil(runScheduledScan(event,env));
+ ctx.waitUntil((async()=>{await runScheduledScan(event,env);await evaluateResearch(env.STAGE_DB)})());
 },async fetch(request,env){
  const u=new URL(request.url);
  if(u.pathname==='/run'&&request.method==='POST'){
@@ -78,6 +83,8 @@ const worker={async scheduled(event,env,ctx){
  }
  if(u.pathname==="/pipeline"&&request.method==="GET"){
   if(!env.INTERNAL_TOKEN||request.headers.get("Authorization")!=="Bearer "+env.INTERNAL_TOKEN)return reply({error:"UNAUTHORIZED"},401);
+  const cooldown=await env.STAGE_DB?.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
+  if(Number(cooldown?.value)>Date.now())return reply({error:'PROVIDER_COOLDOWN'},429);
   if(!env.AI_ENGINE)return reply({error:"ENGINE_BINDING_MISSING"},503);
   const mint=u.searchParams.get("mint");
   if(!mintOk(mint))return reply({error:"INVALID_MINT"},400);
@@ -98,7 +105,7 @@ const worker={async scheduled(event,env,ctx){
     if(!env.STAGE_DB)return reply({error:"STAGING_DB_MISSING"},503);
     try{
      for(let i=0;i<items.length;i++){
-      const c=items[i],v=data.results[i];
+      const c=items[i],v={...data.results[i],observedAt:items[i].observedAt,source:items[i].source};
       if(v.mint!==c.base.mint||v.pairAddress!==c.pairAddress)return reply({error:"IDENTITY_MISMATCH"},502);
       await env.STAGE_DB.batch([
        env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_snapshots (mint,pair_address,observed_at,liquidity_usd,volume_24h,change_24h,payload_json) VALUES (?,?,?,?,?,?,?)").bind(c.base.mint,c.pairAddress,c.observedAt,c.liquidityUsd,c.volume24h,c.change24h,JSON.stringify(c)),

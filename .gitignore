@@ -1,0 +1,3 @@
+dist/
+workers/nebula-api/worker.mjs
+node_modules/

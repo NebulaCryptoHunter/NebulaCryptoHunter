@@ -11,7 +11,7 @@ test('gateway authenticated administrator forwards only server key',async()=>{
 });
 test('gateway rejects normal user writes to shared dataset',async()=>{const AUTH_DB={prepare(){return {bind(){return this},async first(){return {role:'USER'}}}}};assert.equal((await gateway.fetch(post('/api/v1/predictions',{}, {Cookie:'__Host-nebula_session='+'a'.repeat(64)}),{AUTH_DB})).status,401)});
 test('frontend removes credential and passes JavaScript parser',()=>{
- const html=transformFrontend(fs.readFileSync('index.html','utf8'));assert.match(html,/apiKey:''/);assert.ok(!html.includes('https://nebula-api.nebula-crypto-proxy.workers.dev'));assert.ok(html.includes('NEBULA_SECURE_FRONTEND_V1'));assert.equal(transformFrontend(html),html);
+ const html=transformFrontend(fs.readFileSync('index.html','utf8'));assert.doesNotMatch(html,/apiKey\s*:/);assert.ok(!html.includes('https://nebula-api.nebula-crypto-proxy.workers.dev'));assert.ok(html.includes('NEBULA_SECURE_FRONTEND_V1'));assert.equal(transformFrontend(html),html);
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
 });
 test('API returns 400 for malformed JSON instead of 500',async()=>{assert.equal((await api.fetch(new Request(origin+'/api/v1/predictions',{method:'POST',headers:{'Content-Type':'application/json'},body:'{'}),{},{})).status,400)});
