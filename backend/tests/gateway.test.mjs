@@ -33,3 +33,23 @@ test('spaceship HUD restores 12 indicators and hides unverified multiplier claim
  assert.ok(transformFrontend(html).includes('id="nebulaProviderDetails"'));
 });
 
+
+test('HUD details render every section without raw source leaks or trapped scroll',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ assert.equal((html.match(/<\/html>/g)||[]).length,1);
+ assert.ok(html.trimEnd().endsWith('</html>'),'nothing should appear after closing html tag');
+ assert.equal((html.match(/<script\b/g)||[]).length,1);
+ assert.match(html,/\.card-detail-section\{margin-top:8px;display:none;max-height:none;overflow:visible/);
+ assert.match(html,/@media\(max-width:767px\)\{\.sticky-nav\{position:relative/);
+ assert.match(html,/if\(e\.target\.closest\('button, a, \.card-detail-section'\)\)return/);
+ for(const section of [
+  'DATA · MARKET TELEMETRY','XAI · EXPLAINABLE SCORING',
+  'STRUCTURE · MARKET','EXIT · RISK PLAN','MONTE CARLO · SIMULATION',
+  'CONVICTION FACTORS','AI PREDICTION','GROWTH CATALYSTS',
+  'EVALUATION · FOLLOW-UP'
+ ])assert.ok(html.includes(section),'missing detail section: '+section);
+ assert.match(html,/const expanded=new Map\(\)/,'refresh preserves opened token cards');
+ assert.match(html,/const isHistorical=!!\(t\._serverObservation\|\|t\.restored\)/);
+ assert.match(html,/XAI, target harga|Tidak ada katalis terverifikasi|Model belum dikalibrasi/);
+ for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+});
