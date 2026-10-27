@@ -34,11 +34,15 @@ export async function runScheduledScan(event,env){
  const runId=inserted.meta.last_row_id,results=[];let status='COMPLETED',error=null,selected=[];
  try{
   const state=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
+  let profiles=[];
   if(Number(state?.value)>Date.now()){status='RATE_LIMITED';error='Provider cooldown active';}
   else {
    const response=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(8000)});
    if(!response.ok){if(response.status===429){status='RATE_LIMITED';await setCooldown(env);error='Discovery HTTP 429; provider cooldown set';}else{throw Error('Discovery HTTP '+response.status);}}
-   const profiles=response.ok?await response.json():[];if(!Array.isArray(profiles))throw Error('Invalid discovery response');
+   else profiles=await response.json();
+   if(!Array.isArray(profiles))throw Error('Invalid discovery response');
+  }
+  {
    const discovered=[...new Set(profiles.filter(p=>p.chainId==='solana'&&mintOk(p.tokenAddress)).map(p=>p.tokenAddress))];
    const {results:tracked}=await env.STAGE_DB.prepare("SELECT mint,MAX(observed_at) last_seen FROM scanner_snapshots GROUP BY mint ORDER BY last_seen ASC LIMIT 2").all();
    selected=[...new Set([...discovered.slice(0,3),...tracked.map(p=>p.mint),...discovered.slice(3)])].filter(mintOk).slice(0,5);
