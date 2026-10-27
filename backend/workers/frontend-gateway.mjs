@@ -20,7 +20,7 @@ export default {async fetch(request,env){
  if(path==='/api/auth/activate')return activateAdmin(request,authEnv);
  if(path.startsWith('/api/auth/'))return await handleAuth(request,authEnv,{frontendOrigin:u.origin});
  if(path==='/account'&&method==='GET')return new Response(accountHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'}});
- if(path==='/api/research/providers'&&method==='GET')return env.API.fetch('https://api.internal/provider-health');
+ if(path==='/api/research/providers'&&method==='GET'){const r=await env.API.fetch('https://api.internal/provider-health');const out=new Response(r.body,r);out.headers.set('Cache-Control','no-store');return out;}
  if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API});
  if(path==='/api/research/latest'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
