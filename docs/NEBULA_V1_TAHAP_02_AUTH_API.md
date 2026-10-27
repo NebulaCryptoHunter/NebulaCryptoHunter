@@ -47,3 +47,9 @@ Status: **IN PROGRESS — kontrak disusun, implementasi belum lulus pengujian**.
 - Jalur routing frontend produksi dan koneksi sesi auth-stage belum tervalidasi.
 
 **Tidak ada klaim implementasi atau deployment selesai dari dokumen ini.**
+
+## Verifikasi CI (2026-10-27)
+- GitHub Actions workflow `NEBULA V1 regression`, run #8, run ID 40473906171: **success**.
+- Langkah `Syntax check` dan `Regression tests` keduanya **success**.
+- Bukti: https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/40473906171
+- **Batas cakupan**: source `workers/nebula-api/worker.mjs` dihapus dari PR karena salinan terpotong. Workflow ini tidak menguji API produksi maupun integrasi session/cookie. Tahap 02 belum FINAL.
