@@ -17,3 +17,12 @@ test('frontend removes credential and passes JavaScript parser',()=>{
 test('API returns 400 for malformed JSON instead of 500',async()=>{assert.equal((await api.fetch(new Request(origin+'/api/v1/predictions',{method:'POST',headers:{'Content-Type':'application/json'},body:'{'}),{},{})).status,400)});
 test('API bounds streamed payload without content length',async()=>{assert.equal((await api.fetch(new Request(origin+'/api/v1/predictions',{method:'POST',headers:{'Content-Type':'application/json'},body:'x'.repeat(262145)}),{},{})).status,413)});
 test('manual scan requires login and cannot write anonymously',async()=>{assert.equal((await gateway.fetch(post('/api/research/scan',{mints:[]}),{})).status,401)});
+
+test('mobile status button is full width and WATCH counts current observed tokens',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ assert.match(html,/\.ep-status-btn\s*\{\s*grid-column:1\/-1/);
+ assert.match(html,/btn\.textContent='API · LIHAT STATUS PROVIDER ▾'/);
+ assert.doesNotMatch(html,/el\.textContent='Status API terverifikasi tersedia pada panel Provider API di atas'/);
+ assert.match(html,/S\.dash\.watch=feedBus\.filter\(t=>t\.decision===DECISION\.WATCH\)\.length/);
+ assert.ok(transformFrontend(html).includes('id="nebulaProviderDetails"'));
+});
