@@ -5,7 +5,7 @@ let source=parts.join('');
 const authGate="AUTH_REQUIRED.some(p=>path===p||path.startsWith(p+'/'))&&method==='POST'&&!isAuth(request,env)";
 if(source.split(authGate).length!==2)throw Error('API auth patch anchor changed; fail closed');
 source=source.replace(authGate,"AUTH_REQUIRED.some(p=>path===p||path.startsWith(p+'/'))&&!isAuth(request,env)");
-if(source.length!==46578||source.includes('--- TRUNCATED ---')||!source.includes('export default'))throw Error('Incomplete production API source');
+if(source.length!==46580||source.includes('--- TRUNCATED ---')||!source.includes('export default'))throw Error('Incomplete production API source');
 mkdirSync(new URL('../workers/nebula-api/',import.meta.url),{recursive:true});
 writeFileSync(new URL('../workers/nebula-api/worker.mjs',import.meta.url),source);
 console.log('Restored complete API source:',source.length,'characters');
