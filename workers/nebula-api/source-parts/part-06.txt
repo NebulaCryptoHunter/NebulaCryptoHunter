@@ -1,0 +1,70 @@
+us:'evaluated'})),{headers:h});
+      }
+
+      if(path===`${API}/evaluations/bulk`&&method==='POST') {
+        const { evaluations } = await request.json();
+        if(!Array.isArray(evaluations)||evaluations.length===0||evaluations.length>100) return new Response(JSON.stringify(err('Array of 1 to 100 evaluations required','VALIDATION')),{status:400,headers:h});
+        const batch = []; const updateBatch = [];
+        for(const e of evaluations) {
+          if(!e.prediction_id||!e.token_ca) return new Response(JSON.stringify(err('prediction_id and token_ca required','VALIDATION')),{status:400,headers:h});
+          batch.push(db.prepare(`INSERT INTO evaluations (prediction_id,token_ca,directional_score,multiplier_score,timing_score,risk_score,opportunity_cost_score,sustainability_score,confidence_calibration_score,success_score,actual_roi,actual_multiplier,max_drawdown,time_to_ath,sustained_hours,evaluation_confidence,market_regime,evaluation_window,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+            .bind(e.prediction_id,e.token_ca,e.directional_score||0,e.multiplier_score||0,e.timing_score||0,e.risk_score||0,e.opportunity_cost_score||0,e.sustainability_score||0,e.confidence_calibration_score||0,e.success_score||0,e.actual_roi||0,e.actual_multiplier||0,e.max_drawdown||0,e.time_to_ath||0,e.sustained_hours||0,e.evaluation_confidence||100,e.market_regime||'SIDEWAY',e.evaluation_window||'7d',e.notes||''));
+          updateBatch.push(db.prepare(`UPDATE predictions SET learning_status='EVALUATED',success_score=?,evaluated_at=datetime('now') WHERE id=?`).bind(e.success_score||0,e.prediction_id));
+        }
+        await db.batch([...batch, ...updateBatch]);
+        await updateAnalyticsStats(db, rid);
+        return new Response(JSON.stringify(ok({inserted:evaluations.length})),{headers:h});
+      }
+
+      if(path===`${API}/evaluations`&&method==='GET') {
+        const lm = Math.max(1,Math.min(parseInt(url.searchParams.get('limit'))||100,500));
+        const {results} = await db.prepare(`SELECT * FROM evaluations ORDER BY evaluated_at DESC LIMIT ?`).bind(lm).all();
+        return new Response(JSON.stringify(ok({evaluations:results})),{headers:h});
+      }
+
+      // ==================== STATS (REAL-TIME, NO CACHE) ====================
+      if(path===`${API}/stats`) {
+        const {results} = await db.prepare(`SELECT * FROM ai_stats WHERE id=1`).all();
+        return new Response(JSON.stringify(ok(results[0]||{})),{headers:{...h,'Cache-Control':'no-store'}});
+      }
+
+      // ==================== HEROES (REAL-TIME, NO CACHE) ====================
+      if(path===`${API}/heroes`) {
+        if(method==='GET') {
+          const {results} = await db.prepare(`SELECT * FROM heroes WHERE active=1 ORDER BY promoted_at DESC LIMIT 1`).all();
+          return new Response(JSON.stringify(ok(results[0]||null)),{headers:{...h,'Cache-Control':'no-store'}});
+        }
+        if(method==='POST') {
+          const b = await request.json();
+          const rs = await db.batch([
+            db.prepare(`UPDATE heroes SET active=0 WHERE active=1`),
+            db.prepare(`INSERT INTO heroes (token_ca,token_name,ai_score,multiplier,confidence,risk_index) VALUES (?,?,?,?,?,?)`).bind(b.token_ca,b.token_name||'',b.ai_score||0,b.multiplier||0,b.confidence||0,b.risk_index||0)
+          ]);
+          await db.prepare(`INSERT INTO hero_history (hero_id,token_ca,ai_score) VALUES (?,?,?)`).bind(rs[1].meta.last_row_id,b.token_ca,b.ai_score||0).run();
+          return new Response(JSON.stringify(ok({id:rs[1].meta.last_row_id})),{headers:{...h,'Cache-Control':'no-store'}});
+        }
+      }
+
+      // ==================== WATCHLIST ====================
+      if(path===`${API}/watchlist`) {
+        if(method==='GET') { const {results}=await db.prepare(`SELECT * FROM watchlist ORDER BY updated_at DESC`).all(); return new Response(JSON.stringify(ok({watchlist:results})),{headers:h}); }
+        if(method==='POST') { const b=await request.json(); await db.prepare(`INSERT OR REPLACE INTO watchlist (token_ca,token_name,token_symbol,last_ai_score,last_decision,updated_at) VALUES (?,?,?,?,?,datetime('now'))`).bind(b.token_ca,b.token_name||'',b.token_symbol||'',b.last_ai_score||0,b.last_decision||'WATCH').run(); return new Response(JSON.stringify(ok({status:'added'})),{headers:h}); }
+      }
+
+      // ==================== LEARNING ====================
+      if(path===`${API}/learning`) {
+        if(method==='GET') { const {results}=await db.prepare(`SELECT * FROM learning_weights ORDER BY feature_name`).all(); return new Response(JSON.stringify(ok({weights:results})),{headers:h}); }
+        if(method==='POST') { const b=await request.json(); if(!b.feature_name) return new Response(JSON.stringify(err('feature_name required','VALIDATION')),{status:400,headers:h}); await db.batch([db.prepare(`UPDATE learning_weights SET weight_value=?,sample_count=?,success_count=?,success_rate=?,last_updated_at=datetime('now') WHERE feature_name=?`).bind(b.weight_value||0,b.sample_count||0,b.success_count||0,b.success_rate||0,b.feature_name),db.prepare(`INSERT INTO learning_history (feature_name,old_weight,new_weight,change_reason,sample_size,success_rate) VALUES (?,?,?,?,?,?)`).bind(b.feature_name,b.old_weight||0,b.weight_value||0,b.change_reason||'',b.sample_count||0,b.success_rate||0)]); return new Response(JSON.stringify(ok({status:'updated'})),{headers:h}); }
+      }
+
+      // ==================== CONFIG (CACHE OK) ====================
+      if(path===`${API}/config`) {
+        const c = ck('/config'); const cached = await getCached(c);
+        if(cached) return new Response(await cached.text(),{headers:{...h,'X-Cache':'HIT'}});
+        const {results} = await db.prepare(`SELECT * FROM config ORDER BY config_key`).all();
+        const d = ok({config:results});
+        ctx.waitUntil(setCached(c,d));
+        return new Response(JSON.stringify(d),{headers:{...h,'X-Cache':'MISS'}});
+      }
+
+      // ==================== MARKET REGIME ==
