@@ -1,0 +1,150 @@
+ntType.includes('application/json')) {
+        await logSystem(db, 'ERROR', 'proxy',
+          `${serviceName} NON JSON | URL=${url} | HTTP=${status} | TIME=${duration}ms | BODY=${text.substring(0, 500)}`, rid);
+        return { ok: false, status: 502, upstreamStatus: status, data: null, error: `${serviceName} returned non-JSON (HTTP ${status})` };
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch(e) {
+        await logSystem(db, 'ERROR', 'proxy',
+          `${serviceName} JSON PARSE ERROR | URL=${url} | HTTP=${status} | TIME=${duration}ms | BODY=${text.substring(0, 500)}`, rid);
+        return { ok: false, status: 502, upstreamStatus: status, data: null, error: `${serviceName} returned invalid JSON` };
+      }
+
+      // Logging yang diperbaiki: 4xx/5xx bukan "OK"
+      if (status >= 400) {
+        await logSystem(db, 'ERROR', 'proxy',
+          `${serviceName} HTTP ${status} | URL=${url} | TIME=${duration}ms | BODY=${text.substring(0, 300)}`, rid);
+        if (status === 404) {
+          return { ok: false, status: 404, upstreamStatus: status, data: null, error: `${serviceName} returned 404` };
+        }
+        if (status >= 500) {
+          // Retry untuk 5xx
+          if (retries < maxRetries) {
+            retries++;
+            await new Promise(r => setTimeout(r, 1500 * retries));
+            continue;
+          }
+        }
+        return { ok: false, status: 502, upstreamStatus: status, data: null, error: `${serviceName} returned HTTP ${status}` };
+      }
+
+      if (data === null || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0)) {
+        await logSystem(db, 'WARNING', 'proxy',
+          `${serviceName} EMPTY RESPONSE | URL=${url} | HTTP=${status} | TIME=${duration}ms`, rid);
+      }
+
+      if (useCache && serviceName === 'DEX' && res.ok) {
+        const tokenCA = url.split('/tokens/')[1]?.split('?')[0];
+        if (tokenCA) setCachedDex(tokenCA, data);
+      }
+
+      await logSystem(db, 'INFO', 'proxy',
+        `${serviceName} OK | URL=${url} | HTTP=${status} | TIME=${duration}ms`, rid);
+
+      return { ok: res.ok, status, data };
+
+    } catch(e) {
+      const duration = Date.now() - startTime;
+      await logSystem(db, 'ERROR', 'proxy',
+        `${serviceName} FETCH ERROR | URL=${url} | ERROR=${e.message} | TIME=${duration}ms`, rid);
+      lastError = e;
+      if (retries < maxRetries) {
+        retries++;
+        await new Promise(r => setTimeout(r, 1000 * retries));
+      } else {
+        break;
+      }
+    }
+  }
+
+  return { ok: false, status: 502, upstreamStatus: 0, data: null, error: lastError?.message || `${serviceName} failed after retries` };
+}
+
+// ==================== RPC HELPERS ====================
+function classifyRpcError(status, isTimeout, isNetworkError) {
+  if (isTimeout) return 'HELIUS_TIMEOUT';
+  if (isNetworkError) return 'HELIUS_NETWORK';
+  if (status === 0) return 'HELIUS_NETWORK';
+  if (status === 400) return 'HELIUS_400';
+  if (status === 401) return 'HELIUS_401';
+  if (status === 403) return 'HELIUS_403';
+  if (status === 404) return 'HELIUS_404';
+  if (status === 429) return 'HELIUS_429';
+  if (status === 500) return 'HELIUS_500';
+  if (status === 503) return 'HELIUS_503';
+  return 'HELIUS_NETWORK';
+}
+
+async function rpcFetch(url, body, env, db, rid) {
+  if (!env.HELIUS_API_KEY) {
+    return { ok: false, status: 0, data: null, errorCode: 'CONFIG_ERROR', errorMsg: 'HELIUS_API_KEY missing' };
+  }
+
+  let isTimeout = false;
+  let status = 0;
+  let rawBody = '';
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => { isTimeout = true; controller.abort(); }, CFG.RPC_TIMEOUT);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    status = res.status;
+    rawBody = await res.text();
+
+    if (status !== 200) {
+      await logSystem(db, 'ERROR', 'rpc', `HELIUS ${status}: ${rawBody.substring(0, 300)}`, rid);
+    }
+
+    let data;
+    try {
+      data = JSON.parse(rawBody);
+    } catch(e) {
+      data = { raw: rawBody };
+      await logSystem(db, 'ERROR', 'rpc', `Helius response not JSON: ${rawBody.substring(0, 200)}`, rid);
+    }
+
+    if (res.ok) {
+      return { ok: true, status, data };
+    } else {
+      return {
+        ok: false, status, data,
+        errorCode: classifyRpcError(status, false, false),
+        errorMsg: `Helius returned ${status}: ${rawBody.substring(0, 200)}`
+      };
+    }
+  } catch(e) {
+    await logSystem(db, 'ERROR', 'rpc', `Helius fetch error: ${e.message}`, rid);
+    return {
+      ok: false, status: 0, data: null,
+      errorCode: classifyRpcError(0, isTimeout, true),
+      errorMsg: e.message
+    };
+  }
+}
+
+// ==================== MAIN WORKER ====================
+export default {
+  async fetch(request, env, ctx) {
+    const rid = UUID();
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
+    const origin = request.headers.get('Origin');
+    const h = corsHdr(origin);
+    const db = env.DB;
+
+    if(!ALLOWED_METHODS.includes(method)) return new Response(JSON.stringify(err('Method not allowed','METHOD')),{status:405,headers:h});
+    if(origin&&!ALLOWED_ORIGINS.includes(origin)&&!path.startsWith('/helius')&&!path.startsWith('/dex')&&!path.startsWith('/rugcheck')&&!path.startsWith('/pumpfun')) return new Response(JSON.stringify(err('Origin not allowed','ORIGIN')),{status:403,headers:h});
+    if(method==='OPTIONS') return new Response(null,{status:204,headers:h});
+    if(method==='POST') {
+      if(!(request.headers.get('Content-Type')||'').includes('application/json')) return new Response(JSON.stringify(err('Content-Type must be application/json','CONTENT_TYPE')),{status:415,headers:h});
+      if(parseInt(request.headers.get('Content-Length')||'0')>MAX_PAYLOAD) return new Response(JSON.stringify(err('Pa
