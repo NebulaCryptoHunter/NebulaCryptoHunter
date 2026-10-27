@@ -1,0 +1,22 @@
+name: NEBULA V1 regression
+on:
+  pull_request:
+  push:
+    branches:
+      - fix/nebula-api-auth-hardening-20261027
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check workers/nebula-api/worker.mjs
+          node --check workers/nebula-scanner/worker.mjs
+      - name: Regression tests
+        run: node --test tests/scanner.test.mjs tests/api-auth-contract.test.mjs
