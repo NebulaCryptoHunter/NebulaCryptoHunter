@@ -576,7 +576,7 @@ const RenderEngine = (()=>{
   function removeCard(ca){const div=rendered.get(ca);if(div){div.remove();rendered.delete(ca);}}
   function renderSkeleton(ca){const grid=$('radarFeed');if(!grid)return;const div=document.createElement('div');div.className='hud-card skeleton-card';div.dataset.ca=ca;grid.prepend(div);rendered.set(ca,div);}
   function createRing(score){const s=Math.round(score),color=s>=80?'#0f6':s>=60?'#ffd700':s>=40?'#f80':'#f44';const r=12,c=2*Math.PI*r;return'<div class="score-ring-container" style="color:'+color+'"><svg class="score-ring-svg" viewBox="0 0 30 30"><circle cx="15" cy="15" r="'+r+'" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="2"/><circle cx="15" cy="15" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-dasharray="'+c+'" stroke-dashoffset="'+(c-(s/100*c))+'"/></svg><div class="score-ring-value" style="color:'+color+';font-size:0.55rem">'+s+'</div></div>';}
-  function getConfBadge(t){if(t._serverObservation)return '<span>Belum terkalibrasi</span>';const cf=t._aiConf||0,lb=t._aiLabel||'?';return'<span class="confidence-badge confidence-'+lb.toLowerCase()+'">'+cf+'%</span>';}
+  function getConfBadge(t){if(t._serverObservation||t.restored)return '<span class="confidence-badge" style="color:#9bb8c7;border:1px solid #32506a;background:#0a192a">UNVERIFIED</span>';const cf=t._aiConf||0,lb=t._aiLabel||'?';return'<span class="confidence-badge confidence-'+lb.toLowerCase()+'">'+cf+'%</span>';}
   function getWalletBadge(t){const dna=t._walletDNA||{};return'<span class="wallet-badge '+(dna.class||'wallet-retail')+'">'+(dna.type||'?')+'</span>';}
   function getClusterBadge(t){const cl=t._walletCluster;if(cl===1)return'<span style="background:rgba(255,0,0,.2);color:#f44;border:1px solid #f44;font-size:0.38rem;padding:0 3px;border-radius:2px;margin-left:1px">CL</span>';if(cl===2)return'<span style="background:rgba(255,215,0,.2);color:#ffd700;border:1px solid #ffd700;font-size:0.38rem;padding:0 3px;border-radius:2px;margin-left:1px">LN</span>';return'';}
   function getOBBadge(t){if(t._obSignal==='BULLISH')return'<span class="ob-badge ob-bullish">OB</span>';if(t._obSignal==='BEARISH')return'<span class="ob-badge ob-bearish">OB</span>';return'';}
@@ -602,7 +602,7 @@ const RenderEngine = (()=>{
         getConfBadge(t)+getWalletBadge(t)+getClusterBadge(t)+getOBBadge(t)+getFVGBadge(t)+getRugBadge(t)+(t._fromCache?'<span class="cache-badge">CACHE</span>':'')+
         '</div><div style="display:flex;align-items:center;gap:3px">'+
         '<span class="decision-tag decision-'+decClass+'">'+d.replace(/_/g,' ')+'</span>';
-      if(t.multiplier&&!t._serverObservation)innerHTML+='<span class="multiplier-badge-card">🚀'+t.multiplier.expected+'X</span>';
+      if(t.multiplier&&!t.restored&&t._passedGate&&!t._serverObservation)innerHTML+='<span class="multiplier-badge-card">🚀'+t.multiplier.expected+'X</span>';
       innerHTML+=createRing(q.final||0)+'</div></div>';
       innerHTML+='<div style="font-size:0.45rem;color:#8cf;margin-bottom:1px">'+fmtPrice(t.price)+(t._serverObservation?' · Risiko belum diverifikasi':getSparkline(t)+' K:'+(t._kelly||0)+'% R:'+(t._walletRep||0)+' Risk:'+(t._riskIndex||0)+' '+(t._volAccelLabel||'')+' '+(t._mktStructure||''))+'</div>';
       innerHTML+='<div style="display:flex;gap:1px;margin-top:2px;padding-top:2px;border-top:1px solid rgba(0,255,255,.1)">'+
@@ -633,7 +633,300 @@ const RenderEngine = (()=>{
   }
 
   function renderDetail(t){
-    if(!t)return'<div style="color:#f44;font-size:0.45rem">Token tidak ditemukan</div>';
+    if(!t)return'<div style="color:#f44;font-size:0.6rem">Token tidak ditemukan</div>';
+    // Cached/restored tokens and server observations are not validated trading signals.
+    // Do not render zero-filled XAI gauges, invented growth multipliers or a fake exit plan.
+    if(t._serverObservation||t.restored){
+      const score=Number.isFinite(Number(t._finalAIScore))?Number(t._finalAIScore).toFixed(2):'—';
+      const verdict=t._serverObservation?'DATA SERVER · RISIKO BELUM DIVERIFIKASI':'DATA TERSIMPAN · PERLU PEMERIKSAAN ULANG';
+      const observed=t.observedAt?escapeHTML(t.observedAt):'Belum tersedia';
+      const pool=t.pairAddress?escapeHTML(t.pairAddress):'Belum tersedia';
+      const model=t.model?escapeHTML(t.model):'Belum diketahui';
+      return '<div class="hud-detail-grid">'
+        +'<div class="detail-section"><div class="section-title">TELEMETRY · VERIFIED FIELDS</div>'
+        +'<div class="hud-gauge"><span class="gauge-label">HARGA</span><b class="gauge-value" style="width:auto">'+fmtPrice(t.price)+'</b></div>'
+        +'<div class="hud-gauge"><span class="gauge-label">LIKUIDITAS</span><b class="gauge-value" style="width:auto">'+(safeValue(t.liq)?'
+    const exp=t._explain||{liq:0,vol:0,age:0,holder:0,wallet:0,momentum:0,security:0};
+    const rs=t._reasons||{pros:[],cons:[]};
+    const exit=t._exitPlan;
+    const backtest=t._backtest;
+    const mc=t._mcResult;
+    const price=t.price||0;
+    const liq=t.liq;
+    const mktStructure=t._mktStructure||'?';
+    const obSignal=t._obSignal||'?';
+    const fvgSignal=t._fvgSignal||'?';
+    const riskIndex=t._riskIndex||0;
+    const multiplier=t.multiplier;
+    let detail='';
+    detail+='<div class="detail-section"><div class="section-title">DATA</div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">PRICE</span><span class="gauge-value" style="color:#ffd700;width:auto">'+fmtPrice(price)+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">LIQ</span><span class="gauge-value" style="color:#0f6;width:auto">'+(safeValue(liq)?'$'+fmtNum(liq):'--')+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">WALLET</span><span class="gauge-value" style="width:auto">'+(getWalletBadge(t)||'--')+(getClusterBadge(t)||'')+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">RUG</span><span class="gauge-value" style="width:auto">'+(getRugBadge(t)||'--')+'</span></div>';
+    detail+='</div>';
+    detail+='<div class="detail-section"><div class="section-title">XAI</div>';
+    if(exp&&typeof exp==='object'){for(const[k,v]of Object.entries(exp)){const val=v||0;detail+='<div class="hud-gauge"><span class="gauge-label">'+k.toUpperCase()+'</span><div class="gauge-track"><div class="gauge-fill" style="width:'+val+'%;background:#0f6"></div></div><span class="gauge-value">'+val+'%</span></div>';}}
+    else{detail+='<div style="color:#8cf;font-size:0.45rem">Belum tersedia</div>';}
+    detail+='</div>';
+    detail+='<div class="detail-section"><div class="section-title">STRUCTURE</div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">MKT</span><span class="gauge-value" style="color:#b0f;width:auto">'+mktStructure+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">OB</span><span class="gauge-value" style="width:auto">'+(getOBBadge?getOBBadge(t):'')+' '+obSignal+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">FVG</span><span class="gauge-value" style="width:auto">'+(getFVGBadge?getFVGBadge(t):'')+' '+fvgSignal+'</span></div>';
+    detail+='</div>';
+    if(exit&&exit.tp1Pct){detail+='<div class="detail-section"><div class="section-title">EXIT</div>';detail+='<div class="hud-gauge"><span class="gauge-label">TP1</span><span class="gauge-value" style="color:#0f6;width:auto">'+(exit.tp1Pct||'--')+'</span></div>';detail+='<div class="hud-gauge"><span class="gauge-label">STOP</span><span class="gauge-value" style="color:#f44;width:auto">'+(exit.stopLoss||'--')+'</span></div>';detail+='</div>';}
+    if(backtest&&backtest.pnl!==undefined){detail+='<div class="detail-section"><div class="section-title">BACKTEST</div>';detail+='<div class="hud-gauge"><span class="gauge-label">PnL</span><span class="gauge-value" style="color:'+(backtest.pnl>0?'#0f6':'#f44')+';width:auto">'+backtest.pnl+'%</span></div>';detail+='</div>';}
+    if(mc&&mc.upPct!==undefined){detail+='<div class="detail-section"><div class="section-title">MC ('+(mc.regime||'?')+')</div>';detail+='<div class="hud-gauge"><span class="gauge-label">UP</span><div class="gauge-track"><div class="gauge-fill" style="width:'+(mc.upPct||50)+'%;background:#0f6"></div></div><span class="gauge-value">'+(mc.upPct||50)+'%</span></div>';detail+='</div>';}
+    detail+='<div class="detail-section"><div class="section-title">CONVICTION FACTORS</div>';
+    if(rs.pros&&rs.pros.length>0){detail+=rs.pros.map(function(p){return'<div style="color:#0f0;font-size:0.45rem">+ '+p+'</div>';}).join('');}
+    else{detail+='<div style="color:#8cf;font-size:0.45rem">Belum tersedia</div>';}
+    if(rs.cons&&rs.cons.length>0){detail+=rs.cons.map(function(c){return'<div style="color:#f44;font-size:0.45rem">- '+c+'</div>';}).join('');}
+    detail+='</div>';
+    if(multiplier&&multiplier.expected){
+      const mult=multiplier;
+      detail+='<div class="detail-section"><div class="section-title">AI PREDICTION</div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">EXPECTED</span><span class="gauge-value" style="color:#ffd700;width:auto">'+mult.expected+'X</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">MIN</span><span class="gauge-value" style="color:#0f6;width:auto">'+(mult.minimum||'?')+'X</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">OPTIMISTIC</span><span class="gauge-value" style="color:#0ff;width:auto">'+(mult.optimistic||'?')+'X</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">CONF</span><span class="gauge-value" style="color:#0f6;width:auto">'+(mult.confidence||'?')+'%</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">SCORE</span><span class="gauge-value" style="color:#ffd700;width:auto">'+(mult.score||'?')+'</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">REGIME</span><span class="gauge-value" style="width:auto">'+(mult.regime||'?')+'</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">RISK</span><span class="gauge-value" style="color:'+(riskIndex>50?'#f44':'#0f6')+';width:auto">'+riskIndex+'</span></div>';
+      if(mult.reason&&mult.reason.length){detail+='<div class="section-title" style="margin-top:4px">GROWTH CATALYSTS</div>';detail+=mult.reason.map(function(r){return'<div style="color:#8cf;font-size:0.45rem">• '+r+'</div>';}).join('');}
+      detail+='</div>';
+    }
+    return '<div class="hud-detail-grid">'+detail+'</div>';
+  }
+
+  function patchCard(div,t){if(!t._dirty)return;t._dirty=false;if(div.classList.contains('skeleton-card')){buildCard(t);return;}const d=t.decision||DECISION.AVOID,hero=S.hero;const decClass=d.toLowerCase().replace(/\s/g,'-');div.className='hud-card card-'+decClass+(hero&&t.ca===hero.ca?' hero-card':'')+(t._enrichError?' enrich-error':'')+(t._fromCache?' cached':'');const dt=div.querySelector('.decision-tag');if(dt){dt.textContent=d.replace(/_/g,' ');dt.className='decision-tag decision-'+decClass;}const ringVal=div.querySelector('.score-ring-value');if(ringVal)ringVal.textContent=Math.round(t.quad?.final||0);if(t.multiplier){let mb=div.querySelector('.multiplier-badge-card');if(!mb){const ring=div.querySelector('.score-ring-container');if(ring){mb=document.createElement('span');mb.className='multiplier-badge-card';ring.parentNode.insertBefore(mb,ring);}}if(mb)mb.textContent='🚀'+t.multiplier.expected+'X';}}
+  function patchHeroPanel(){const panel=$('heroPanel');if(!panel)return;if(!S.hero){panel.style.display='none';return;}panel.style.display='flex';const nameEl=$('heroName');if(nameEl)nameEl.textContent=getName(S.hero);const scoreEl=$('heroScore');if(scoreEl)scoreEl.textContent='AI:'+(S.hero._finalAIScore||0).toFixed(1)+' M:'+(S.hero.multiplier?S.hero.multiplier.expected+'X':'?');const confEl=$('heroConfidence');if(confEl)confEl.textContent='Conf:'+(S.hero._conf||0)+'% Risk:'+(S.hero._riskIndex||0);}
+  function initHeroPanel(){const panel=$('heroPanel');panel.innerHTML='<div class="hero-info"><div class="hero-name" id="heroName"></div><div style="display:flex;gap:8px;font-size:0.55rem;margin-top:2px"><span style="color:#ffd700" id="heroScore"></span><span style="color:#0ff" id="heroConfidence"></span></div></div>';}
+  function initDashboard(){const dash=$('cockpitDashboard');dash.innerHTML='';const groups=[{label:'TRADING',panels:[{id:'dash-sb',lbl:'ST.BUY',color:'#ffd700'},{id:'dash-buy',lbl:'BUY',color:'#0f6'},{id:'dash-watch',lbl:'WATCH',color:'#0ff'},{id:'dash-wait',lbl:'WAIT',color:'#f80'},{id:'dash-avoid',lbl:'AVOID',color:'#f66'},{id:'dash-scam',lbl:'SCAM',color:'#f00'},{id:'dash-hero',lbl:'HERO',color:'#ffd700'}]},{label:'PERFORMANCE',panels:[{id:'dash-win',lbl:'WIN%',color:'#ffd700'},{id:'dash-avgROI',lbl:'ROI',color:'#ffd700'},{id:'dash-acc',lbl:'ACC',color:'#0fa'},{id:'dash-prec',lbl:'PREC',color:'#0f6'},{id:'dash-rec',lbl:'REC',color:'#0ff'},{id:'dash-mae',lbl:'MAE',color:'#b0f'}]},{label:'DATABASE',panels:[{id:'dash-db',lbl:'DB',color:'#b0f'},{id:'dash-pred',lbl:'PRED',color:'#0ff'},{id:'dash-total',lbl:'TOT',color:'#fff'}]}];groups.forEach(group=>{const label=document.createElement('div');label.className='dash-group-label';label.textContent=group.label;dash.appendChild(label);const groupDiv=document.createElement('div');groupDiv.className='dash-group';group.panels.forEach(p=>{const div=document.createElement('div');div.className='dash-panel';div.id=p.id;div.innerHTML='<div class="val" style="color:'+p.color+'">0</div><div class="lbl">'+p.lbl+'</div>';groupDiv.appendChild(div);});dash.appendChild(groupDiv);});}
+  function updateDashboard(){const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;updatePanel('dash-sb',S.dash.sb,'#ffd700');updatePanel('dash-buy',S.dash.buy,'#0f6');updatePanel('dash-watch',S.dash.watch,'#0ff');updatePanel('dash-wait',S.dash.wait,'#f80');updatePanel('dash-avoid',S.dash.av,'#f66');updatePanel('dash-scam',S.dash.sc,'#f00');updatePanel('dash-hero',S.hero?S.hero._finalAIScore?.toFixed(1)||0:0,'#ffd700');updatePanel('dash-acc',S.dash.acc??'—','#0fa');updatePanel('dash-db',S.dash.dbTotal||S.predictionHistory.length,'#b0f');updatePanel('dash-total',S.dash.tot,'#fff');updatePanel('dash-pred',S.serverResearchCounts?.candidates??S.predictionHistory.length,'#0ff');const evaluated=S.predictionHistory.filter(p=>p.evaluated);const wins=evaluated.filter(p=>p.actualMultiplier>=p.multiplier).length;const winRate=evaluated.length>0?Math.round(wins/evaluated.length*100):null;updatePanel('dash-win',winRate===null?'—':winRate+'%','#ffd700');const mae=S.maeHistory.length>0?S.maeHistory[S.maeHistory.length-1].toFixed(1):'-';updatePanel('dash-mae',mae,'#b0f');updatePanel('dash-prec',acc?Math.round(acc.precision*100)+'%':'-','#0f6');updatePanel('dash-rec',acc?Math.round(acc.recall*100)+'%':'-','#0ff');updatePanel('dash-avgROI',acc?Math.round(acc.avgROI)+'%':'-','#ffd700');patchHeroPanel();}
+  function updatePanel(id,val,color){const el=$(id);if(!el)return;const valEl=el.querySelector('.val');if(valEl&&valEl.textContent!==String(val)){valEl.textContent=val;valEl.style.color=color;valEl.classList.add('num-pop');setTimeout(()=>valEl.classList.remove('num-pop'),300);}}
+  function renderAll(){const grid=$('radarFeed');if(!grid)return;grid.innerHTML='';rendered.clear();feedBus.forEach(t=>{const div=buildCard(t);if(div)grid.appendChild(div);});}
+  function flushRQ(){if(!S.rq.size)return;const batch=[...S.rq].slice(0,10);batch.forEach(ca=>{S.rq.delete(ca);const t=feedMap.get(ca);if(!t)return;let div=rendered.get(ca);if(!div||div.classList.contains('skeleton-card')){div=buildCard(t);}else{patchCard(div,t);}});if(S.needsSort){sortFeed();renderAll();S.needsSort=false;}S.dash={sb:0,buy:0,acc:0,watch:0,wait:0,av:0,sc:0,tot:0,dbTotal:S.dash.dbTotal||0};feedBus.forEach(t=>{S.dash.tot++;const d=t.decision;if(d===DECISION.STRONG_BUY)S.dash.sb++;else if(d===DECISION.BUY)S.dash.buy++;else if(d===DECISION.ACCUMULATE)S.dash.acc++;else if(d===DECISION.WATCH)S.dash.watch++;else if(d===DECISION.WAIT)S.dash.wait++;else if(d===DECISION.AVOID)S.dash.av++;else S.dash.sc++;});updateDashboard();if(S.rq.size)requestAnimationFrame(flushRQ);}
+  return{markDirty,removeCard,renderSkeleton,buildCard,patchCard,flushRQ,renderAll,initHeroPanel,initDashboard,updateDashboard,patchHeroPanel};
+})();
+
+function addAILog(msg,type='info'){const el=$('aiConsole');if(!el)return;el.style.display='block';const entry=document.createElement('div');entry.className='log-entry log-'+type;entry.textContent=msg;el.prepend(entry);while(el.children.length>300)el.removeChild(el.lastChild);}
+function copyToClipboard(text){try{navigator.clipboard?.writeText(text);}catch(e){}}
+function showUnifiedDashboard(){const mem=PerformanceManager.memoryReport();const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const dash=$('unifiedDash');dash.innerHTML='<div class="unified-item"><div class="val" style="color:#0ff">'+S.market.regime+'</div><div class="lbl">REGIME</div></div><div class="unified-item"><div class="val" style="color:#ffd700">'+(acc?Math.round(acc.precision*100)+'%':'-')+'</div><div class="lbl">PRECISION</div></div><div class="unified-item"><div class="val" style="color:#0f6">'+S.learning.shortCalibrationCount+'</div><div class="lbl">CAL CYCLES</div></div><div class="unified-item"><div class="val" style="color:#b0f">'+mem.ramMB+'MB</div><div class="lbl">RAM</div></div>';}
+function showAIHealthDashboard(){const health=AiEngine.getAIHealth();const dash=$('aiHealthDash');if(!health){dash.innerHTML='<div class="ai-health-item" style="grid-column:1/-1;color:#888">Awaiting outcomes...</div>';return;}dash.innerHTML='<div class="ai-health-item"><div class="val" style="color:#0f6">'+health.precision+'%</div><div class="lbl">PRECISION</div></div><div class="ai-health-item"><div class="val" style="color:#0ff">'+health.recall+'%</div><div class="lbl">RECALL</div></div><div class="ai-health-item"><div class="val" style="color:#ffd700">'+health.f1+'%</div><div class="lbl">F1 SCORE</div></div><div class="ai-health-item"><div class="val" style="color:#f44">'+health.fp+'</div><div class="lbl">FALSE POS</div></div><div class="ai-health-item"><div class="val" style="color:#f80">'+health.fn+'</div><div class="lbl">FALSE NEG</div></div><div class="ai-health-item"><div class="val" style="color:#ffd700">'+health.winRate+'%</div><div class="lbl">WIN RATE</div></div><div class="ai-health-item"><div class="val" style="color:#0f6">'+health.avgROI+'%</div><div class="lbl">AVG ROI</div></div><div class="ai-health-item"><div class="val" style="color:#0ff">'+(health.avgConfidence||0)+'%</div><div class="lbl">AVG CONF</div></div><div class="ai-health-item"><div class="val" style="color:#b0f">'+health.total+'</div><div class="lbl">OUTCOMES</div></div><div class="ai-health-item"><div class="val" style="color:#0f6">'+health.tp+'</div><div class="lbl">TRUE POS</div></div>';}
+function showHistoryPanel(){let html='<div class="section-title">PREDICTION HISTORY</div>';const evaluated=S.predictionHistory.filter(p=>p.evaluated);html+='<div style="font-size:0.45rem;color:#8cf;margin-bottom:4px">Total:'+S.predictionHistory.length+' | Evaluated:'+evaluated.length+'</div>';html+='<div style="font-size:0.45rem;color:#ffd700">Outcomes:'+S.outcomes.length+' | Cal:'+S.learning.shortCalibrationCount+'</div>';S.predictionHistory.slice(-15).reverse().forEach(h=>{html+='<div style="font-size:0.45rem;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+h.ca.slice(0,8)+' | AI:'+(h.aiScore||0).toFixed(1)+' | Pred:'+(h.multiplier||0)+'X'+(h.evaluated?' | Actual:'+(h.actualMultiplier||0).toFixed(1)+'X | Error:'+(h.error||0).toFixed(1):'')+'</div>';});document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';}
+function showWatchlistPanel(){let html='<div class="section-title">WATCHLIST</div>';if(S.watchlist.length===0){html+='<div style="color:#8cf">No watched tokens.</div>';}else{S.watchlist.forEach(w=>{const t=feedMap.get(w.token_ca);const prevScore=w.lastScore||0;const currScore=t?t._finalAIScore||0:0;let change='';if(currScore>prevScore+1)change='<span class="watch-alert-up">↑</span>';else if(currScore<prevScore-1)change='<span class="watch-alert-down">↓</span>';if(t)w.lastScore=currScore;html+='<div style="font-size:0.45rem;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+escapeHTML(t?getName(t):w.token_ca?.slice(0,8)||'???')+change+' <span style="color:#8cf">Score:'+(currScore?currScore.toFixed(1):'?')+'</span></div>';});}document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';}
+function showExportPanel(){let html='<div class="section-title">EXPORT</div>';html+='<button class="export-btn" id="exportCSVBtn">Export CSV</button>';html+='<button class="export-btn" id="exportJSONBtn">Export JSON</button>';html+='<button class="export-btn" id="exportReportBtn" style="background:rgba(255,215,0,.15);border:1px solid #ffd700;color:#ffd700">Export AI Report</button>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';setTimeout(()=>{const csvBtn=document.getElementById('exportCSVBtn');if(csvBtn)csvBtn.onclick=exportCSV;const jsonBtn=document.getElementById('exportJSONBtn');if(jsonBtn)jsonBtn.onclick=exportJSON;const reportBtn=document.getElementById('exportReportBtn');if(reportBtn)reportBtn.onclick=exportAIReport;},100);}
+function exportCSV(){const rows=[['Name','CA','Price','Decision','Final AI Score','Expected Multiplier','Confidence','Expected Return','Risk','Reasons']];feedBus.forEach(t=>{const mult=t.multiplier;rows.push([getName(t),t.ca,t.price||'',t.decision||'',t._finalAIScore?.toFixed(2)||'',mult?.expected||'',mult?.confidence||'',mult?.expectedReturn||'',t._riskIndex||'',(mult?.reason||[]).join('; ')]);});const csv=rows.map(r=>r.map(c=>'"'+(c+'').replace(/"/g,'""')+'"').join(',')).join('\n');downloadFile('nebula_export.csv',csv,'text/csv');}
+function exportJSON(){const data=feedBus.map(t=>({name:getName(t),ca:t.ca,price:t.price,decision:t.decision,finalAIScore:t._finalAIScore,multiplier:t.multiplier?.expected,confidence:t.multiplier?.confidence,expectedReturn:t.multiplier?.expectedReturn,risk:t._riskIndex,reasons:t.multiplier?.reason}));downloadFile('nebula_export.json',JSON.stringify(data,null,2),'application/json');}
+function exportAIReport(){const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let report='NEBULA AI REPORT\n=============================\nGenerated: '+new Date().toISOString()+'\n\n';report+='AI STATUS\n---------\nAccuracy: '+S.learning.accuracy+'%\n';if(health){report+='Precision: '+health.precision+'%\nRecall: '+health.recall+'%\nF1 Score: '+health.f1+'%\n';report+='False Positive: '+health.fp+'\nFalse Negative: '+health.fn+'\n';report+='Win Rate: '+health.winRate+'%\nAvg ROI: '+health.avgROI+'%\nAvg Confidence: '+(health.avgConfidence||0)+'%\n';}report+='\nMARKET\n------\nRegime: '+S.market.regime+'\nSeason: '+S.market.season+'\nHeat: '+S.market.heat+'\n\n';report+='PERFORMANCE\n-----------\nTokens: '+feedBus.length+'\nPredictions: '+S.predictionHistory.length+'\nOutcomes: '+S.outcomes.length+'\n';report+='RAM: '+mem.ramMB+' MB\nCache: '+StorageInterface.getStats().ram+' RAM / '+StorageInterface.getStats().local+' LS\n\n';downloadFile('nebula_report.txt',report,'text/plain');}
+function downloadFile(filename,content,mime){const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
+function showAuditPanel(){const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let html='<div class="section-title">AUDIT</div>';html+='<div style="font-size:0.5rem;">API Status</div>';CONFIG.ENDPOINTS.forEach(n=>{const cbStatus=CircuitBreaker.getStatus(n);html+='<div style="font-size:0.45rem;">'+(ep[n]==='pending'?'?':ep[n]==='on'?'O':'X')+' '+n+': '+(S.apiHealthHistory[n]?.length?eph[n].sr+'%':'not tested')+(cbStatus==='disabled'?' [CB]':'')+'</div>';});html+='<div style="font-size:0.5rem;margin-top:6px;">AI Metrics</div>';html+='<div style="font-size:0.45rem;">Accuracy: '+(S.outcomes.length?S.learning.accuracy+'%':'N/A (no outcomes)')+'</div>';html+='<div style="font-size:0.45rem;">Prediction History: '+S.predictionHistory.length+' tokens</div>';html+='<div style="font-size:0.45rem;">Outcomes: '+S.outcomes.length+'</div>';if(health){html+='<div style="font-size:0.45rem;">Precision: '+health.precision+'% | Recall: '+health.recall+'% | F1: '+health.f1+'%</div>';html+='<div style="font-size:0.45rem;">False Positive: '+health.fp+' | False Negative: '+health.fn+'</div>';html+='<div style="font-size:0.45rem;">Win Rate: '+health.winRate+'% | Avg ROI: '+health.avgROI+'% | Avg Conf: '+(health.avgConfidence||0)+'%</div>';}html+='<div style="font-size:0.45rem;">Market: '+S.market.regime+' | Season: '+S.market.season+' | Tokens: '+feedBus.length+'</div>';html+='<div style="font-size:0.45rem;">RAM: '+mem.ramMB+' MB | Dev DB: '+S.learning.developerDB.size+'</div>';html+='<div style="font-size:0.45rem;">API: '+CONFIG.API.baseURL+'</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';}
+function autoRefreshEnrichment(){const now=Date.now();feedBus.forEach(token=>{if(token._enriched&&!token._enrichError&&token.age>10&&now-token.lastMetricsUpdate>300000&&(token.decision===DECISION.BUY||token.decision===DECISION.STRONG_BUY||S.watchlist.some(w=>w.token_ca===token.ca))){token._dexDone=false;token._helDone=false;token._rugDone=false;token._enriched=false;enqueueEnrichment(token);}});}
+
+const Scheduler = (()=>{
+  const tasks=new Map();let visualRaf=null,bgTimer=null;let idleFrames=0;const IDLE_THRESHOLD=120;
+  function register(name,fn,intervalMs,type='background'){tasks.set(name,{fn,intervalMs,lastRun:0,type});}
+  function startVisual(){if(visualRaf)return;idleFrames=0;const loop=()=>{tickVisual();if(S.rq.size===0){idleFrames++;if(idleFrames>=IDLE_THRESHOLD){visualRaf=null;return;}}else{idleFrames=0;}visualRaf=requestAnimationFrame(loop);};visualRaf=requestAnimationFrame(loop);}
+  function wakeVisual(){if(!visualRaf)startVisual();}
+  function startBackground(){if(bgTimer)return;bgTimer=setInterval(tickBackground,1000);}
+  function tickVisual(){RenderEngine.flushRQ();}
+  function tickBackground(){const now=Date.now();for(const[name,task]of tasks){if(task.type==='background'&&now-task.lastRun>=task.intervalMs){task.lastRun=now;try{Promise.resolve(task.fn()).catch(()=>addAILog('Background task failed: '+name,'error'));}catch{addAILog('Background task failed: '+name,'error');}}}}
+  return{register,startVisual,wakeVisual,startBackground};
+})();
+
+function startup(){
+  try{
+    RenderEngine.initDashboard();RenderEngine.initHeroPanel();RenderEngine.updateDashboard();updateEpBar();showUnifiedDashboard();showAIHealthDashboard();
+    Scheduler.register('timer',()=>{updateEpBar();Scanner.flushWsBuffer();},1000,'background');
+    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},5000,'background');
+    // Server research candidates remain WATCH until risk verification.
+    Scheduler.register('evalQueue',()=>AiEngine.processEvalQueue(),15000,'background');
+
+    // Candidate evaluation is performed on the server from persisted observations.
+    Scheduler.register('serverRefresh',()=>loadPredictions().then(()=>{RenderEngine.renderAll();RenderEngine.updateDashboard()}).catch(()=>addAILog('Server refresh unavailable','error')),60000,'background');
+    Scheduler.register('correlationUpdate',()=>AiEngine.updateCorrelationMatrix(),300000,'background');
+
+    Scheduler.register('autoRefresh',()=>autoRefreshEnrichment(),300000,'background');
+    Scheduler.register('performance',()=>{PerformanceManager.autoCleanup();PerformanceManager.storageMonitor();showUnifiedDashboard();showAIHealthDashboard();},60000,'background');
+    Scheduler.startVisual();Scheduler.startBackground();
+    addAILog('['+new Date().toLocaleTimeString()+'] NEBULA CRYPTO HUNTER ONLINE','success');
+    if(S.isAuto)Scanner.requestScan();
+    startAutoRefresh();
+    void refreshProviderIndicators();
+    setInterval(refreshProviderIndicators,600000);
+  }catch(e){console.error('Startup Error:',e);document.getElementById('radarFeed').innerHTML='<div style="color:#f44;padding:20px;text-align:center">INIT ERROR: '+e.message+'</div>';}
+}
+window.addEventListener('error',function(e){console.error('Global Error:',e.message);});
+setTimeout(()=>{
+  try{
+    $('scanBtn').onclick=Scanner.requestScan;
+    $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;$('autoPumpToggleBtn').classList.toggle('active',S.isAuto);};
+    $('historyBtn').onclick=showHistoryPanel;$('watchlistBtn').onclick=showWatchlistPanel;$('exportBtn').onclick=showExportPanel;$('auditBtn').onclick=showAuditPanel;
+    $('debugBtn').onclick=()=>{const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let html='<div><b>V109.2</b></div>';html+='<div>Tokens:'+feedBus.length+' | Market:'+S.market.regime+' | Season:'+S.market.season+'</div>';html+='<div>Rotating Offset:'+S.rotatingOffset+' | Smart Memory: ACTIVE</div>';html+='<div>Outcomes:'+S.outcomes.length+' | Cal:'+S.learning.shortCalibrationCount+'</div>';if(health){html+='<div>F1:'+health.f1+'% | Prec:'+health.precision+'% | Rec:'+health.recall+'%</div>';html+='<div>FP:'+health.fp+' | FN:'+health.fn+' | Win:'+health.winRate+'% | ROI:'+health.avgROI+'%</div>';}html+='<div>RAM:'+mem.ramMB+'MB | Dev DB:'+S.learning.developerDB.size+'</div>';html+='<div>API: '+CONFIG.API.baseURL+'</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';};
+    $('overlayClose').onclick=()=>{$('overlayPanel').style.display='none';};
+    document.addEventListener('click',function(e){
+      const btn=e.target.closest('[data-action]');if(!btn)return;e.stopPropagation();
+      const a=btn.dataset.action,ca=btn.dataset.ca;
+      if(a==='watch'){const t=feedMap.get(ca);if(t){const idx=S.watchlist.findIndex(w=>w.token_ca===ca);if(idx>=0){removeFromWatchlist(ca);btn.classList.remove('watch-active');}else{addToWatchlist(ca);btn.classList.add('watch-active');}}}
+      else if(a==='copyca'){copyToClipboard(ca);btn.textContent='OK';setTimeout(()=>btn.textContent='CA',1000);}
+      else if(a==='phantom'){window.open('https://phantom.app/ul/v1/swap/'+ca,'_blank');}
+      else if(a==='pump'){window.open('https://pump.fun/coin/'+ca,'_blank');}
+      else if(a==='dex'){const t=feedMap.get(ca);if(t)openDexLink(t);}
+      else if(a==='buy'){const t=feedMap.get(ca);if(t){openDexLink(t);}}
+    });
+    restoreState().then(()=>{startup();});
+  }catch(e){console.error('Binding Error:',e);}
+},300);
+})();
+</script>
+</body>
+</html>
++fmtNum(t.liq):'—')+'</b></div>'
+        +'<div class="hud-gauge"><span class="gauge-label">VOLUME 24J</span><b class="gauge-value" style="width:auto">'+(safeValue(t.vol24h)?'
+    const exp=t._explain||{liq:0,vol:0,age:0,holder:0,wallet:0,momentum:0,security:0};
+    const rs=t._reasons||{pros:[],cons:[]};
+    const exit=t._exitPlan;
+    const backtest=t._backtest;
+    const mc=t._mcResult;
+    const price=t.price||0;
+    const liq=t.liq;
+    const mktStructure=t._mktStructure||'?';
+    const obSignal=t._obSignal||'?';
+    const fvgSignal=t._fvgSignal||'?';
+    const riskIndex=t._riskIndex||0;
+    const multiplier=t.multiplier;
+    let detail='';
+    detail+='<div class="detail-section"><div class="section-title">DATA</div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">PRICE</span><span class="gauge-value" style="color:#ffd700;width:auto">'+fmtPrice(price)+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">LIQ</span><span class="gauge-value" style="color:#0f6;width:auto">'+(safeValue(liq)?'$'+fmtNum(liq):'--')+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">WALLET</span><span class="gauge-value" style="width:auto">'+(getWalletBadge(t)||'--')+(getClusterBadge(t)||'')+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">RUG</span><span class="gauge-value" style="width:auto">'+(getRugBadge(t)||'--')+'</span></div>';
+    detail+='</div>';
+    detail+='<div class="detail-section"><div class="section-title">XAI</div>';
+    if(exp&&typeof exp==='object'){for(const[k,v]of Object.entries(exp)){const val=v||0;detail+='<div class="hud-gauge"><span class="gauge-label">'+k.toUpperCase()+'</span><div class="gauge-track"><div class="gauge-fill" style="width:'+val+'%;background:#0f6"></div></div><span class="gauge-value">'+val+'%</span></div>';}}
+    else{detail+='<div style="color:#8cf;font-size:0.45rem">Belum tersedia</div>';}
+    detail+='</div>';
+    detail+='<div class="detail-section"><div class="section-title">STRUCTURE</div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">MKT</span><span class="gauge-value" style="color:#b0f;width:auto">'+mktStructure+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">OB</span><span class="gauge-value" style="width:auto">'+(getOBBadge?getOBBadge(t):'')+' '+obSignal+'</span></div>';
+    detail+='<div class="hud-gauge"><span class="gauge-label">FVG</span><span class="gauge-value" style="width:auto">'+(getFVGBadge?getFVGBadge(t):'')+' '+fvgSignal+'</span></div>';
+    detail+='</div>';
+    if(exit&&exit.tp1Pct){detail+='<div class="detail-section"><div class="section-title">EXIT</div>';detail+='<div class="hud-gauge"><span class="gauge-label">TP1</span><span class="gauge-value" style="color:#0f6;width:auto">'+(exit.tp1Pct||'--')+'</span></div>';detail+='<div class="hud-gauge"><span class="gauge-label">STOP</span><span class="gauge-value" style="color:#f44;width:auto">'+(exit.stopLoss||'--')+'</span></div>';detail+='</div>';}
+    if(backtest&&backtest.pnl!==undefined){detail+='<div class="detail-section"><div class="section-title">BACKTEST</div>';detail+='<div class="hud-gauge"><span class="gauge-label">PnL</span><span class="gauge-value" style="color:'+(backtest.pnl>0?'#0f6':'#f44')+';width:auto">'+backtest.pnl+'%</span></div>';detail+='</div>';}
+    if(mc&&mc.upPct!==undefined){detail+='<div class="detail-section"><div class="section-title">MC ('+(mc.regime||'?')+')</div>';detail+='<div class="hud-gauge"><span class="gauge-label">UP</span><div class="gauge-track"><div class="gauge-fill" style="width:'+(mc.upPct||50)+'%;background:#0f6"></div></div><span class="gauge-value">'+(mc.upPct||50)+'%</span></div>';detail+='</div>';}
+    detail+='<div class="detail-section"><div class="section-title">CONVICTION FACTORS</div>';
+    if(rs.pros&&rs.pros.length>0){detail+=rs.pros.map(function(p){return'<div style="color:#0f0;font-size:0.45rem">+ '+p+'</div>';}).join('');}
+    else{detail+='<div style="color:#8cf;font-size:0.45rem">Belum tersedia</div>';}
+    if(rs.cons&&rs.cons.length>0){detail+=rs.cons.map(function(c){return'<div style="color:#f44;font-size:0.45rem">- '+c+'</div>';}).join('');}
+    detail+='</div>';
+    if(multiplier&&multiplier.expected){
+      const mult=multiplier;
+      detail+='<div class="detail-section"><div class="section-title">AI PREDICTION</div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">EXPECTED</span><span class="gauge-value" style="color:#ffd700;width:auto">'+mult.expected+'X</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">MIN</span><span class="gauge-value" style="color:#0f6;width:auto">'+(mult.minimum||'?')+'X</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">OPTIMISTIC</span><span class="gauge-value" style="color:#0ff;width:auto">'+(mult.optimistic||'?')+'X</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">CONF</span><span class="gauge-value" style="color:#0f6;width:auto">'+(mult.confidence||'?')+'%</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">SCORE</span><span class="gauge-value" style="color:#ffd700;width:auto">'+(mult.score||'?')+'</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">REGIME</span><span class="gauge-value" style="width:auto">'+(mult.regime||'?')+'</span></div>';
+      detail+='<div class="hud-gauge"><span class="gauge-label">RISK</span><span class="gauge-value" style="color:'+(riskIndex>50?'#f44':'#0f6')+';width:auto">'+riskIndex+'</span></div>';
+      if(mult.reason&&mult.reason.length){detail+='<div class="section-title" style="margin-top:4px">GROWTH CATALYSTS</div>';detail+=mult.reason.map(function(r){return'<div style="color:#8cf;font-size:0.45rem">• '+r+'</div>';}).join('');}
+      detail+='</div>';
+    }
+    return detail;
+  }
+
+  function patchCard(div,t){if(!t._dirty)return;t._dirty=false;if(div.classList.contains('skeleton-card')){buildCard(t);return;}const d=t.decision||DECISION.AVOID,hero=S.hero;const decClass=d.toLowerCase().replace(/\s/g,'-');div.className='hud-card card-'+decClass+(hero&&t.ca===hero.ca?' hero-card':'')+(t._enrichError?' enrich-error':'')+(t._fromCache?' cached':'');const dt=div.querySelector('.decision-tag');if(dt){dt.textContent=d.replace(/_/g,' ');dt.className='decision-tag decision-'+decClass;}const ringVal=div.querySelector('.score-ring-value');if(ringVal)ringVal.textContent=Math.round(t.quad?.final||0);if(t.multiplier){let mb=div.querySelector('.multiplier-badge-card');if(!mb){const ring=div.querySelector('.score-ring-container');if(ring){mb=document.createElement('span');mb.className='multiplier-badge-card';ring.parentNode.insertBefore(mb,ring);}}if(mb)mb.textContent='🚀'+t.multiplier.expected+'X';}}
+  function patchHeroPanel(){const panel=$('heroPanel');if(!panel)return;if(!S.hero){panel.style.display='none';return;}panel.style.display='flex';const nameEl=$('heroName');if(nameEl)nameEl.textContent=getName(S.hero);const scoreEl=$('heroScore');if(scoreEl)scoreEl.textContent='AI:'+(S.hero._finalAIScore||0).toFixed(1)+' M:'+(S.hero.multiplier?S.hero.multiplier.expected+'X':'?');const confEl=$('heroConfidence');if(confEl)confEl.textContent='Conf:'+(S.hero._conf||0)+'% Risk:'+(S.hero._riskIndex||0);}
+  function initHeroPanel(){const panel=$('heroPanel');panel.innerHTML='<div class="hero-info"><div class="hero-name" id="heroName"></div><div style="display:flex;gap:8px;font-size:0.55rem;margin-top:2px"><span style="color:#ffd700" id="heroScore"></span><span style="color:#0ff" id="heroConfidence"></span></div></div>';}
+  function initDashboard(){const dash=$('cockpitDashboard');dash.innerHTML='';const groups=[{label:'TRADING',panels:[{id:'dash-sb',lbl:'ST.BUY',color:'#ffd700'},{id:'dash-buy',lbl:'BUY',color:'#0f6'},{id:'dash-watch',lbl:'WATCH',color:'#0ff'},{id:'dash-wait',lbl:'WAIT',color:'#f80'},{id:'dash-avoid',lbl:'AVOID',color:'#f66'},{id:'dash-scam',lbl:'SCAM',color:'#f00'},{id:'dash-hero',lbl:'HERO',color:'#ffd700'}]},{label:'PERFORMANCE',panels:[{id:'dash-win',lbl:'WIN%',color:'#ffd700'},{id:'dash-avgROI',lbl:'ROI',color:'#ffd700'},{id:'dash-acc',lbl:'ACC',color:'#0fa'},{id:'dash-prec',lbl:'PREC',color:'#0f6'},{id:'dash-rec',lbl:'REC',color:'#0ff'},{id:'dash-mae',lbl:'MAE',color:'#b0f'}]},{label:'DATABASE',panels:[{id:'dash-db',lbl:'DB',color:'#b0f'},{id:'dash-pred',lbl:'PRED',color:'#0ff'},{id:'dash-total',lbl:'TOT',color:'#fff'}]}];groups.forEach(group=>{const label=document.createElement('div');label.className='dash-group-label';label.textContent=group.label;dash.appendChild(label);const groupDiv=document.createElement('div');groupDiv.className='dash-group';group.panels.forEach(p=>{const div=document.createElement('div');div.className='dash-panel';div.id=p.id;div.innerHTML='<div class="val" style="color:'+p.color+'">0</div><div class="lbl">'+p.lbl+'</div>';groupDiv.appendChild(div);});dash.appendChild(groupDiv);});}
+  function updateDashboard(){const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;updatePanel('dash-sb',S.dash.sb,'#ffd700');updatePanel('dash-buy',S.dash.buy,'#0f6');updatePanel('dash-watch',S.dash.watch,'#0ff');updatePanel('dash-wait',S.dash.wait,'#f80');updatePanel('dash-avoid',S.dash.av,'#f66');updatePanel('dash-scam',S.dash.sc,'#f00');updatePanel('dash-hero',S.hero?S.hero._finalAIScore?.toFixed(1)||0:0,'#ffd700');updatePanel('dash-acc',S.dash.acc??'—','#0fa');updatePanel('dash-db',S.dash.dbTotal||S.predictionHistory.length,'#b0f');updatePanel('dash-total',S.dash.tot,'#fff');updatePanel('dash-pred',S.serverResearchCounts?.candidates??S.predictionHistory.length,'#0ff');const evaluated=S.predictionHistory.filter(p=>p.evaluated);const wins=evaluated.filter(p=>p.actualMultiplier>=p.multiplier).length;const winRate=evaluated.length>0?Math.round(wins/evaluated.length*100):null;updatePanel('dash-win',winRate===null?'—':winRate+'%','#ffd700');const mae=S.maeHistory.length>0?S.maeHistory[S.maeHistory.length-1].toFixed(1):'-';updatePanel('dash-mae',mae,'#b0f');updatePanel('dash-prec',acc?Math.round(acc.precision*100)+'%':'-','#0f6');updatePanel('dash-rec',acc?Math.round(acc.recall*100)+'%':'-','#0ff');updatePanel('dash-avgROI',acc?Math.round(acc.avgROI)+'%':'-','#ffd700');patchHeroPanel();}
+  function updatePanel(id,val,color){const el=$(id);if(!el)return;const valEl=el.querySelector('.val');if(valEl&&valEl.textContent!==String(val)){valEl.textContent=val;valEl.style.color=color;valEl.classList.add('num-pop');setTimeout(()=>valEl.classList.remove('num-pop'),300);}}
+  function renderAll(){const grid=$('radarFeed');if(!grid)return;grid.innerHTML='';rendered.clear();feedBus.forEach(t=>{const div=buildCard(t);if(div)grid.appendChild(div);});}
+  function flushRQ(){if(!S.rq.size)return;const batch=[...S.rq].slice(0,10);batch.forEach(ca=>{S.rq.delete(ca);const t=feedMap.get(ca);if(!t)return;let div=rendered.get(ca);if(!div||div.classList.contains('skeleton-card')){div=buildCard(t);}else{patchCard(div,t);}});if(S.needsSort){sortFeed();renderAll();S.needsSort=false;}S.dash={sb:0,buy:0,acc:0,watch:0,wait:0,av:0,sc:0,tot:0,dbTotal:S.dash.dbTotal||0};feedBus.forEach(t=>{S.dash.tot++;const d=t.decision;if(d===DECISION.STRONG_BUY)S.dash.sb++;else if(d===DECISION.BUY)S.dash.buy++;else if(d===DECISION.ACCUMULATE)S.dash.acc++;else if(d===DECISION.WATCH)S.dash.watch++;else if(d===DECISION.WAIT)S.dash.wait++;else if(d===DECISION.AVOID)S.dash.av++;else S.dash.sc++;});updateDashboard();if(S.rq.size)requestAnimationFrame(flushRQ);}
+  return{markDirty,removeCard,renderSkeleton,buildCard,patchCard,flushRQ,renderAll,initHeroPanel,initDashboard,updateDashboard,patchHeroPanel};
+})();
+
+function addAILog(msg,type='info'){const el=$('aiConsole');if(!el)return;el.style.display='block';const entry=document.createElement('div');entry.className='log-entry log-'+type;entry.textContent=msg;el.prepend(entry);while(el.children.length>300)el.removeChild(el.lastChild);}
+function copyToClipboard(text){try{navigator.clipboard?.writeText(text);}catch(e){}}
+function showUnifiedDashboard(){const mem=PerformanceManager.memoryReport();const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const dash=$('unifiedDash');dash.innerHTML='<div class="unified-item"><div class="val" style="color:#0ff">'+S.market.regime+'</div><div class="lbl">REGIME</div></div><div class="unified-item"><div class="val" style="color:#ffd700">'+(acc?Math.round(acc.precision*100)+'%':'-')+'</div><div class="lbl">PRECISION</div></div><div class="unified-item"><div class="val" style="color:#0f6">'+S.learning.shortCalibrationCount+'</div><div class="lbl">CAL CYCLES</div></div><div class="unified-item"><div class="val" style="color:#b0f">'+mem.ramMB+'MB</div><div class="lbl">RAM</div></div>';}
+function showAIHealthDashboard(){const health=AiEngine.getAIHealth();const dash=$('aiHealthDash');if(!health){dash.innerHTML='<div class="ai-health-item" style="grid-column:1/-1;color:#888">Awaiting outcomes...</div>';return;}dash.innerHTML='<div class="ai-health-item"><div class="val" style="color:#0f6">'+health.precision+'%</div><div class="lbl">PRECISION</div></div><div class="ai-health-item"><div class="val" style="color:#0ff">'+health.recall+'%</div><div class="lbl">RECALL</div></div><div class="ai-health-item"><div class="val" style="color:#ffd700">'+health.f1+'%</div><div class="lbl">F1 SCORE</div></div><div class="ai-health-item"><div class="val" style="color:#f44">'+health.fp+'</div><div class="lbl">FALSE POS</div></div><div class="ai-health-item"><div class="val" style="color:#f80">'+health.fn+'</div><div class="lbl">FALSE NEG</div></div><div class="ai-health-item"><div class="val" style="color:#ffd700">'+health.winRate+'%</div><div class="lbl">WIN RATE</div></div><div class="ai-health-item"><div class="val" style="color:#0f6">'+health.avgROI+'%</div><div class="lbl">AVG ROI</div></div><div class="ai-health-item"><div class="val" style="color:#0ff">'+(health.avgConfidence||0)+'%</div><div class="lbl">AVG CONF</div></div><div class="ai-health-item"><div class="val" style="color:#b0f">'+health.total+'</div><div class="lbl">OUTCOMES</div></div><div class="ai-health-item"><div class="val" style="color:#0f6">'+health.tp+'</div><div class="lbl">TRUE POS</div></div>';}
+function showHistoryPanel(){let html='<div class="section-title">PREDICTION HISTORY</div>';const evaluated=S.predictionHistory.filter(p=>p.evaluated);html+='<div style="font-size:0.45rem;color:#8cf;margin-bottom:4px">Total:'+S.predictionHistory.length+' | Evaluated:'+evaluated.length+'</div>';html+='<div style="font-size:0.45rem;color:#ffd700">Outcomes:'+S.outcomes.length+' | Cal:'+S.learning.shortCalibrationCount+'</div>';S.predictionHistory.slice(-15).reverse().forEach(h=>{html+='<div style="font-size:0.45rem;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+h.ca.slice(0,8)+' | AI:'+(h.aiScore||0).toFixed(1)+' | Pred:'+(h.multiplier||0)+'X'+(h.evaluated?' | Actual:'+(h.actualMultiplier||0).toFixed(1)+'X | Error:'+(h.error||0).toFixed(1):'')+'</div>';});document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';}
+function showWatchlistPanel(){let html='<div class="section-title">WATCHLIST</div>';if(S.watchlist.length===0){html+='<div style="color:#8cf">No watched tokens.</div>';}else{S.watchlist.forEach(w=>{const t=feedMap.get(w.token_ca);const prevScore=w.lastScore||0;const currScore=t?t._finalAIScore||0:0;let change='';if(currScore>prevScore+1)change='<span class="watch-alert-up">↑</span>';else if(currScore<prevScore-1)change='<span class="watch-alert-down">↓</span>';if(t)w.lastScore=currScore;html+='<div style="font-size:0.45rem;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+escapeHTML(t?getName(t):w.token_ca?.slice(0,8)||'???')+change+' <span style="color:#8cf">Score:'+(currScore?currScore.toFixed(1):'?')+'</span></div>';});}document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';}
+function showExportPanel(){let html='<div class="section-title">EXPORT</div>';html+='<button class="export-btn" id="exportCSVBtn">Export CSV</button>';html+='<button class="export-btn" id="exportJSONBtn">Export JSON</button>';html+='<button class="export-btn" id="exportReportBtn" style="background:rgba(255,215,0,.15);border:1px solid #ffd700;color:#ffd700">Export AI Report</button>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';setTimeout(()=>{const csvBtn=document.getElementById('exportCSVBtn');if(csvBtn)csvBtn.onclick=exportCSV;const jsonBtn=document.getElementById('exportJSONBtn');if(jsonBtn)jsonBtn.onclick=exportJSON;const reportBtn=document.getElementById('exportReportBtn');if(reportBtn)reportBtn.onclick=exportAIReport;},100);}
+function exportCSV(){const rows=[['Name','CA','Price','Decision','Final AI Score','Expected Multiplier','Confidence','Expected Return','Risk','Reasons']];feedBus.forEach(t=>{const mult=t.multiplier;rows.push([getName(t),t.ca,t.price||'',t.decision||'',t._finalAIScore?.toFixed(2)||'',mult?.expected||'',mult?.confidence||'',mult?.expectedReturn||'',t._riskIndex||'',(mult?.reason||[]).join('; ')]);});const csv=rows.map(r=>r.map(c=>'"'+(c+'').replace(/"/g,'""')+'"').join(',')).join('\n');downloadFile('nebula_export.csv',csv,'text/csv');}
+function exportJSON(){const data=feedBus.map(t=>({name:getName(t),ca:t.ca,price:t.price,decision:t.decision,finalAIScore:t._finalAIScore,multiplier:t.multiplier?.expected,confidence:t.multiplier?.confidence,expectedReturn:t.multiplier?.expectedReturn,risk:t._riskIndex,reasons:t.multiplier?.reason}));downloadFile('nebula_export.json',JSON.stringify(data,null,2),'application/json');}
+function exportAIReport(){const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let report='NEBULA AI REPORT\n=============================\nGenerated: '+new Date().toISOString()+'\n\n';report+='AI STATUS\n---------\nAccuracy: '+S.learning.accuracy+'%\n';if(health){report+='Precision: '+health.precision+'%\nRecall: '+health.recall+'%\nF1 Score: '+health.f1+'%\n';report+='False Positive: '+health.fp+'\nFalse Negative: '+health.fn+'\n';report+='Win Rate: '+health.winRate+'%\nAvg ROI: '+health.avgROI+'%\nAvg Confidence: '+(health.avgConfidence||0)+'%\n';}report+='\nMARKET\n------\nRegime: '+S.market.regime+'\nSeason: '+S.market.season+'\nHeat: '+S.market.heat+'\n\n';report+='PERFORMANCE\n-----------\nTokens: '+feedBus.length+'\nPredictions: '+S.predictionHistory.length+'\nOutcomes: '+S.outcomes.length+'\n';report+='RAM: '+mem.ramMB+' MB\nCache: '+StorageInterface.getStats().ram+' RAM / '+StorageInterface.getStats().local+' LS\n\n';downloadFile('nebula_report.txt',report,'text/plain');}
+function downloadFile(filename,content,mime){const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
+function showAuditPanel(){const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let html='<div class="section-title">AUDIT</div>';html+='<div style="font-size:0.5rem;">API Status</div>';CONFIG.ENDPOINTS.forEach(n=>{const cbStatus=CircuitBreaker.getStatus(n);html+='<div style="font-size:0.45rem;">'+(ep[n]==='pending'?'?':ep[n]==='on'?'O':'X')+' '+n+': '+(S.apiHealthHistory[n]?.length?eph[n].sr+'%':'not tested')+(cbStatus==='disabled'?' [CB]':'')+'</div>';});html+='<div style="font-size:0.5rem;margin-top:6px;">AI Metrics</div>';html+='<div style="font-size:0.45rem;">Accuracy: '+(S.outcomes.length?S.learning.accuracy+'%':'N/A (no outcomes)')+'</div>';html+='<div style="font-size:0.45rem;">Prediction History: '+S.predictionHistory.length+' tokens</div>';html+='<div style="font-size:0.45rem;">Outcomes: '+S.outcomes.length+'</div>';if(health){html+='<div style="font-size:0.45rem;">Precision: '+health.precision+'% | Recall: '+health.recall+'% | F1: '+health.f1+'%</div>';html+='<div style="font-size:0.45rem;">False Positive: '+health.fp+' | False Negative: '+health.fn+'</div>';html+='<div style="font-size:0.45rem;">Win Rate: '+health.winRate+'% | Avg ROI: '+health.avgROI+'% | Avg Conf: '+(health.avgConfidence||0)+'%</div>';}html+='<div style="font-size:0.45rem;">Market: '+S.market.regime+' | Season: '+S.market.season+' | Tokens: '+feedBus.length+'</div>';html+='<div style="font-size:0.45rem;">RAM: '+mem.ramMB+' MB | Dev DB: '+S.learning.developerDB.size+'</div>';html+='<div style="font-size:0.45rem;">API: '+CONFIG.API.baseURL+'</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';}
+function autoRefreshEnrichment(){const now=Date.now();feedBus.forEach(token=>{if(token._enriched&&!token._enrichError&&token.age>10&&now-token.lastMetricsUpdate>300000&&(token.decision===DECISION.BUY||token.decision===DECISION.STRONG_BUY||S.watchlist.some(w=>w.token_ca===token.ca))){token._dexDone=false;token._helDone=false;token._rugDone=false;token._enriched=false;enqueueEnrichment(token);}});}
+
+const Scheduler = (()=>{
+  const tasks=new Map();let visualRaf=null,bgTimer=null;let idleFrames=0;const IDLE_THRESHOLD=120;
+  function register(name,fn,intervalMs,type='background'){tasks.set(name,{fn,intervalMs,lastRun:0,type});}
+  function startVisual(){if(visualRaf)return;idleFrames=0;const loop=()=>{tickVisual();if(S.rq.size===0){idleFrames++;if(idleFrames>=IDLE_THRESHOLD){visualRaf=null;return;}}else{idleFrames=0;}visualRaf=requestAnimationFrame(loop);};visualRaf=requestAnimationFrame(loop);}
+  function wakeVisual(){if(!visualRaf)startVisual();}
+  function startBackground(){if(bgTimer)return;bgTimer=setInterval(tickBackground,1000);}
+  function tickVisual(){RenderEngine.flushRQ();}
+  function tickBackground(){const now=Date.now();for(const[name,task]of tasks){if(task.type==='background'&&now-task.lastRun>=task.intervalMs){task.lastRun=now;try{Promise.resolve(task.fn()).catch(()=>addAILog('Background task failed: '+name,'error'));}catch{addAILog('Background task failed: '+name,'error');}}}}
+  return{register,startVisual,wakeVisual,startBackground};
+})();
+
+function startup(){
+  try{
+    RenderEngine.initDashboard();RenderEngine.initHeroPanel();RenderEngine.updateDashboard();updateEpBar();showUnifiedDashboard();showAIHealthDashboard();
+    Scheduler.register('timer',()=>{updateEpBar();Scanner.flushWsBuffer();},1000,'background');
+    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},5000,'background');
+    // Server research candidates remain WATCH until risk verification.
+    Scheduler.register('evalQueue',()=>AiEngine.processEvalQueue(),15000,'background');
+
+    // Candidate evaluation is performed on the server from persisted observations.
+    Scheduler.register('serverRefresh',()=>loadPredictions().then(()=>{RenderEngine.renderAll();RenderEngine.updateDashboard()}).catch(()=>addAILog('Server refresh unavailable','error')),60000,'background');
+    Scheduler.register('correlationUpdate',()=>AiEngine.updateCorrelationMatrix(),300000,'background');
+
+    Scheduler.register('autoRefresh',()=>autoRefreshEnrichment(),300000,'background');
+    Scheduler.register('performance',()=>{PerformanceManager.autoCleanup();PerformanceManager.storageMonitor();showUnifiedDashboard();showAIHealthDashboard();},60000,'background');
+    Scheduler.startVisual();Scheduler.startBackground();
+    addAILog('['+new Date().toLocaleTimeString()+'] NEBULA CRYPTO HUNTER ONLINE','success');
+    if(S.isAuto)Scanner.requestScan();
+    startAutoRefresh();
+    void refreshProviderIndicators();
+    setInterval(refreshProviderIndicators,600000);
+  }catch(e){console.error('Startup Error:',e);document.getElementById('radarFeed').innerHTML='<div style="color:#f44;padding:20px;text-align:center">INIT ERROR: '+e.message+'</div>';}
+}
+window.addEventListener('error',function(e){console.error('Global Error:',e.message);});
+setTimeout(()=>{
+  try{
+    $('scanBtn').onclick=Scanner.requestScan;
+    $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;$('autoPumpToggleBtn').classList.toggle('active',S.isAuto);};
+    $('historyBtn').onclick=showHistoryPanel;$('watchlistBtn').onclick=showWatchlistPanel;$('exportBtn').onclick=showExportPanel;$('auditBtn').onclick=showAuditPanel;
+    $('debugBtn').onclick=()=>{const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let html='<div><b>V109.2</b></div>';html+='<div>Tokens:'+feedBus.length+' | Market:'+S.market.regime+' | Season:'+S.market.season+'</div>';html+='<div>Rotating Offset:'+S.rotatingOffset+' | Smart Memory: ACTIVE</div>';html+='<div>Outcomes:'+S.outcomes.length+' | Cal:'+S.learning.shortCalibrationCount+'</div>';if(health){html+='<div>F1:'+health.f1+'% | Prec:'+health.precision+'% | Rec:'+health.recall+'%</div>';html+='<div>FP:'+health.fp+' | FN:'+health.fn+' | Win:'+health.winRate+'% | ROI:'+health.avgROI+'%</div>';}html+='<div>RAM:'+mem.ramMB+'MB | Dev DB:'+S.learning.developerDB.size+'</div>';html+='<div>API: '+CONFIG.API.baseURL+'</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';};
+    $('overlayClose').onclick=()=>{$('overlayPanel').style.display='none';};
+    document.addEventListener('click',function(e){
+      const btn=e.target.closest('[data-action]');if(!btn)return;e.stopPropagation();
+      const a=btn.dataset.action,ca=btn.dataset.ca;
+      if(a==='watch'){const t=feedMap.get(ca);if(t){const idx=S.watchlist.findIndex(w=>w.token_ca===ca);if(idx>=0){removeFromWatchlist(ca);btn.classList.remove('watch-active');}else{addToWatchlist(ca);btn.classList.add('watch-active');}}}
+      else if(a==='copyca'){copyToClipboard(ca);btn.textContent='OK';setTimeout(()=>btn.textContent='CA',1000);}
+      else if(a==='phantom'){window.open('https://phantom.app/ul/v1/swap/'+ca,'_blank');}
+      else if(a==='pump'){window.open('https://pump.fun/coin/'+ca,'_blank');}
+      else if(a==='dex'){const t=feedMap.get(ca);if(t)openDexLink(t);}
+      else if(a==='buy'){const t=feedMap.get(ca);if(t){openDexLink(t);}}
+    });
+    restoreState().then(()=>{startup();});
+  }catch(e){console.error('Binding Error:',e);}
+},300);
+})();
+</script>
+</body>
+</html>
++fmtNum(t.vol24h):'—')+'</b></div>'
+        +'<div class="hud-gauge"><span class="gauge-label">AI SCORE</span><b class="gauge-value" style="width:auto;color:#65eaff">'+score+'</b></div>'
+        +'</div><div class="detail-section"><div class="section-title">RISK · RESEARCH ONLY</div>'
+        +'<p style="font-size:.67rem;color:#ffc68f;margin-bottom:8px">'+verdict+'</p>'
+        +'<div class="hud-gauge"><span class="gauge-label">MODEL</span><b class="gauge-value" style="width:auto">'+model+'</b></div>'
+        +'<div class="hud-gauge"><span class="gauge-label">OBSERVASI</span><b class="gauge-value" style="width:auto">'+observed+'</b></div>'
+        +'<div style="font-size:.58rem;color:#9ebcd1;overflow-wrap:anywhere;margin-top:7px">POOL: '+pool+'</div>'
+        +'<p style="margin-top:8px;color:#93aebe;font-size:.6rem">XAI, target harga, backtest, wallet, dan exit plan tidak ditampilkan bila belum diverifikasi. Bukan sinyal beli.</p></div></div>';
+    }
     const exp=t._explain||{liq:0,vol:0,age:0,holder:0,wallet:0,momentum:0,security:0};
     const rs=t._reasons||{pros:[],cons:[]};
     const exit=t._exitPlan;
