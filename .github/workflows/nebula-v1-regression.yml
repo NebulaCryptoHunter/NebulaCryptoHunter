@@ -20,5 +20,9 @@ jobs:
         run: |
           node --check workers/nebula-api/worker.mjs
           node --check workers/nebula-scanner/worker.mjs
+      - name: Bundle scanner for staging
+        run: |
+          node scripts/bundle-nebula-scanner.mjs
+          node --check dist/nebula-scanner.mjs
       - name: Regression tests
         run: node --test tests/scanner.test.mjs tests/scanner-integration.test.mjs tests/prediction-adapter.test.mjs tests/api-auth-contract.test.mjs
