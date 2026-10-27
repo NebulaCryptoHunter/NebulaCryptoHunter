@@ -1,0 +1,65 @@
+yload too large','PAYLOAD')),{status:413,headers:h});
+    }
+
+    if(method==='POST') {
+      const reader=request.body?.getReader();let size=0;const chunks=[];
+      if(reader)for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_PAYLOAD){await reader.cancel();return new Response(JSON.stringify(err('Payload too large','PAYLOAD')),{status:413,headers:h});}chunks.push(value);}
+      const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+      try{const parsed=JSON.parse(new TextDecoder().decode(bytes));if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw Error();}catch{return new Response(JSON.stringify(err('Invalid JSON object','VALIDATION')),{status:400,headers:h});}
+      request=new Request(request.url,{method,headers:request.headers,body:bytes});
+    }
+    try {
+      if(path==='/health') {
+        const dbOk = await db.prepare(`SELECT 1`).first();
+        return new Response(JSON.stringify({status:dbOk?'healthy':'degraded',version:VERSION,build:BUILD,db:dbOk?'connected':'error'}),{headers:{...h,'Cache-Control':'no-store'}});
+      }
+
+      if(AUTH_REQUIRED.some(p=>path===p||path.startsWith(p+'/'))&&method==='POST'&&!isAuth(request,env)) return new Response(JSON.stringify(err('Unauthorized','AUTH')),{status:401,headers:h});
+
+      // ==================== PREDICTIONS ====================
+      if(path===`${API}/predictions`&&method==='POST') {
+        const b = enforcePredictionV2(await request.json());
+        // SERVER_GATE_V3_FAIL_CLOSED: never trust client-supplied BUY verification
+        if(b.decision==='BUY'||b.decision==='STRONG_BUY'){b.decision='WATCH';b.passed_gate=0;b.predicted_multiplier=0;}
+        if(!vCA(b.token_ca)) return new Response(JSON.stringify(err('Invalid token_ca','VALIDATION')),{status:400,headers:h});
+        if(!vDec(b.decision)) return new Response(JSON.stringify(err('Invalid decision','VALIDATION')),{status:400,headers:h});
+        const r = await db.prepare(`INSERT INTO predictions (token_ca,token_name,token_symbol,decision,confidence,entry_price,predicted_multiplier,ai_score,quality,opportunity,market_regime,risk_index,passed_gate,learning_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'PENDING')`)
+          .bind(b.token_ca,b.token_name||'',b.token_symbol||'',b.decision,b.confidence||0,b.entry_price||0,b.predicted_multiplier||0,b.ai_score||0,b.quality||0,b.opportunity||0,b.market_regime||'SIDEWAY',b.risk_index||0,b.passed_gate||0).run();
+        await updateAnalyticsStats(db, rid);
+        return new Response(JSON.stringify(ok({id:r.meta.last_row_id})),{headers:h});
+      }
+
+      if(path===`${API}/predictions/bulk`&&method==='POST') {
+        const { predictions } = await request.json();
+        if(!Array.isArray(predictions)||predictions.length===0||predictions.length>100) return new Response(JSON.stringify(err('Array of 1 to 100 predictions required','VALIDATION')),{status:400,headers:h});
+        const batch = [];
+        for(const item of predictions) {
+          const p=enforcePredictionV2(item);
+          if(p.decision==='BUY'||p.decision==='STRONG_BUY'){p.decision='WATCH';p.passed_gate=0;p.predicted_multiplier=0;}
+          if(!vCA(p.token_ca)||!vDec(p.decision)) return new Response(JSON.stringify(err('Invalid prediction item','VALIDATION')),{status:400,headers:h});
+          batch.push(db.prepare(`INSERT INTO predictions (token_ca,token_name,token_symbol,decision,confidence,entry_price,predicted_multiplier,ai_score,quality,opportunity,market_regime,risk_index,passed_gate,learning_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'PENDING')`)
+            .bind(p.token_ca,p.token_name||'',p.token_symbol||'',p.decision,p.confidence||0,p.entry_price||0,p.predicted_multiplier||0,p.ai_score||0,p.quality||0,p.opportunity||0,p.market_regime||'SIDEWAY',p.risk_index||0,p.passed_gate||0));
+        }
+        await db.batch(batch);
+        await updateAnalyticsStats(db, rid);
+        return new Response(JSON.stringify(ok({inserted:predictions.length})),{headers:h});
+      }
+
+      if(path===`${API}/predictions`&&method==='GET') {
+        const lm = Math.max(1,Math.min(parseInt(url.searchParams.get('limit'))||100,500));
+        const of = Math.max(0,parseInt(url.searchParams.get('offset'))||0);
+        const {results} = await db.prepare(`SELECT * FROM predictions ORDER BY created_at DESC LIMIT ? OFFSET ?`).bind(lm,of).all();
+        return new Response(JSON.stringify(ok({predictions:results,limit:lm,offset:of})),{headers:h});
+      }
+
+      // ==================== EVALUATIONS ====================
+      if(path===`${API}/evaluations`&&method==='POST') {
+        const b = await request.json();
+        if(!b.prediction_id||!b.token_ca) return new Response(JSON.stringify(err('prediction_id and token_ca required','VALIDATION')),{status:400,headers:h});
+        await db.batch([
+          db.prepare(`INSERT INTO evaluations (prediction_id,token_ca,directional_score,multiplier_score,timing_score,risk_score,opportunity_cost_score,sustainability_score,confidence_calibration_score,success_score,actual_roi,actual_multiplier,max_drawdown,time_to_ath,sustained_hours,evaluation_confidence,market_regime,evaluation_window,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+            .bind(b.prediction_id,b.token_ca,b.directional_score||0,b.multiplier_score||0,b.timing_score||0,b.risk_score||0,b.opportunity_cost_score||0,b.sustainability_score||0,b.confidence_calibration_score||0,b.success_score||0,b.actual_roi||0,b.actual_multiplier||0,b.max_drawdown||0,b.time_to_ath||0,b.sustained_hours||0,b.evaluation_confidence||100,b.market_regime||'SIDEWAY',b.evaluation_window||'7d',b.notes||''),
+          db.prepare(`UPDATE predictions SET learning_status='EVALUATED',success_score=?,evaluated_at=datetime('now') WHERE id=?`).bind(b.success_score||0,b.prediction_id)
+        ]);
+        await updateAnalyticsStats(db, rid);
+        return new Response(JSON.stringify(ok({stat
