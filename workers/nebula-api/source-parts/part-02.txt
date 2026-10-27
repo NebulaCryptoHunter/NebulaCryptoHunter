@@ -1,0 +1,129 @@
+ = getCachedDex(ca);
+  if (cached && cached.pairs && cached.pairs.length > 0) {
+    const price = bestSolPrice(cached, ca);
+    if (price > 0) return price;
+  }
+
+  for (let attempt = 0; attempt <= CFG.PRICE_RETRY_MAX; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${ca}`, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const text = await res.text();
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = JSON.parse(text);
+          setCachedDex(ca, data);
+          if (data.pairs && data.pairs.length > 0) {
+            const price = bestSolPrice(data, ca);
+            if (price > 0) return price;
+          }
+        }
+      }
+    } catch(e) {}
+    if (attempt < CFG.PRICE_RETRY_MAX) {
+      await new Promise(r => setTimeout(r, CFG.PRICE_RETRY_BACKOFF * (attempt + 1)));
+    }
+  }
+  return null;
+}
+
+// ==================== EVALUATION SERVICE ====================
+async function evaluatePrediction(db, prediction, windowKey, runId) {
+  const { id, token_ca, entry_price, predicted_multiplier, decision } = prediction;
+  if (!entry_price || entry_price <= 0) return null;
+
+  const currentPrice = await getTokenPrice(token_ca);
+  if (currentPrice === null) return null;
+
+  const roi = ((currentPrice - entry_price) / entry_price) * 100;
+  const actualMultiplier = currentPrice / entry_price;
+
+  let directionalScore = 50;
+  if (decision === 'STRONG_BUY' || decision === 'BUY') {
+    if (roi > 0) directionalScore = 100;
+    else if (roi > -5) directionalScore = 70;
+    else directionalScore = 30;
+  } else if (decision === 'AVOID') {
+    if (roi < 0) directionalScore = 100;
+    else if (roi < 5) directionalScore = 70;
+    else directionalScore = 30;
+  }
+
+  let multiplierScore = 0;
+  if (predicted_multiplier && predicted_multiplier > 0 && actualMultiplier > 0) {
+    const error = Math.abs(predicted_multiplier - actualMultiplier) / Math.max(predicted_multiplier, actualMultiplier);
+    multiplierScore = Math.round(clamp((1 - error) * 100, 0, 100));
+  } else {
+    multiplierScore = 50;
+  }
+
+  const successScore = Math.round((directionalScore * 0.5) + (multiplierScore * 0.5));
+
+  const existing = await db.prepare(`SELECT id FROM evaluations WHERE prediction_id=? AND evaluation_window=?`)
+    .bind(id, windowKey).first();
+  if (existing) return null;
+
+  await db.prepare(`INSERT INTO evaluations (prediction_id, token_ca, directional_score, multiplier_score, timing_score, risk_score, opportunity_cost_score, sustainability_score, confidence_calibration_score, success_score, actual_roi, actual_multiplier, max_drawdown, time_to_ath, sustained_hours, evaluation_confidence, market_regime, evaluation_window, engine_version, notes, evaluated_at)
+    VALUES (?,?,?,?,0,0,0,0,0,?,?,?,0,0,0,100,?,?,?,?,datetime('now'))`)
+    .bind(id, token_ca, directionalScore, multiplierScore, successScore, roi, actualMultiplier, prediction.market_regime||'SIDEWAY', windowKey, VERSION, '').run();
+
+  await db.prepare(`UPDATE predictions SET learning_status='EVALUATED', success_score=?, actual_multiplier=?, evaluated_at=datetime('now') WHERE id=?`)
+    .bind(successScore, actualMultiplier, id).run();
+
+  return { id, roi, actualMultiplier, predictedMultiplier: predicted_multiplier||0, successScore, directionalScore, multiplierScore, decision, confidence: prediction.confidence||50 };
+}
+
+// ==================== LEARNING SERVICE ====================
+async function updateLearningWeights(db, runId) {
+  const features = CFG.FEATURES;
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  const { results: evaluations } = await db.prepare(`
+    SELECT e.*, p.decision, p.confidence, p.predicted_multiplier, p.created_at as pred_created_at
+    FROM evaluations e JOIN predictions p ON e.prediction_id = p.id
+  `).all();
+
+  if (!evaluations || evaluations.length < CFG.MIN_SAMPLES_FOR_LEARNING) return;
+
+  for (const feat of features) {
+    const { results: contributions } = await db.prepare(`
+      SELECT fc.*, e.success_score, e.actual_multiplier, e.predicted_multiplier,
+             p.confidence, p.decision, p.created_at as pred_created_at
+      FROM feature_contributions fc
+      JOIN evaluations e ON fc.prediction_id = e.prediction_id
+      JOIN predictions p ON e.prediction_id = p.id
+      WHERE fc.feature_name = ?
+    `).bind(feat).all();
+
+    if (!contributions || contributions.length < CFG.MIN_SAMPLES_FOR_LEARNING) continue;
+
+    const sampleCount = contributions.length;
+    let totalErrorWeight = 0;
+    let successCount = 0;
+
+    for (const c of contributions) {
+      const confidence = c.confidence || 50;
+      const predictedMultiplier = c.predicted_multiplier || 1;
+      const actualMultiplier = c.actual_multiplier || 1;
+
+      const maxVal = Math.max(predictedMultiplier, actualMultiplier);
+      const predictionError = maxVal > 0 ? Math.abs(predictedMultiplier - actualMultiplier) / maxVal : 0;
+
+      let confidenceFactor = clamp(confidence / 100, CFG.CONFIDENCE_FLOOR, CFG.CONFIDENCE_CEIL);
+      const normalizedConf = (confidenceFactor - CFG.CONFIDENCE_FLOOR) / (CFG.CONFIDENCE_CEIL - CFG.CONFIDENCE_FLOOR);
+      confidenceFactor = CFG.CONFIDENCE_FLOOR + Math.pow(normalizedConf, 1.5) * (CFG.CONFIDENCE_CEIL - CFG.CONFIDENCE_FLOOR);
+
+      let sampleModifier = 0.3;
+      if (sampleCount >= 1000) sampleModifier = 1.0;
+      else if (sampleCount >= 200) sampleModifier = 0.7;
+      else if (sampleCount >= 50) sampleModifier = 0.5;
+
+      const predAgeDays = (now - new Date(c.pred_created_at).getTime()) / dayMs;
+      const decayFactor = Math.exp(-Math.log(2) * predAgeDays / CFG.DECAY_HALF_LIFE_DAYS);
+
+      const direction = actualMultiplier > predictedMultiplier ? 1 : -1;
+      const errorWeight = predictionError * confidenceFactor * sampleModifier * 
