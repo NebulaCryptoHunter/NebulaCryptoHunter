@@ -637,15 +637,23 @@ const RenderEngine = (()=>{
     // Cached/restored tokens and server observations are not validated trading signals.
     // Do not render zero-filled XAI gauges, invented growth multipliers or a fake exit plan.
     if(t._serverObservation||t.restored){
-      const score=Number.isFinite(Number(t._finalAIScore))?Number(t._finalAIScore).toFixed(2):'—';
-      const verdict=t._serverObservation?'DATA SERVER · RISIKO BELUM DIVERIFIKASI':'DATA TERSIMPAN · PERLU PEMERIKSAAN ULANG';
-      const observed=t.observedAt?escapeHTML(t.observedAt):'Belum tersedia';
-      const pool=t.pairAddress?escapeHTML(t.pairAddress):'Belum tersedia';
-      const model=t.model?escapeHTML(t.model):'Belum diketahui';
-      return '<div class="hud-detail-grid">'
-        +'<div class="detail-section"><div class="section-title">TELEMETRY · VERIFIED FIELDS</div>'
-        +'<div class="hud-gauge"><span class="gauge-label">HARGA</span><b class="gauge-value" style="width:auto">'+fmtPrice(t.price)+'</b></div>'
-        +'<div class="hud-gauge"><span class="gauge-label">LIKUIDITAS</span><b class="gauge-value" style="width:auto">'+(safeValue(t.liq)?'
+      const line=(name,value)=>'<div class="hud-gauge"><span class="gauge-label">'+name+'</span><span class="gauge-value" style="width:auto">'+escapeHTML(value)+'</span></div>';
+      const label=t._serverObservation?'DATA SERVER · RISIKO BELUM DIVERIFIKASI':'DATA TERSIMPAN · PERLU PEMERIKSAAN ULANG';
+      const score=Number.isFinite(t._finalAIScore)?t._finalAIScore.toFixed(2):'—';
+      const data='<div class="detail-section"><div class="section-title">TELEMETRY · SERVER DATA</div>'
+        +line('HARGA',fmtPrice(t.price))
+        +line('LIKUIDITAS',safeValue(t.liq)?fmtNum(t.liq):'—')
+        +line('VOLUME 24J',safeValue(t.vol24h)?fmtNum(t.vol24h):'—')
+        +line('AI SCORE',score)
+        +'</div>';
+      const info='<div class="detail-section"><div class="section-title">RISK · RESEARCH ONLY</div>'
+        +'<p style="font-size:.67rem;color:#ffc68f;margin-bottom:8px">'+label+'</p>'
+        +line('MODEL',t.model||'Belum diketahui')
+        +line('OBSERVASI',t.observedAt||'Belum tersedia')
+        +'<div style="font-size:.58rem;color:#9ebcd1;overflow-wrap:anywhere;margin-top:7px">POOL: '+escapeHTML(t.pairAddress||'Belum tersedia')+'</div>'
+        +'<p style="margin-top:8px;color:#93aebe;font-size:.6rem">XAI, target harga, backtest, wallet, dan exit plan tidak ditampilkan bila belum diverifikasi. Bukan sinyal beli.</p></div>';
+      return '<div class="hud-detail-grid">'+data+info+'</div>';
+    }
     const exp=t._explain||{liq:0,vol:0,age:0,holder:0,wallet:0,momentum:0,security:0};
     const rs=t._reasons||{pros:[],cons:[]};
     const exit=t._exitPlan;
@@ -698,7 +706,7 @@ const RenderEngine = (()=>{
     return '<div class="hud-detail-grid">'+detail+'</div>';
   }
 
-  function patchCard(div,t){if(!t._dirty)return;t._dirty=false;if(div.classList.contains('skeleton-card')){buildCard(t);return;}const d=t.decision||DECISION.AVOID,hero=S.hero;const decClass=d.toLowerCase().replace(/\s/g,'-');div.className='hud-card card-'+decClass+(hero&&t.ca===hero.ca?' hero-card':'')+(t._enrichError?' enrich-error':'')+(t._fromCache?' cached':'');const dt=div.querySelector('.decision-tag');if(dt){dt.textContent=d.replace(/_/g,' ');dt.className='decision-tag decision-'+decClass;}const ringVal=div.querySelector('.score-ring-value');if(ringVal)ringVal.textContent=Math.round(t.quad?.final||0);if(t.multiplier){let mb=div.querySelector('.multiplier-badge-card');if(!mb){const ring=div.querySelector('.score-ring-container');if(ring){mb=document.createElement('span');mb.className='multiplier-badge-card';ring.parentNode.insertBefore(mb,ring);}}if(mb)mb.textContent='🚀'+t.multiplier.expected+'X';}}
+  function patchCard(div,t){if(!t._dirty)return;t._dirty=false;if(div.classList.contains('skeleton-card')){buildCard(t);return;}const d=t.decision||DECISION.AVOID,hero=S.hero;const decClass=d.toLowerCase().replace(/\s/g,'-');div.className='hud-card card-'+decClass+(hero&&t.ca===hero.ca?' hero-card':'')+(t._enrichError?' enrich-error':'')+(t._fromCache?' cached':'');const dt=div.querySelector('.decision-tag');if(dt){dt.textContent=d.replace(/_/g,' ');dt.className='decision-tag decision-'+decClass;}const ringVal=div.querySelector('.score-ring-value');if(ringVal)ringVal.textContent=Math.round(t.quad?.final||0);if(t.multiplier&&!t.restored&&t._passedGate&&!t._serverObservation){let mb=div.querySelector('.multiplier-badge-card');if(!mb){const ring=div.querySelector('.score-ring-container');if(ring){mb=document.createElement('span');mb.className='multiplier-badge-card';ring.parentNode.insertBefore(mb,ring);}}if(mb)mb.textContent='🚀'+t.multiplier.expected+'X';}}
   function patchHeroPanel(){const panel=$('heroPanel');if(!panel)return;if(!S.hero){panel.style.display='none';return;}panel.style.display='flex';const nameEl=$('heroName');if(nameEl)nameEl.textContent=getName(S.hero);const scoreEl=$('heroScore');if(scoreEl)scoreEl.textContent='AI:'+(S.hero._finalAIScore||0).toFixed(1)+' M:'+(S.hero.multiplier?S.hero.multiplier.expected+'X':'?');const confEl=$('heroConfidence');if(confEl)confEl.textContent='Conf:'+(S.hero._conf||0)+'% Risk:'+(S.hero._riskIndex||0);}
   function initHeroPanel(){const panel=$('heroPanel');panel.innerHTML='<div class="hero-info"><div class="hero-name" id="heroName"></div><div style="display:flex;gap:8px;font-size:0.55rem;margin-top:2px"><span style="color:#ffd700" id="heroScore"></span><span style="color:#0ff" id="heroConfidence"></span></div></div>';}
   function initDashboard(){const dash=$('cockpitDashboard');dash.innerHTML='';const groups=[{label:'TRADING',panels:[{id:'dash-sb',lbl:'ST.BUY',color:'#ffd700'},{id:'dash-buy',lbl:'BUY',color:'#0f6'},{id:'dash-watch',lbl:'WATCH',color:'#0ff'},{id:'dash-wait',lbl:'WAIT',color:'#f80'},{id:'dash-avoid',lbl:'AVOID',color:'#f66'},{id:'dash-scam',lbl:'SCAM',color:'#f00'},{id:'dash-hero',lbl:'HERO',color:'#ffd700'}]},{label:'PERFORMANCE',panels:[{id:'dash-win',lbl:'WIN%',color:'#ffd700'},{id:'dash-avgROI',lbl:'ROI',color:'#ffd700'},{id:'dash-acc',lbl:'ACC',color:'#0fa'},{id:'dash-prec',lbl:'PREC',color:'#0f6'},{id:'dash-rec',lbl:'REC',color:'#0ff'},{id:'dash-mae',lbl:'MAE',color:'#b0f'}]},{label:'DATABASE',panels:[{id:'dash-db',lbl:'DB',color:'#b0f'},{id:'dash-pred',lbl:'PRED',color:'#0ff'},{id:'dash-total',lbl:'TOT',color:'#fff'}]}];groups.forEach(group=>{const label=document.createElement('div');label.className='dash-group-label';label.textContent=group.label;dash.appendChild(label);const groupDiv=document.createElement('div');groupDiv.className='dash-group';group.panels.forEach(p=>{const div=document.createElement('div');div.className='dash-panel';div.id=p.id;div.innerHTML='<div class="val" style="color:'+p.color+'">0</div><div class="lbl">'+p.lbl+'</div>';groupDiv.appendChild(div);});dash.appendChild(groupDiv);});}
