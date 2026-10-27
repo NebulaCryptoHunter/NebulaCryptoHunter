@@ -20,11 +20,13 @@ export default {async fetch(request,env){
  if(path.startsWith('/api/auth/'))return await handleAuth(request,authEnv,{frontendOrigin:u.origin});
  if(path==='/account'&&method==='GET')return new Response(accountHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'}});
  if(path==='/api/research/latest'&&method==='GET'){
+  if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   const {results}=await env.RESEARCH_DB.prepare(`SELECT s.mint,s.pair_address,s.observed_at,s.liquidity_usd,s.volume_24h,s.change_24h,e.decision,e.score,e.model FROM scanner_snapshots s LEFT JOIN engine_scores e ON e.id=(SELECT MAX(x.id) FROM engine_scores x WHERE x.mint=s.mint AND x.pair_address=s.pair_address AND x.observed_at=s.observed_at) WHERE s.id=(SELECT MAX(x.id) FROM scanner_snapshots x WHERE x.mint=s.mint AND x.pair_address=s.pair_address) ORDER BY s.id DESC LIMIT 50`).all();
   const {results:runs}=await env.RESEARCH_DB.prepare("SELECT id,started_at,completed_at,status,selected_count,snapshot_count,error FROM scanner_runs ORDER BY id DESC LIMIT 10").all();
-  return json({items:results,runs,automaticScanning:true,intervalMinutes:30,modelCalibrated:false});
+  return json({items:results,runs,automaticScanning:false,intervalMinutes:null,modelCalibrated:false,source:'staging-d1',note:'Cron staging dinonaktifkan; hasil berasal dari data tersimpan.'});
  }
  if(path==='/api/research/scan'&&method==='POST'){
+  if(!env.SCANNER||!env.INTERNAL_TOKEN)return json({error:'SCANNER_NOT_CONFIGURED'},503);
   const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN')return json({error:'ADMIN_REQUIRED'},401);
   const b=await request.json();if(!Array.isArray(b?.mints)||b.mints.length<1||b.mints.length>5||!b.mints.every(mintOK))return json({error:'INVALID_MINTS'},400);
   const results=[];for(const mint of [...new Set(b.mints)]){const r=await env.SCANNER.fetch('https://scanner.internal/pipeline?persist=1&mint='+mint,{headers:{Authorization:'Bearer '+env.INTERNAL_TOKEN}});const d=await r.json();results.push({mint,status:r.status,data:d});if(r.status===429)return json({error:'UPSTREAM_RATE_LIMITED',results},429);}
