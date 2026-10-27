@@ -53,3 +53,35 @@ test('HUD details render every section without raw source leaks or trapped scrol
  assert.match(html,/XAI, target harga|Tidak ada katalis terverifikasi|Model belum dikalibrasi/);
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
 });
+
+test('historical archive stays separate and visible beside scanner snapshots',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ assert.match(html,/id="archiveStatus"/);
+ assert.match(html,/id="archiveCount"/);
+ assert.match(html,/\/api\/v1\/stats/);
+ assert.match(html,/\/api\/v1\/predictions\?limit=/);
+ assert.match(html,/legacyArchiveCount=n/);
+ assert.match(html,/function showHistoryPanel\(offset=0\)/);
+ assert.match(html,/Menampilkan /);
+ assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.snapshots/);
+ assert.match(html,/S\.serverResearchCounts=json\.counts/);
+});
+test('SCAN reports read-only synchronization truthfully and cannot claim a new scan',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ assert.match(html,/id="scanFeedback"/);
+ assert.match(html,/Tombol SCAN saat ini memperbarui data tersimpan \(mode baca\), tidak memulai pemindaian server/);
+ assert.match(html,/scan manual membutuhkan akun Admin/);
+ assert.match(html,/performScan\(\)\.catch\(e=>/);
+ assert.match(html,/\.finally\(\(\)=>/);
+ assert.match(html,/return json;\n\}/);
+});
+test('frontend historical archive GET forwards over existing API service binding',async()=>{
+ const seen=[];
+ const API={fetch:async req=>{seen.push(new URL(req.url).pathname);return Response.json({success:true,data:{total_predictions:6952,total_evaluations:82,predictions:[]}})}};
+ const env={API};
+ const stats=await gateway.fetch(new Request(origin+'/api/v1/stats'),env);
+ assert.equal(stats.status,200);
+ const predictions=await gateway.fetch(new Request(origin+'/api/v1/predictions?limit=25&offset=0'),env);
+ assert.equal(predictions.status,200);
+ assert.deepEqual(seen,['/api/v1/stats','/api/v1/predictions']);
+});
