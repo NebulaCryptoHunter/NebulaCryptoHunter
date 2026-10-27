@@ -48,7 +48,7 @@ export async function runScheduledScan(event,env){
     if(r.status===429){status='RATE_LIMITED';await setCooldown(env);break;}
     if(!r.ok)status='PARTIAL';
    }
-   if(!selected.length)status='EMPTY';
+   if(!selected.length&&status==='COMPLETED')status='EMPTY';
   }
  }catch(e){if(status!=='RATE_LIMITED')status='FAILED';error=String(e.message).slice(0,200);}
  await env.STAGE_DB.prepare("UPDATE scanner_runs SET completed_at=?,status=?,selected_count=?,snapshot_count=?,results_json=?,error=? WHERE id=?").bind(new Date().toISOString(),status,selected.length,results.reduce((n,x)=>n+x.snapshots,0),JSON.stringify(results),error,runId).run();
