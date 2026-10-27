@@ -1,6 +1,6 @@
 # NEBULA Backend V1 — Baseline dan Scope (2026-10-27)
 
-Status: **Tahap 01 — baseline tercatat; belum ada deploy**.
+Status: **Tahap 01 — FINAL / LOCK (baseline dokumentasi dan scope)**. Tidak ada deploy.
 
 ## Scope V1 (LOCK)
 Discovery Solana -> Scanner -> Risk verification (UNKNOWN tetap UNKNOWN) -> heuristic scoring WATCH/REVIEW -> D1 snapshot -> Evaluation -> Dashboard. Tidak ada auto-trading. Tidak mengklaim model AI terlatih atau win rate yang belum tervalidasi.
@@ -36,10 +36,13 @@ D1 IDs (metadata only): nebula-db=6eeadd5e-5e58-4a8c-90d9-92d039438a8f; scanner-
 3. DexScreener discovery rate-limited (429); cooldown and retry behavior needs tests.
 4. Scanner-stage and production evaluation use separate D1 DBs; end-to-end promotion and lineage must be designed and tested.
 5. Adapter staging binds to auth-stage D1; verify intent before integration.
-6. Baseline source integrity hashes, restore procedures and live endpoint smoke tests still pending. No secrets are included here.
+6. SHA-256 artifact Worker terpasang belum dapat diverifikasi karena akses pembacaan source Cloudflare diblokir oleh pemeriksaan keselamatan tool pada 2026-10-27. Restore rehearsal dan live smoke test belum dilakukan. Ini merupakan **prasyarat Tahap 09**, bukan bukti baseline source sudah tervalidasi. No secrets are included here.
 
 ## Stage gates
 01 baseline documented; 02 API/session; 03 scanner; 04 risk verification; 05 scoring; 06 D1/evaluation; 07 frontend; 08 tests; 09 controlled deploy; 10 handover.
+
+## Lock Tahap 01
+Scope, inventaris Worker/D1 dan batas lingkungan di atas dikunci sebagai baseline per tanggal pemeriksaan. Perubahan scope berikutnya wajib dicatat sebagai change request. **LOCK dokumentasi bukan verifikasi kesamaan GitHub dengan Worker yang sedang deploy.** Pengambilan checksum artifact, backup aktual, dan uji pemulihan tetap wajib sebagai gate sebelum Tahap 09.
 
 ## Rollback rule
 Before production deployment, export exact Worker scripts/config and D1 backup, record version identifiers, verify rollback steps. Never assume a GitHub commit matches a deployed Worker without comparing artifacts.
