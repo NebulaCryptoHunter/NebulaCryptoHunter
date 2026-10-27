@@ -20,7 +20,7 @@ export default {async fetch(request,env){
  if(path==='/api/auth/activate')return activateAdmin(request,authEnv);
  if(path.startsWith('/api/auth/'))return await handleAuth(request,authEnv,{frontendOrigin:u.origin});
  if(path==='/account'&&method==='GET')return new Response(accountHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'}});
- if(path==='/api/research/providers'&&method==='GET'){const r=await env.API.fetch('https://api.internal/provider-health');const out=new Response(r.body,r);out.headers.set('Cache-Control','no-store');return out;}
+ if(path==='/api/research/providers'&&method==='GET'){if(!env.API)return json({error:'API_BINDING_MISSING',providers:[]},503);const r=await env.API.fetch('https://api.internal/provider-health');const out=new Response(r.body,r);out.headers.set('Cache-Control','no-store');return out;}
  if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API});
  if(path==='/api/research/latest'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
@@ -43,9 +43,11 @@ export default {async fetch(request,env){
   const headers=new Headers(request.headers);headers.delete('Cookie');headers.delete('Authorization');headers.delete('X-API-Key');headers.delete('Origin');
   if(method==='POST'&&path.startsWith('/api/v1/')&&!env.API_KEY)return json({error:'WRITE_SERVICE_NOT_CONFIGURED'},503);
   if(method==='POST'&&path.startsWith('/api/v1/'))headers.set('Authorization','Bearer '+env.API_KEY);
+  if(!env.API)return json({error:'API_BINDING_MISSING'},503);
   const response=await env.API.fetch(new Request('https://nebula-api.nebula-crypto-proxy.workers.dev'+path+u.search,{method,headers,body:method==='POST'?request.body:undefined,duplex:method==='POST'?'half':undefined}));
   const out=new Response(response.body,response);out.headers.set('Cache-Control','no-store');return out;
  }
+ if(!env.ASSETS)return json({error:'ASSETS_BINDING_MISSING'},503);
  const response=await env.ASSETS.fetch(request);
  if(!response.headers.get('Content-Type')?.includes('text/html'))return response;
  const html=transformFrontend(await response.text()),headers=new Headers(response.headers);headers.delete('Content-Length');headers.delete('ETag');headers.set('Cache-Control','no-store');headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','no-referrer');return new Response(html,{status:response.status,headers});
