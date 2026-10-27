@@ -1,3 +1,4 @@
+import {toPredictionCandidates} from './prediction-adapter.mjs';
 // NEBULA scanner: deterministic token identity and pool-specific discovery.
 // Research-only: staging D1 snapshots and scores; no trading.
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
@@ -97,6 +98,7 @@ const worker={async scheduled(event,env,ctx){
    const data=await scored.json();
    if(!Array.isArray(data.results)||data.results.length!==items.length)return reply({error:"ENGINE_RESPONSE_INVALID"},502);
    if(data.results.some((v,i)=>!v||v.mint!==items[i].base.mint||v.pairAddress!==items[i].pairAddress))return reply({error:"IDENTITY_MISMATCH"},502);
+   const candidates=toPredictionCandidates(items,data.results);
    const persist=u.searchParams.get("persist")==="1";
    if(persist){
     if(!env.STAGE_DB)return reply({error:"STAGING_DB_MISSING"},503);
@@ -111,7 +113,7 @@ const worker={async scheduled(event,env,ctx){
      }
     }catch{return reply({error:"STAGING_WRITE_FAILED"},503);}
    }
-   return reply({mint,items,results:data.results,source:"dexscreener",persisted:persist});
+   return reply({mint,items,results:data.results,predictionCandidates:candidates,source:"dexscreener",persisted:persist});
   }catch{return reply({error:"PIPELINE_UNAVAILABLE"},502);}
  }
  if(u.pathname!=="/scan"||request.method!=="POST")return reply({error:"NOT_FOUND"},404);
