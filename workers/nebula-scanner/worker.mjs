@@ -108,7 +108,8 @@ const worker={async scheduled(event,env,ctx){
       if(v.mint!==c.base.mint||v.pairAddress!==c.pairAddress)return reply({error:"IDENTITY_MISMATCH"},502);
       await env.STAGE_DB.batch([
        env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_snapshots (mint,pair_address,observed_at,liquidity_usd,volume_24h,change_24h,payload_json) VALUES (?,?,?,?,?,?,?)").bind(c.base.mint,c.pairAddress,c.observedAt,c.liquidityUsd,c.volume24h,c.change24h,JSON.stringify(c)),
-       env.STAGE_DB.prepare("INSERT INTO engine_scores (mint,pair_address,observed_at,model,decision,score,payload_json) VALUES (?,?,?,?,?,?,?)").bind(v.mint,v.pairAddress,c.observedAt,v.model,v.decision,v.score,JSON.stringify(v))
+       env.STAGE_DB.prepare("INSERT INTO engine_scores (mint,pair_address,observed_at,model,decision,score,payload_json) VALUES (?,?,?,?,?,?,?)").bind(v.mint,v.pairAddress,c.observedAt,v.model,v.decision,v.score,JSON.stringify(v)),
+       env.STAGE_DB.prepare("INSERT OR IGNORE INTO prediction_candidates (mint,pair_address,observed_at,decision,raw_decision,ai_score,model,risk_verified,reason,source,payload_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(candidates[i].token_ca,candidates[i].pair_address,candidates[i].observed_at,candidates[i].decision,candidates[i].raw_decision,candidates[i].ai_score,candidates[i].model,candidates[i].risk_verified?1:0,candidates[i].reason,candidates[i].source,JSON.stringify(candidates[i]))
       ]);
      }
     }catch{return reply({error:"STAGING_WRITE_FAILED"},503);}
