@@ -288,27 +288,77 @@ const HELIUS_PROXY=CONFIG.WORKER_URL+'/helius/rpc', RUGCHECK_PROXY=CONFIG.WORKER
 const RPC=[{n:'HELIUS',u:HELIUS_PROXY}];
 S.endpointStats={}; CONFIG.ENDPOINTS.forEach(n=>{S.endpointStats[n]={success:0,fail:0,latency:0,retries:0}});
 const ep={},eph={};
-CONFIG.ENDPOINTS.forEach(n=>{ep[n]=['JUPITER','GECKO','BIRDEYE','ANKR','SOLANA_RPC','PUMP_WS','COINGECKO','COINPAPRIKA'].includes(n)?'pending':'on';eph[n]={hs:0,rt:0,sr:0};S.apiHealthHistory=S.apiHealthHistory||{};S.apiHealthHistory[n]=[]});
-window.setEp=(n,s,rt)=>{
-  if(!CONFIG.ENDPOINTS.includes(n))return; ep[n]=s;
+CONFIG.ENDPOINTS.forEach(n=>{
+  ep[n]='pending'; eph[n]={hs:0,rt:0,sr:0};
+  S.apiHealthHistory=S.apiHealthHistory||{}; S.apiHealthHistory[n]=[];
+});
+const epLabels={SOLANA_RPC:'RPC',PUMP_WS:'PUMP WS',COINGECKO:'CGECKO',COINPAPRIKA:'PAPRIKA',RUGCHECK:'RUG'};
+const epDescriptions={on:'HEALTHY — pemeriksaan berhasil',off:'UNAVAILABLE — pemeriksaan gagal',limited:'RATE_LIMITED — dibatasi provider',pending:'NOT_TESTED — belum terverifikasi',disabled:'DISABLED — sengaja dinonaktifkan'};
+window.setEp=(n,state,rt)=>{
+  if(!CONFIG.ENDPOINTS.includes(n))return;
+  const status=['on','off','limited','pending','disabled'].includes(state)?state:'pending';
+  ep[n]=status;
   if(!S.apiHealthHistory[n])S.apiHealthHistory[n]=[];
-  S.apiHealthHistory[n].push(s==='on'?1:0); if(S.apiHealthHistory[n].length>30)S.apiHealthHistory[n].shift();
-  if(rt)eph[n].rt=Math.round((eph[n].rt*4+rt)/5);
-  eph[n].sr=Math.round((S.apiHealthHistory[n].filter(x=>x===1).length/S.apiHealthHistory[n].length)*100);
-  eph[n].hs=Math.round(eph[n].sr*0.7+(eph[n].rt<500?30:0));
-  if(s==='on')S.endpointStats[n].success++;else S.endpointStats[n].fail++;
-  if(rt)S.endpointStats[n].latency=Math.round((S.endpointStats[n].latency*4+rt)/5);
+  if(status==='on'||status==='off'){
+    S.apiHealthHistory[n].push(status==='on'?1:0);
+    if(S.apiHealthHistory[n].length>30)S.apiHealthHistory[n].shift();
+    eph[n].sr=Math.round(S.apiHealthHistory[n].filter(x=>x===1).length/S.apiHealthHistory[n].length*100);
+    eph[n].hs=Math.round(eph[n].sr*.7+(eph[n].rt<500?30:0));
+    if(status==='on')S.endpointStats[n].success++;else S.endpointStats[n].fail++;
+  }
+  if(Number.isFinite(rt)&&rt>0){
+    eph[n].rt=Math.round((eph[n].rt*4+rt)/5);
+    S.endpointStats[n].latency=Math.round((S.endpointStats[n].latency*4+rt)/5);
+  }
+  updateEpBar();
 };
 function updateEpBar(){
-  const el=$('endpointBar');if(!el||el.querySelector('#providerStatusLink'))return;
-  const btn=document.createElement('button');btn.id='providerStatusLink';btn.type='button';btn.className='ep-status-btn';
-  btn.textContent='API · LIHAT STATUS PROVIDER ▾';
-  btn.setAttribute('aria-label','Buka status provider API pada panel Server');
-  btn.addEventListener('click',()=>{
-    const details=$('nebulaServerDetails'),providers=$('nebulaProviderDetails');
-    if(details){details.open=true;if(providers)providers.open=true;details.scrollIntoView({behavior:'smooth',block:'nearest'});}
-  });
-  el.replaceChildren(btn);
+  const root=$('endpointBar');if(!root)return;
+  if(root.children.length!==CONFIG.ENDPOINTS.length){
+    root.replaceChildren();
+    for(const name of CONFIG.ENDPOINTS){
+      const chip=document.createElement('button');chip.type='button';chip.className='ep-mini pending';
+      chip.dataset.provider=name;
+      const dot=document.createElement('span');dot.className='indicator-dot';dot.setAttribute('aria-hidden','true');
+      const text=document.createElement('span');text.textContent=epLabels[name]||name;
+      chip.append(dot,text);
+      chip.addEventListener('click',()=>{
+        const dock=$('nebulaServerDetails'),detail=$('nebulaProviderDetails');
+        if(dock){dock.open=true;if(detail)detail.open=true;dock.scrollIntoView({behavior:'smooth',block:'nearest'});}
+      });
+      root.appendChild(chip);
+    }
+  }
+  for(const chip of root.children){
+    const name=chip.dataset.provider,status=ep[name]||'pending';
+    chip.className='ep-mini '+(status==='on'?'online':status==='off'?'offline':status);
+    chip.title=name+' · '+epDescriptions[status];
+    chip.setAttribute('aria-label',name+': '+epDescriptions[status]+'. Ketuk untuk rincian');
+  }
+}
+async function refreshProviderIndicators(){
+  try{
+    // Backend probes real upstream responses, cached server-side for 10 minutes.
+    // No guesses: absent providers retain NOT_TESTED.
+    const r=await fetch('/api/research/providers',{cache:'no-store',signal:AbortSignal.timeout(55000)});
+    if(!r.ok)throw Error('provider HTTP '+r.status);
+    const data=await r.json();
+    if(!Array.isArray(data.providers))throw Error('invalid provider response');
+    const aliases={DexScreener:'DEX',Helius:'HELIUS',Jupiter:'JUPITER',
+      GeckoTerminal:'GECKO',Birdeye:'BIRDEYE',CoinGecko:'COINGECKO',
+      Rugcheck:'RUGCHECK',CoinPaprika:'COINPAPRIKA',Ankr:'ANKR',
+      'PumpPortal WebSocket':'PUMP_WS'};
+    for(const item of data.providers){
+      const name=aliases[item.name];if(!name)continue;
+      const next=item.status==='HEALTHY'?'on':item.status==='RATE_LIMITED'?'limited':
+        item.status==='DISABLED'?'disabled':item.status==='NOT_TESTED'?'pending':
+        ['AUTH_ERROR','CONFIG_ERROR','UNAVAILABLE'].includes(item.status)?'off':'pending';
+      window.setEp(name,next,item.latencyMs);
+    }
+  }catch(e){
+    // A failed status request does not prove all upstream providers are offline.
+    console.warn('API health verification unavailable',e?.message);
+  }
 }
 // Provider indicators: check real upstream data; no artificial green status.
 async function checkNewProviderHealth(ca){if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca))return;await Promise.all([['JUPITER','jupiter'],['GECKO','gecko'],['BIRDEYE','birdeye']].map(async ([name,route])=>{try{const res=await fetchURL(CONFIG.WORKER_URL+'/api/v1/providers/'+route+'/'+encodeURIComponent(ca),{},7000,0);const json=await res.json();window.setEp(name,res.ok&&json?.success===true&&json?.data?.token_ca===ca&&Number.isFinite(json.data.price_usd)&&json.data.price_usd>0?'on':res.status===404?'pending':'off');}catch(e){window.setEp(name,'off');}}));updateEpBar();}
@@ -449,7 +499,7 @@ const AiEngine = (()=>{
   function getRiskProfile(){return CONFIG.RISK_PROFILES[$('riskProfile')?.value]||CONFIG.RISK_PROFILES.balanced;}
   function classifyRugStatus(token){if(!token._rug||token._rugError)return{status:RUG_STATUS.UNKNOWN,class:'rug-unknown',label:RUG_STATUS.UNKNOWN};const score=token._rug.score||0;if(score<20)return{status:RUG_STATUS.SAFE,class:'rug-safe',label:RUG_STATUS.SAFE};if(score<=50)return{status:RUG_STATUS.WARNING,class:'rug-warning',label:RUG_STATUS.WARNING};return{status:RUG_STATUS.RISK,class:'rug-risk',label:RUG_STATUS.RISK};}
 
-  async function enrichDex(token){if(token._dexDone)return;const cacheKey='dex_'+token.ca;const cached=StorageInterface.load(cacheKey);if(cached&&cached.ca===token.ca&&Number.isFinite(cached.price)&&cached.price>0&&Number.isFinite(cached.liq)&&cached.liq>0){Object.assign(token,cached);token._dexDone=true;token._dexError=false;token._fromCache=true;window.setEp('DEX','on');return;}if(CircuitBreaker.isAllowed('dex')){try{const res=await fetchURL(DEX_PROXY+token.ca,{},5000);const json=await res.json();if(json&&json.pairs&&Array.isArray(json.pairs)&&json.pairs.length>0){if(!processDexData(token,json))throw new Error('No valid Solana base-token price');token._dexDone=true;token._dexError=false;window.setEp('DEX','on');CircuitBreaker.recordSuccess('dex');StorageInterface.save(cacheKey,{ca:token.ca,price:token.price,liq:token.liq,vol1h:token.vol1h,mcap:token.mcap,identity:token.identity,pair:token.pair,dexUrl:token.dexUrl});return;}CircuitBreaker.recordFailure('dex');}catch(e){CircuitBreaker.recordFailure('dex');}}try{const res=await fetchURL('https://api.dexscreener.com/latest/dex/tokens/'+token.ca,{},5000);const json=await res.json();if(json&&json.pairs&&Array.isArray(json.pairs)&&json.pairs.length>0){if(!processDexData(token,json))throw new Error('No valid Solana base-token price');token._dexDone=true;token._dexError=false;window.setEp('DEX','on');StorageInterface.save(cacheKey,{ca:token.ca,price:token.price,liq:token.liq,vol1h:token.vol1h,mcap:token.mcap,identity:token.identity,pair:token.pair,dexUrl:token.dexUrl});return;}}catch(e){}token._dexError=true;token._dexDone=true;window.setEp('DEX','off');}
+  async function enrichDex(token){if(token._dexDone)return;const cacheKey='dex_'+token.ca;const cached=StorageInterface.load(cacheKey);if(cached&&cached.ca===token.ca&&Number.isFinite(cached.price)&&cached.price>0&&Number.isFinite(cached.liq)&&cached.liq>0){Object.assign(token,cached);token._dexDone=true;token._dexError=false;token._fromCache=true;return;}if(CircuitBreaker.isAllowed('dex')){try{const res=await fetchURL(DEX_PROXY+token.ca,{},5000);const json=await res.json();if(json&&json.pairs&&Array.isArray(json.pairs)&&json.pairs.length>0){if(!processDexData(token,json))throw new Error('No valid Solana base-token price');token._dexDone=true;token._dexError=false;window.setEp('DEX','on');CircuitBreaker.recordSuccess('dex');StorageInterface.save(cacheKey,{ca:token.ca,price:token.price,liq:token.liq,vol1h:token.vol1h,mcap:token.mcap,identity:token.identity,pair:token.pair,dexUrl:token.dexUrl});return;}CircuitBreaker.recordFailure('dex');}catch(e){CircuitBreaker.recordFailure('dex');}}try{const res=await fetchURL('https://api.dexscreener.com/latest/dex/tokens/'+token.ca,{},5000);const json=await res.json();if(json&&json.pairs&&Array.isArray(json.pairs)&&json.pairs.length>0){if(!processDexData(token,json))throw new Error('No valid Solana base-token price');token._dexDone=true;token._dexError=false;window.setEp('DEX','on');StorageInterface.save(cacheKey,{ca:token.ca,price:token.price,liq:token.liq,vol1h:token.vol1h,mcap:token.mcap,identity:token.identity,pair:token.pair,dexUrl:token.dexUrl});return;}}catch(e){}token._dexError=true;token._dexDone=true;window.setEp('DEX','off');}
   function processDexData(token,json){const valid=(json.pairs||[]).filter(p=>p.chainId==='solana'&&p.baseToken?.address===token.ca);valid.sort((a,b)=>(Number(b.liquidity?.usd)||0)-(Number(a.liquidity?.usd)||0));const p=valid[0];if(!p)return false;if(safeValue(p.priceUsd))token.price=safeNum(p.priceUsd);if(safeValue(p.fdv))token.mcap=safeNum(p.fdv);if(safeValue(p.liquidity?.usd))token.liq=safeNum(p.liquidity.usd);if(safeValue(p.volume?.h1))token.vol1h=safeNum(p.volume.h1);if(p.volume?.h1&&p.txns?.h1){const tv=safeNum(p.volume.h1)||0,buys=safeNum(p.txns.h1.buys)||0,sells=safeNum(p.txns.h1.sells)||0;if(tv>0&&(buys+sells)>0){token.buyVol=Math.round(tv*buys/(buys+sells));token.sellVol=Math.round(tv*sells/(buys+sells));token._hasFlow=true;}}token.pair=p.pairAddress;token.dexUrl='https://dexscreener.com/solana/'+p.pairAddress;if(p.baseToken?.name&&p.baseToken.name!=='UNKNOWN'){token.identity={name:p.baseToken.name,symbol:p.baseToken.symbol,ca:token.ca};}return Number.isFinite(token.price)&&token.price>0;}
   async function enrichHelius(token){if(token._helDone)return;try{if(!S._providerHealthStarted){S._providerHealthStarted=true;void checkNewProviderHealth(token.ca);}const supplyR=await rpc('getTokenSupply',[token.ca]);const holdersR=await rpc('getTokenLargestAccounts',[token.ca]);const sigsR=await rpc('getSignaturesForAddress',[token.ca,{limit:30}]);const largest=(holdersR?.result?.value||[]).filter(a=>!['11111111111111111111111111111111','5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1'].includes(a.address));const topAddrs=largest.slice(0,10).map(a=>a.address);let hc=0,holdersVerified=false;try{const hr=await fetchURL(CONFIG.API.baseURL+'/holders/'+encodeURIComponent(token.ca),{},9000,0);const hj=await hr.json();if(hr.ok&&hj?.success===true&&hj?.verified===true&&hj?.data?.token_ca===token.ca&&hj?.data?.holder_count_verified===true&&Number.isInteger(hj.data.holder_count)&&hj.data.holder_count>=0){hc=hj.data.holder_count;holdersVerified=true;}}catch(holderError){console.warn('Holder source unavailable',holderError.message);}const dist={top1:0,top5:0,top10:0};let total=supplyR?.result?.value?.amount||1;if(total>0)for(let i=0;i<largest.length;i++){const pct=(largest[i].amount/total)*100;if(i===0)dist.top1=pct;if(i<5)dist.top5+=pct;if(i<10)dist.top10+=pct;}token._hel={hc,holderCountVerified:holdersVerified,largestAccountsSample:largest.length,dist:{...dist,gini:Math.min(100,Math.round(dist.top10*1.5))},dh:Math.min(100,hc*3),hq:Math.min(100,hc*8)||40,rtx:(sigsR?.result||[]).length,smc:Math.min(hc,Math.floor((sigsR?.result||[]).length*0.15)),_topAddrs:topAddrs};token._helDone=true;token._helError=false;window.setEp('HELIUS','on');}catch(e){token._hel={hc:0,holderCountVerified:false,dist:{top1:0,top5:0,top10:0,gini:50},dh:20,hq:30,rtx:0,smc:0,_topAddrs:[]};token._helDone=true;token._helError=true;window.setEp('HELIUS','off');}}
   async function enrichRug(token){if(token._rugDone)return;const cacheKey='rug_'+token.ca;const cached=StorageInterface.load(cacheKey);if(cached&&cached.ca===token.ca&&Number.isFinite(cached.score)&&cached.score>=0){token._rug=cached;token._rugDone=true;token._rugError=false;token._fromCache=true;window.setEp('RUGCHECK','on');return;}if(CircuitBreaker.isAllowed('rugcheck')){try{const res=await fetchURL(RUGCHECK_PROXY+token.ca,{},8000);if(res.ok){const d=await res.json();if(d&&d.token){let ll=0,lt=0;(d.markets||[]).forEach(m=>{if(m.lp){lt+=m.lp.baseUSD||0;if(m.lp.lockup)ll+=m.lp.baseUSD||0;}});token._rug={score:d.score||0,lpLock:lt>0?(ll/lt)*100:0,mint:!!d.token?.mintAuthority,freeze:!!d.token?.freezeAuthority};token._rugError=false;CircuitBreaker.recordSuccess('rugcheck');StorageInterface.save(cacheKey,{...token._rug,ca:token.ca});}else{token._rug={score:0,lpLock:0,mint:false,freeze:false};token._rugError=true;CircuitBreaker.recordSuccess('rugcheck');}}else if(res.status===400){token._rug={score:-1,lpLock:0,mint:false,freeze:false};token._rugError=true;CircuitBreaker.recordSuccess('rugcheck');}else{token._rug={score:0,lpLock:0,mint:false,freeze:false};token._rugError=true;CircuitBreaker.recordFailure('rugcheck');}token._rugDone=true;window.setEp('RUGCHECK','on');return;}catch(e){CircuitBreaker.recordFailure('rugcheck');}}token._rug={score:-1,lpLock:0,mint:false,freeze:false};token._rugError=true;token._rugDone=true;window.setEp('RUGCHECK','off');}
@@ -690,6 +740,8 @@ function startup(){
     addAILog('['+new Date().toLocaleTimeString()+'] NEBULA CRYPTO HUNTER ONLINE','success');
     if(S.isAuto)Scanner.requestScan();
     startAutoRefresh();
+    void refreshProviderIndicators();
+    setInterval(refreshProviderIndicators,600000);
   }catch(e){console.error('Startup Error:',e);document.getElementById('radarFeed').innerHTML='<div style="color:#f44;padding:20px;text-align:center">INIT ERROR: '+e.message+'</div>';}
 }
 window.addEventListener('error',function(e){console.error('Global Error:',e.message);});
