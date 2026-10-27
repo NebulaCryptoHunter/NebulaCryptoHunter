@@ -26,6 +26,7 @@
     .header-row-2 { font-family:'Orbitron',sans-serif; font-size:0.9rem; font-weight:900; text-align:center; background:linear-gradient(90deg,#fff,#0ff,#fff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-shadow:0 0 10px cyan; letter-spacing:2px; }
     .endpoint-bar { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; font-size:0.48rem; overflow:visible; max-height:none; margin:4px 5px 5px; width:calc(100% - 10px); align-items:center; }
     .ep-mini { padding:3px 1px; min-width:0; text-align:center; border-radius:3px; border:1px solid rgba(255,255,255,.1); white-space:nowrap; font-size:clamp(7px,1.65vw,11px); letter-spacing:-.2px; }
+    .ep-status-btn { grid-column:1/-1; width:100%; min-height:24px; padding:4px 8px; background:rgba(0,255,255,.045); border:1px solid rgba(0,255,255,.20); border-radius:5px; color:#8ddde8; font:0.55rem 'Share Tech Mono',monospace; text-align:center; white-space:normal; cursor:pointer; }
     .ep-mini.online { color:#0f8; } .ep-mini.offline { color:#f44; animation:blink 1.2s infinite; }
     @keyframes blink { 50%{opacity:.4} }
     .hud-controls { display:flex; gap:2px; flex-wrap:wrap; align-items:center; margin-top:2px; }
@@ -231,7 +232,17 @@ window.setEp=(n,s,rt)=>{
   if(s==='on')S.endpointStats[n].success++;else S.endpointStats[n].fail++;
   if(rt)S.endpointStats[n].latency=Math.round((S.endpointStats[n].latency*4+rt)/5);
 };
-function updateEpBar(){const el=$('endpointBar');if(el)el.textContent='Status API terverifikasi tersedia pada panel Provider API di atas';}
+function updateEpBar(){
+  const el=$('endpointBar');if(!el||el.querySelector('#providerStatusLink'))return;
+  const btn=document.createElement('button');btn.id='providerStatusLink';btn.type='button';btn.className='ep-status-btn';
+  btn.textContent='API · LIHAT STATUS PROVIDER ▾';
+  btn.setAttribute('aria-label','Buka status provider API pada panel Server');
+  btn.addEventListener('click',()=>{
+    const details=$('nebulaServerDetails'),providers=$('nebulaProviderDetails');
+    if(details){details.open=true;if(providers)providers.open=true;details.scrollIntoView({behavior:'smooth',block:'nearest'});}
+  });
+  el.replaceChildren(btn);
+}
 // Provider indicators: check real upstream data; no artificial green status.
 async function checkNewProviderHealth(ca){if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca))return;await Promise.all([['JUPITER','jupiter'],['GECKO','gecko'],['BIRDEYE','birdeye']].map(async ([name,route])=>{try{const res=await fetchURL(CONFIG.WORKER_URL+'/api/v1/providers/'+route+'/'+encodeURIComponent(ca),{},7000,0);const json=await res.json();window.setEp(name,res.ok&&json?.success===true&&json?.data?.token_ca===ca&&Number.isFinite(json.data.price_usd)&&json.data.price_usd>0?'on':res.status===404?'pending':'off');}catch(e){window.setEp(name,'off');}}));updateEpBar();}
 // Staging-only provider checks; never report green without a verified response.
@@ -325,7 +336,7 @@ async function loadPredictions(){
  const r=await fetch('/api/research/latest',{signal:AbortSignal.timeout(12000),cache:'no-store'});if(!r.ok)throw Error('Research API '+r.status);const json=await r.json();
  feedBus=[];feedMap.clear();S.predictionHistory=[];
  for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
- S.serverResearchCounts=json.counts||{};S.dash.dbTotal=json.counts?.snapshots??0;S.dash.tot=json.counts?.tokens??0;S.dash.watch=json.counts?.candidates??0;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
+ S.serverResearchCounts=json.counts||{};S.dash.dbTotal=json.counts?.snapshots??0;S.dash.tot=json.counts?.tokens??0;S.dash.watch=feedBus.filter(t=>t.decision===DECISION.WATCH).length;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
 }
 
 async function loadStats(){const json=await apiGet('/stats');if(!json||!json.success)return;S.dash=json.data;S.dash.dbTotal=json.data.total_predictions||S.predictionHistory.length;RenderEngine.updateDashboard();}
