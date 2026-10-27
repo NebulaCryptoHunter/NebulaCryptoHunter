@@ -221,8 +221,8 @@ body{background:radial-gradient(ellipse at 50% -20%,#143659 0,transparent 58%),l
       <select class="hud-select" id="modeSelect"><option value="auto" selected>AUTO</option><option value="sniper">SNIPER</option><option value="hunter">HUNTER</option></select>
       <select class="hud-select" id="riskProfile"><option value="safe">SAFE</option><option value="balanced" selected>BALANCED</option><option value="degen">DEGEN</option></select>
       <div class="action-row">
-        <button id="scanBtn" class="scan-btn">SCAN</button>
-        <button id="autoPumpToggleBtn" class="auto-pump-btn active">AUTO</button>
+        <button id="scanBtn" class="scan-btn" title="Sinkronisasi hasil scanner dari server (mode baca), bukan pemindaian manual">SCAN</button>
+        <button id="autoPumpToggleBtn" class="auto-pump-btn active" title="Aktifkan/nonaktifkan sinkronisasi otomatis antarmuka, bukan jadwal cron server">AUTO</button>
         <button id="historyBtn" style="background:rgba(255,215,0,.15);border:1.5px solid #ffd700;color:#ffd700">HIST</button>
         <button id="watchlistBtn" style="background:rgba(255,200,0,.15);border:1.5px solid #ffd700;color:#ffd700">WATCH</button>
         <button id="exportBtn" style="background:rgba(0,255,200,.15);border:1.5px solid #0ff;color:#0ff">EXP</button>
@@ -486,6 +486,7 @@ async function loadPredictions(){
  feedBus=[];feedMap.clear();S.predictionHistory=[];
  for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
  S.serverResearchCounts=json.counts||{};S.dash.dbTotal=json.counts?.snapshots??0;S.dash.tot=json.counts?.tokens??0;S.dash.watch=feedBus.filter(t=>t.decision===DECISION.WATCH).length;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
+ return json;
 }
 
 let legacyArchiveCount=null,legacyArchiveEvaluations=null;
@@ -617,8 +618,36 @@ const Scanner = (()=>{
   function connectWS(){try{const ws=new WebSocket('wss://pumpportal.fun/api/data');ws.onopen=()=>{ws.send(JSON.stringify({method:'subscribeNewToken'}));window.setEp('PUMP','on',Date.now());};ws.onmessage=e=>{try{const d=JSON.parse(e.data);if(d?.mint){if(S.wsBuffer.length<S.wsMaxBuffer)S.wsBuffer.push({ca:d.mint,symbol:d.symbol,name:d.name});}}catch(e){}};ws.onerror=()=>window.setEp('PUMP','off');ws.onclose=()=>{window.setEp('PUMP','off');setTimeout(connectWS,10000);};}catch(e){window.setEp('PUMP','off');}}
   function pushToFeed(token,src){if(!token?.ca)return;/* Solana Base58 mint addresses are case-sensitive; preserve the original. */if(!token._firstSeen)token._firstSeen=Date.now();if(src==='pump'&&token.name&&token.name!=='UNKNOWN'&&!token.identity){token.identity={name:token.name,symbol:token.symbol,ca:token.ca};}if(feedMap.has(token.ca)){const ex=feedMap.get(token.ca);ex.source=src;RenderEngine.markDirty(ex);if(!ex._enriched)enqueueEnrichment(ex);}else{RenderEngine.renderSkeleton(token.ca);feedMap.set(token.ca,token);feedBus.push(token);enqueueEnrichment(token);}smartMemoryCleanup();}
   function flushWsBuffer(){const now=Date.now();if(now-S.wsLastFlush<S.wsFlushInterval)return;S.wsLastFlush=now;const batch=S.wsBuffer.splice(0,30);batch.forEach(t=>pushToFeed(t,'pump-ws'));}
-  async function performScan(){await loadPredictions();RenderEngine.renderAll();RenderEngine.updateDashboard();addAILog('Data scanner server diperbarui; jadwal server 30 menit','info');}
-  function requestScan(){if(S.scanStatus==='SCANNING')return;S.scanStatus='SCANNING';const btn=$('scanBtn');if(btn){btn.disabled=true;btn.textContent='...';}performScan().then(()=>{S.scanStatus='READY';if(btn){btn.disabled=false;btn.textContent='SCAN';}S.nextScan=Date.now()+30000;});}
+  async function performScan(){
+    // No public write endpoint: read-only session only refreshes persisted server data.
+    const was=Number(S.serverResearchCounts?.snapshots||0);
+    const state=await loadPredictions();
+    RenderEngine.renderAll();RenderEngine.updateDashboard();
+    const run=state.runs?.[0],now=Number(state.counts?.snapshots||0),delta=Math.max(0,now-was);
+    const feedback=$('scanFeedback');
+    if(feedback){
+      feedback.hidden=false;
+      const summary=delta?'+ '+delta+' snapshot baru sejak pembaruan sebelumnya.':'Belum ada snapshot baru sejak pembaruan sebelumnya.';
+      const runText=run?'Putaran #'+run.id+' '+run.status+(run.error?' ('+run.error+')':''):'Belum ada putaran server.';
+      feedback.textContent=summary+' '+runText+' Tombol SCAN saat ini memperbarui data tersimpan (mode baca), tidak memulai pemindaian server. Pemindaian otomatis dijadwalkan sekitar 30 menit; scan manual membutuhkan akun Admin dan backend scanner yang dikonfigurasi.';
+    }
+    addAILog('Sinkronisasi data: '+delta+' snapshot bertambah; '+(run?.status||'NO_RUN'),'info');
+    return state;
+  }
+  function requestScan(){
+    if(S.scanStatus==='SCANNING')return;
+    S.scanStatus='SCANNING';const btn=$('scanBtn');
+    if(btn){btn.disabled=true;btn.textContent='SYNC…';}
+    performScan().catch(e=>{
+      const feedback=$('scanFeedback');
+      if(feedback){feedback.hidden=false;feedback.textContent='Gagal menyegarkan data server: '+(e?.message||'Unknown error')+'. Tidak ada pemindaian manual dijalankan.';}
+      addAILog('Server scan refresh failed: '+e.message,'warning');
+    }).finally(()=>{
+      S.scanStatus='READY';
+      if(btn){btn.disabled=false;btn.textContent='SCAN';}
+      S.nextScan=Date.now()+60000;
+    });
+  }
   return{pushToFeed,connectWS,performScan,requestScan,flushWsBuffer};
 })();
 
@@ -868,7 +897,7 @@ function startup(){
   try{
     RenderEngine.initDashboard();RenderEngine.initHeroPanel();RenderEngine.updateDashboard();updateEpBar();showUnifiedDashboard();showAIHealthDashboard();
     Scheduler.register('timer',()=>{updateEpBar();Scanner.flushWsBuffer();},1000,'background');
-    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},5000,'background');
+    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},60000,'background');
     // Server research candidates remain WATCH until risk verification.
     Scheduler.register('evalQueue',()=>AiEngine.processEvalQueue(),15000,'background');
 
