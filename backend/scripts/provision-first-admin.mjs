@@ -5,6 +5,7 @@
 // PBKDF2 must match Workers WebCrypto cap (100,000 iterations), otherwise login fails.
 import {pbkdf2Sync, randomBytes, randomUUID} from 'node:crypto';
 import {createInterface} from 'node:readline';
+import {writeFileSync} from 'node:fs';
 import {stdin, stdout, stderr} from 'node:process';
 const email=process.env.NEBULA_ADMIN_EMAIL?.trim().toLowerCase();
 if(!email||email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
@@ -29,5 +30,12 @@ const salt=randomBytes(16).toString('hex'),iterations=100000;
 const hash=pbkdf2Sync(password,Buffer.from(salt,'hex'),iterations,32,'sha256').toString('hex');
 const id=randomUUID();
 const quote=x=>"'"+x.replaceAll("'","''")+"'";
-stdout.write('\n-- Sensitive: contains a password hash. Apply only to nebula-auth-stage.\n');
-stdout.write(`INSERT INTO auth_users(id,email,password_hash,password_salt,password_iterations,role,status) SELECT ${[id,email,hash,salt].map(quote).join(',')},${iterations},'SUPER_ADMIN','active' WHERE NOT EXISTS (SELECT 1 FROM auth_users WHERE role='SUPER_ADMIN');\n`);
+const sql=`INSERT INTO auth_users(id,email,password_hash,password_salt,password_iterations,role,status) SELECT ${[id,email,hash,salt].map(quote).join(',')},${iterations},'SUPER_ADMIN','active' WHERE NOT EXISTS (SELECT 1 FROM auth_users WHERE role='SUPER_ADMIN');\n`;
+const target=process.env.NEBULA_ADMIN_SQL_FILE;
+if(target){
+ try{writeFileSync(target,sql,{flag:'wx',mode:0o600});stderr.write('Private SQL generated. Run with Wrangler D1 remote, then securely delete the file.\n');}
+ catch(e){stderr.write('Could not write private SQL output: '+e.code+'\n');process.exitCode=1;}
+}else{
+ stdout.write('\n-- Sensitive: contains a password hash. Apply only to nebula-auth-stage.\n');
+ stdout.write(sql);
+}
