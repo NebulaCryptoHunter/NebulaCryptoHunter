@@ -69,7 +69,7 @@ test('historical archive stays separate and visible beside scanner snapshots',()
 test('SCAN reports read-only synchronization truthfully and cannot claim a new scan',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/id="scanFeedback"/);
- assert.match(html,/Tombol SCAN saat ini memperbarui data tersimpan \(mode baca\), tidak memulai pemindaian server/);
+ assert.match(html,/Tombol SCAN memperbarui data yang tersimpan, bukan memulai pemindaian manual/);
  assert.match(html,/Admin sementara NONAKTIF/);
  assert.match(html,/performScan\(\)\.catch\(e=>/);
  assert.match(html,/\.finally\(\(\)=>/);
