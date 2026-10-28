@@ -126,3 +126,15 @@ test('enabled admin exposes login and requires an authenticated session for writ
  const write=await gateway.fetch(post('/api/v1/predictions',{}),env);
  assert.equal(write.status,401);
 });
+
+test('first-admin provisioning matches Cloudflare WebCrypto PBKDF2 limit',()=>{
+ const provision=fs.readFileSync('backend/scripts/provision-first-admin.mjs','utf8');
+ const verifier=fs.readFileSync('backend/auth-v1.mjs','utf8');
+ assert.match(provision,/iterations=100000/);
+ assert.doesNotMatch(provision,/iterations=310000/);
+ assert.match(verifier,/const ITERATIONS = 100000/);
+ assert.match(provision,/WHERE NOT EXISTS \(SELECT 1 FROM auth_users WHERE role='SUPER_ADMIN'\)/);
+ assert.match(provision,/NEBULA_ADMIN_SQL_FILE/);
+ assert.match(provision,/mode:0o600/);
+ assert.match(provision,/flag:'wx'/);
+});
