@@ -108,9 +108,21 @@ test('admin flag suspends account, activation, login, manual scanner and writes'
  const health=await gateway.fetch(new Request(origin+'/health'),env);
  assert.equal((await health.json()).adminEnabled,false);
 });
-test('admin disabled in deployed wrangler, no credential or auth DB deletion',()=>{
+test('admin reenabled via flag with AUTH_DB and cron preserved',()=>{
  const config=fs.readFileSync('wrangler.jsonc','utf8');
- assert.match(config,/"ADMIN_MODE": "disabled"/);
+ assert.match(config,/"ADMIN_MODE": "enabled"/);
  assert.match(config,/"binding": "AUTH_DB"/);
  assert.match(config,/"SCANNER_CRON": "enabled"/);
+});
+test('enabled admin exposes login and requires an authenticated session for writes',async()=>{
+ const env={ADMIN_MODE:'enabled',API:{fetch:async()=>Response.json({success:true})}};
+ const page=await gateway.fetch(new Request(origin+'/account'),env);
+ assert.equal(page.status,200);
+ assert.match(await page.text(),/Akun NEBULA/);
+ const health=await gateway.fetch(new Request(origin+'/health'),env);
+ assert.equal((await health.json()).adminEnabled,true);
+ const scan=await gateway.fetch(post('/api/research/scan',{mints:[]}),env);
+ assert.equal(scan.status,401);
+ const write=await gateway.fetch(post('/api/v1/predictions',{}),env);
+ assert.equal(write.status,401);
 });

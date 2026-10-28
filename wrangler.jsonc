@@ -31,7 +31,7 @@
   ],
   "vars": {
     "SCANNER_CRON": "enabled",
-    "ADMIN_MODE": "disabled"
+    "ADMIN_MODE": "enabled"
   },
   "observability": {
     "enabled": true
