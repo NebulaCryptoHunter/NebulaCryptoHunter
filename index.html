@@ -629,7 +629,7 @@ const Scanner = (()=>{
       feedback.hidden=false;
       const summary=delta?'+ '+delta+' snapshot baru sejak pembaruan sebelumnya.':'Belum ada snapshot baru sejak pembaruan sebelumnya.';
       const runText=run?'Putaran #'+run.id+' '+run.status+(run.error?' ('+run.error+')':''):'Belum ada putaran server.';
-      feedback.textContent=summary+' '+runText+' Tombol SCAN saat ini memperbarui data tersimpan (mode baca), tidak memulai pemindaian server. Pemindaian otomatis dijadwalkan sekitar 30 menit; scan manual membutuhkan akun Admin dan backend scanner yang dikonfigurasi.';
+      feedback.textContent=summary+' '+runText+' Tombol SCAN memperbarui data yang tersimpan, bukan memulai pemindaian manual. Admin sementara NONAKTIF. Scanner server tetap berjalan terjadwal setiap 30 menit; jumlah data baru bergantung pada hasil provider.';
     }
     addAILog('Sinkronisasi data: '+delta+' snapshot bertambah; '+(run?.status||'NO_RUN'),'info');
     return state;
