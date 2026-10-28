@@ -69,8 +69,8 @@ test('historical archive stays separate and visible beside scanner snapshots',()
 test('SCAN reports read-only synchronization truthfully and cannot claim a new scan',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/id="scanFeedback"/);
- assert.match(html,/Tombol SCAN saat ini memperbarui data tersimpan \(mode baca\), tidak memulai pemindaian server/);
- assert.match(html,/scan manual membutuhkan akun Admin/);
+ assert.match(html,/Tombol SCAN memperbarui data yang tersimpan, bukan memulai pemindaian manual/);
+ assert.match(html,/Admin sementara NONAKTIF/);
  assert.match(html,/performScan\(\)\.catch\(e=>/);
  assert.match(html,/\.finally\(\(\)=>/);
  assert.match(html,/return json;\n\}/);
@@ -84,4 +84,33 @@ test('frontend historical archive GET forwards over existing API service binding
  const predictions=await gateway.fetch(new Request(origin+'/api/v1/predictions?limit=25&offset=0'),env);
  assert.equal(predictions.status,200);
  assert.deepEqual(seen,['/api/v1/stats','/api/v1/predictions']);
+});
+
+test('admin flag suspends account, activation, login, manual scanner and writes',async()=>{
+ const env={ADMIN_MODE:'disabled',API:{fetch:async()=>Response.json({success:true,data:{total_predictions:6952}})}};
+ for(const path of ['/api/auth/me','/api/auth/login','/api/auth/activate']){
+  const request=new Request(origin+path);
+  const response=await gateway.fetch(request,env);
+  assert.equal(response.status,503);
+  assert.equal((await response.json()).error,'ADMIN_TEMPORARILY_DISABLED');
+ }
+ const account=await gateway.fetch(new Request(origin+'/account'),env);
+ assert.equal(account.status,200);
+ assert.match(await account.text(),/Admin NEBULA sementara dinonaktifkan/);
+ const scan=await gateway.fetch(post('/api/research/scan',{mints:[]}),env);
+ assert.equal(scan.status,503);
+ assert.equal((await scan.json()).error,'MANUAL_SCAN_PAUSED_ADMIN_DISABLED');
+ const mutation=await gateway.fetch(post('/api/v1/predictions',{token_ca:'x'}),env);
+ assert.equal(mutation.status,403);
+ assert.equal((await mutation.json()).error,'WRITES_DISABLED_READ_ONLY_MODE');
+ const stats=await gateway.fetch(new Request(origin+'/api/v1/stats'),env);
+ assert.equal(stats.status,200);
+ const health=await gateway.fetch(new Request(origin+'/health'),env);
+ assert.equal((await health.json()).adminEnabled,false);
+});
+test('admin disabled in deployed wrangler, no credential or auth DB deletion',()=>{
+ const config=fs.readFileSync('wrangler.jsonc','utf8');
+ assert.match(config,/"ADMIN_MODE": "disabled"/);
+ assert.match(config,/"binding": "AUTH_DB"/);
+ assert.match(config,/"SCANNER_CRON": "enabled"/);
 });

@@ -6,10 +6,21 @@ import {transformFrontend} from './frontend-transform.mjs';
 import {accountHTML} from './account-page.mjs';
 const json=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const mintOK=s=>typeof s==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+const disabledAdminHTML='<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>NEBULA · Admin nonaktif</title><style>body{background:#061426;color:#d8f4fc;font:16px system-ui;max-width:540px;margin:10vh auto;padding:24px}h1{color:#54e9f3}a{color:#54e9f3}</style><h1>Admin NEBULA sementara dinonaktifkan</h1><p>Dashboard riset tetap dapat dibuka dalam mode baca. Scanner server tetap mengikuti jadwalnya. Login, aktivasi Admin, dan perubahan data melalui antarmuka dinonaktifkan sementara.</p><p><a href="/">Kembali ke NEBULA Crypto Hunter</a></p></html>';
 const publicReads=new Set(['/api/v1/predictions','/api/v1/evaluations','/api/v1/stats','/api/v1/heroes','/api/v1/watchlist','/api/v1/learning','/api/v1/market-regime','/api/v1/config']);
 export default {async fetch(request,env){
  try{
  const u=new URL(request.url),path=u.pathname,method=request.method;
+ // Temporary public research mode: admin is OFF, not deleted.
+ // Feature flag can be reversed without changing the auth database.
+ const adminDisabled=env.ADMIN_MODE==='disabled';
+ if(adminDisabled){
+  if(path==='/account'&&method==='GET')return new Response(disabledAdminHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex','X-Frame-Options':'DENY'}});
+  if(path.startsWith('/api/auth/'))return json({error:'ADMIN_TEMPORARILY_DISABLED',adminEnabled:false},503);
+  if(path==='/api/research/scan'&&method==='POST')return json({error:'MANUAL_SCAN_PAUSED_ADMIN_DISABLED',scanMode:'scheduled-only'},503);
+  if(path.startsWith('/api/v1/')&&method!=='GET')return json({error:'WRITES_DISABLED_READ_ONLY_MODE'},403);
+ }
+
  if(method==='POST'){
   if(!validMutationOrigin(request,[u.origin]))return json({error:'FORBIDDEN_ORIGIN'},403);
   const reader=request.body?.getReader(),chunks=[];let size=0;if(reader)for(;;){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>262144){await reader.cancel();return json({error:'PAYLOAD_TOO_LARGE'},413)}chunks.push(value)}const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength}const text=new TextDecoder().decode(bytes);
@@ -21,7 +32,7 @@ export default {async fetch(request,env){
  if(path.startsWith('/api/auth/'))return await handleAuth(request,authEnv,{frontendOrigin:u.origin});
  if(path==='/account'&&method==='GET')return new Response(accountHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'}});
  if(path==='/api/research/providers'&&method==='GET'){if(!env.API)return json({error:'API_BINDING_MISSING',providers:[]},503);const r=await env.API.fetch('https://api.internal/provider-health');const out=new Response(r.body,r);out.headers.set('Cache-Control','no-store');return out;}
- if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API});
+ if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API,adminEnabled:!adminDisabled,manualScanAvailable:!adminDisabled&&!!env.SCANNER&&!!env.INTERNAL_TOKEN});
  if(path==='/api/research/latest'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   return json({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null});
