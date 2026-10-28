@@ -134,4 +134,7 @@ test('first-admin provisioning matches Cloudflare WebCrypto PBKDF2 limit',()=>{
  assert.doesNotMatch(provision,/iterations=310000/);
  assert.match(verifier,/const ITERATIONS = 100000/);
  assert.match(provision,/WHERE NOT EXISTS \(SELECT 1 FROM auth_users WHERE role='SUPER_ADMIN'\)/);
+ assert.match(provision,/NEBULA_ADMIN_SQL_FILE/);
+ assert.match(provision,/mode:0o600/);
+ assert.match(provision,/flag:'wx'/);
 });
