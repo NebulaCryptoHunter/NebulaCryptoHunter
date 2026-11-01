@@ -907,6 +907,146 @@ body{margin:0}
  .hunter-cockpit-footer{flex-basis:34px!important;height:34px!important}
 }
 
+
+/* NEBULA HUNTER V2.5 — one token per scroll-step, real login and moving
+   decorative AI ring. Translucency changes ONLY surfaces, never text opacity. */
+.hunter-login{
+ position:absolute;z-index:6;right:16px;bottom:9px;
+ display:inline-flex;align-items:center;justify-content:center;
+ height:31px;min-width:95px;padding:4px 13px;
+ border:1px solid #4aebff;border-radius:7px;
+ background:rgba(0,22,44,.80);color:#b8faff!important;
+ box-shadow:0 0 13px rgba(0,190,255,.16);
+ font:900 11px 'Orbitron',sans-serif;letter-spacing:1px;text-decoration:none;
+}
+.hunter-login:hover{background:rgba(9,77,107,.88);box-shadow:0 0 20px rgba(0,210,255,.36)}
+.hunter-login:focus-visible{outline:2px solid white;outline-offset:2px}
+.hunter-panel{
+ background:linear-gradient(165deg,rgba(5,17,40,.79),rgba(2,10,26,.81))!important;
+ backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.hunter-kpi{
+ background:linear-gradient(125deg,rgba(4,21,49,.81),rgba(3,12,32,.80))!important;
+ backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.sticky-nav{background:linear-gradient(180deg,rgba(2,10,29,.48),rgba(3,12,30,.78) 72%)!important}
+.hunter-targets-panel .hunter-radar-zone{background:linear-gradient(120deg,rgba(0,28,50,.55),rgba(2,17,44,.36))!important}
+.hunter-targets-panel .radar-grid>.hud-card{
+ background:linear-gradient(110deg,rgba(3,30,56,.76),rgba(3,13,33,.80))!important;
+ backdrop-filter:blur(2px);
+}
+.hunter-ai-panel .ai-health-grid,
+.hunter-ai-panel .ai-health-item,
+.hunter-history-panel .archive-status,
+.hunter-history-panel .hunter-history-row,
+.hunter-history-panel .hunter-history-tabs button{
+ background-color:rgba(4,19,40,.58)!important;
+}
+.hunter-panel-heading h2,.hunter-kpi-value,.hunter-history-symbol,.hunter-radar-status strong{opacity:1}
+
+/* ONE TOKEN per radar viewport. The radar-list itself scrolls/snap-aligns;
+   expanded details scroll INSIDE the active card, not off the screen. */
+.hunter-targets-panel .radar-grid{
+ display:flex!important;flex-direction:column!important;
+ flex:1 1 0!important;min-height:0!important;height:0!important;
+ gap:0!important;padding:0!important;
+ scroll-snap-type:y mandatory;scroll-padding-top:0;
+ overscroll-behavior-y:contain;overflow-y:auto!important;
+ scrollbar-gutter:stable;
+}
+.hunter-targets-panel .radar-grid>.hud-card{
+ box-sizing:border-box;display:flex;flex-direction:column;
+ flex:0 0 100%!important;min-height:100%!important;height:100%!important;
+ max-height:100%!important;min-width:0;
+ scroll-snap-align:start;scroll-snap-stop:always;
+ border-radius:10px!important;
+ overflow:hidden!important;
+ padding:clamp(10px,1.05vw,17px)!important;
+ margin:0!important;gap:6px;
+}
+.hunter-targets-panel .radar-grid>.hud-card>div:first-child,
+.hunter-targets-panel .radar-grid>.hud-card>div:nth-child(2),
+.hunter-targets-panel .radar-grid>.hud-card>div:nth-child(3){
+ flex:0 0 auto;min-width:0;
+}
+.hunter-targets-panel .radar-grid>.hud-card .token-name{font-size:clamp(1rem,1.15vw,1.24rem)}
+.hunter-targets-panel .radar-grid>.hud-card .card-detail-section{
+ flex:1 1 auto;min-height:0;max-height:none!important;
+ overflow-y:auto!important;overscroll-behavior-y:contain;
+ scrollbar-width:auto;scrollbar-color:#36bcdf rgba(7,23,39,.8);
+ scrollbar-gutter:stable;touch-action:pan-y;
+}
+/* Compact action buttons inside shorter viewport without hiding controls. */
+@media(min-width:1200px) and (max-height:820px){
+ .hunter-targets-panel .radar-grid>.hud-card{gap:3px;padding:9px!important}
+ .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:40px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>div:nth-child(3){padding-top:4px!important;margin-top:3px!important}
+}
+.hunter-token-position{color:#aaf4ff;font-size:11px;white-space:nowrap;font-weight:800;font-family:'Share Tech Mono',monospace}
+.hunter-token-position:not(:empty){margin-left:5px}
+.hunter-ai-gauge{
+ position:relative;isolation:isolate;overflow:hidden;
+ background:#07182e!important;box-shadow:0 0 23px rgba(25,210,255,.23);
+}
+/* Animation indicates ongoing system decoration, not a numeric confidence reading. */
+.hunter-ai-gauge:before{
+ content:"";position:absolute;inset:0;border-radius:50%;z-index:0;
+ background:conic-gradient(from 0deg,#00e5ff 0deg,#218bdf 56deg,#943aff 100deg,
+  #27335a 145deg,#00dcff 202deg,#13294d 261deg,#bf63ff 310deg,#00e5ff 360deg);
+ animation:hunterValidationOrbit 9s linear infinite;
+}
+.hunter-ai-gauge:after{
+ content:"";position:absolute;inset:4px;border:2px dashed rgba(172,250,255,.53);
+ border-radius:50%;animation:hunterValidationOrbit 18s linear infinite reverse;
+ pointer-events:none;z-index:2;
+}
+.hunter-ai-gauge-inner{position:relative;z-index:3}
+@keyframes hunterValidationOrbit{to{transform:rotate(360deg)}}
+.hunter-ai-scroll-head{
+ flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+ gap:7px;padding:2px 2px 4px;margin-top:2px;
+ border-bottom:1px solid rgba(55,219,255,.26);
+}
+.hunter-ai-scroll-head strong{color:#9aefff;font:800 11px 'Share Tech Mono',monospace;letter-spacing:.55px}
+.hunter-ai-panel .ai-health-grid{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
+ flex:1 1 0!important;min-height:0!important;
+ align-content:start;grid-auto-rows:minmax(48px,auto);
+ overflow-y:scroll!important;overflow-x:hidden;
+ scrollbar-gutter:stable;scrollbar-width:auto!important;
+ scrollbar-color:#39d4f3 rgba(4,23,45,.85)!important;
+ overscroll-behavior-y:contain;touch-action:pan-y;
+ padding:7px!important;gap:6px!important;margin:4px 0 6px!important;
+}
+.hunter-ai-panel .ai-health-grid::-webkit-scrollbar{width:11px}
+.hunter-ai-panel .ai-health-grid::-webkit-scrollbar-thumb{
+ background:#2088b3;border-radius:10px;border:2px solid #05182f;
+}
+.hunter-ai-panel .ai-health-grid::-webkit-scrollbar-track{background:rgba(3,24,47,.8)}
+.hunter-ai-panel .ai-health-item{min-width:0;padding:9px 5px;overflow-wrap:anywhere}
+@media (max-width:1199px){
+ .hunter-targets-panel .radar-grid>.hud-card{height:100%!important;min-height:100%!important}
+}
+@media(max-width:767px){
+ .hunter-login{top:3px;bottom:auto;right:7px;min-width:66px;height:28px;padding:3px 7px;font-size:9px;letter-spacing:.5px}
+ .hunter-system-status{top:auto!important;bottom:2px!important;right:6px!important;font-size:8px!important}
+ .hunter-banner .hunter-brand{padding-left:8px;padding-right:8px}
+ .hunter-targets-panel .radar-grid>.hud-card{padding:9px!important;gap:4px}
+ .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:40px!important;padding:5px 3px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>div:nth-child(3){padding-top:4px!important;margin-top:3px!important}
+ .hunter-ai-scroll-head strong{font-size:10px}
+ .hunter-ai-panel .ai-health-grid{grid-auto-rows:minmax(48px,auto)}
+}
+@media(max-height:620px){
+ .hunter-login{height:27px}
+ .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:38px!important}
+ .hunter-ai-scroll-head{padding:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .hunter-ai-gauge:before,.hunter-ai-gauge:after{animation:none!important}
+ .hunter-targets-panel .radar-grid{scroll-behavior:auto!important}
+}
+
 @media(prefers-reduced-motion:reduce){.bg-scanline,.hero-card,.ep-mini{animation:none!important}.gauge-fill{transition:none}}
 
   </style>
@@ -923,6 +1063,7 @@ body{margin:0}
         <div class="header-row-1">HUNT BEFORE THE HYPE. <span aria-hidden="true">//</span> BUILT BY HERU PRASETYO</div>
       </div>
       <span class="hunter-system-status" id="hunterSystemStatus" role="status">CONNECTING · RESEARCH</span>
+      <a class="hunter-login" id="hunterLoginLink" href="/account" title="Login atau kelola akun Admin NEBULA">LOGIN</a>
     </header>
     <div class="endpoint-bar" id="endpointBar"></div>
     <div class="hud-controls">
@@ -971,7 +1112,8 @@ body{margin:0}
           <div class="hunter-ai-fact"><dt>CALIBRATION</dt><dd class="hunter-muted" id="hunterCalibrationStatus">PENDING</dd></div>
         </dl>
       </div>
-      <div id="aiHealthDash" class="ai-health-grid"></div>
+      <div class="hunter-ai-scroll-head"><strong>AI INDICATORS · GULIR</strong><span class="hunter-scroll-controls"><button type="button" data-scroll-target="aiHealthDash" data-scroll-direction="-1" aria-label="Gulir indikator AI ke atas">↑</button><button type="button" data-scroll-target="aiHealthDash" data-scroll-direction="1" aria-label="Gulir indikator AI ke bawah">↓</button></span></div>
+      <div id="aiHealthDash" class="ai-health-grid hunter-scrollable" tabindex="0" role="region" aria-label="Indikator AI, gulir untuk melihat seluruh indikator"></div>
       <p class="hunter-panel-copy">Hasil pengamatan dan evaluasi asli. Win rate / ROI hanya ditampilkan jika memiliki dasar pengukuran yang sah; tidak ada angka ilustrasi.</p>
       <details class="hunter-advanced" id="hunterAdvancedTelemetry">
         <summary>ADVANCED SYSTEM TELEMETRY</summary>
@@ -987,7 +1129,7 @@ body{margin:0}
         <div class="hunter-radar-scope" aria-hidden="true"><div class="hunter-radar-sweep"></div><span class="hunter-radar-center"></span></div>
         <div class="hunter-radar-status"><span class="title">HUNTER TARGETS</span><strong id="hunterActiveTargetCount">—</strong><span class="hunter-radar-key" id="hunterLastScan">WAITING FOR SCANNER DATA</span><p>Radar adalah visual navigasi; target aktual tampil di bawah berdasarkan data server.</p></div>
       </div>
-      <div class="hunter-targets-heading"><span>◈ ACTIVE TOKEN TARGETS</span><span class="hunter-scroll-controls"><span class="hunter-scroll-hint">GULIR TOKEN</span><button type="button" data-scroll-target="radarFeed" data-scroll-direction="-1" aria-label="Gulir token ke atas">↑</button><button type="button" data-scroll-target="radarFeed" data-scroll-direction="1" aria-label="Gulir token ke bawah">↓</button></span></div>
+      <div class="hunter-targets-heading"><span>◈ ACTIVE TOKEN TARGETS</span><span class="hunter-scroll-controls"><span class="hunter-scroll-hint">TOKEN</span><span id="hunterTokenPosition" class="hunter-token-position" aria-live="polite">— / —</span><button type="button" data-scroll-target="radarFeed" data-scroll-direction="-1" aria-label="Gulir token ke atas">↑</button><button type="button" data-scroll-target="radarFeed" data-scroll-direction="1" aria-label="Gulir token ke bawah">↓</button></span></div>
       <p id="hunterFeedNotice" class="hunter-feed-notice" role="status" aria-live="polite" hidden></p>
       <div id="radarFeed" class="radar-grid hunter-scrollable" tabindex="0" role="region" aria-label="Daftar token dapat digulir vertikal"></div>
     </section>
@@ -1606,6 +1748,8 @@ const RenderEngine = (()=>{
         expanded.set(item.dataset.ca,closed);
       }
     }
+    // Preserve the visible token across background refreshes/re-ranking.
+    const lastActiveCA=grid.dataset.activeTokenCa||[...grid.querySelectorAll('.hud-card[data-ca]')][Math.round(grid.scrollTop/Math.max(1,grid.clientHeight))]?.dataset.ca||'';
     grid.replaceChildren();rendered.clear();
     for(const token of feedBus){
       const card=buildCard(token);if(!card)continue;
@@ -1618,6 +1762,11 @@ const RenderEngine = (()=>{
       for(const module of detail.querySelectorAll('.hud-module')){
         if(closed.includes(module.querySelector('summary')?.textContent))module.open=false;
       }
+    }
+    const newIndex=feedBus.findIndex(token=>token.ca===lastActiveCA);
+    if(newIndex>=0){
+      grid.dataset.activeTokenCa=lastActiveCA;
+      requestAnimationFrame(()=>{if(grid.clientHeight>0)grid.scrollTop=newIndex*grid.clientHeight;});
     }
   }
   function flushRQ(){if(!S.rq.size)return;const batch=[...S.rq].slice(0,10);batch.forEach(ca=>{S.rq.delete(ca);const t=feedMap.get(ca);if(!t)return;let div=rendered.get(ca);if(!div||div.classList.contains('skeleton-card')){div=buildCard(t);}else{patchCard(div,t);}});if(S.needsSort){sortFeed();renderAll();S.needsSort=false;}S.dash={sb:0,buy:0,acc:0,watch:0,wait:0,av:0,sc:0,tot:S.serverResearchCounts?.unique_mints??feedBus.length,dbTotal:S.serverResearchCounts?.database_records??S.dash.dbTotal??null};feedBus.forEach(t=>{const d=t.decision;if(d===DECISION.STRONG_BUY)S.dash.sb++;else if(d===DECISION.BUY)S.dash.buy++;else if(d===DECISION.ACCUMULATE)S.dash.acc++;else if(d===DECISION.WATCH)S.dash.watch++;else if(d===DECISION.WAIT)S.dash.wait++;else if(d===DECISION.AVOID)S.dash.av++;else S.dash.sc++;});updateDashboard();if(S.rq.size)requestAnimationFrame(flushRQ);}
@@ -1744,10 +1893,26 @@ setTimeout(()=>{
 /* Fullscreen local scrolling: wheel anywhere on a non-interactive panel surface,
    touch inside the lists, and accessible keyboard or arrow controls. */
 (function(){
- const ids=['radarFeed','hunterRecentList'];
+ const ids=['radarFeed','hunterRecentList','aiHealthDash'];
+ const advanceToken=(list,direction)=>{
+  const cards=[...list.querySelectorAll('.hud-card[data-ca]')];
+  if(!cards.length||!list.clientHeight)return;
+  const index=Math.max(0,Math.min(cards.length-1,Math.round(list.scrollTop/list.clientHeight)));
+  const next=Math.max(0,Math.min(cards.length-1,index+direction));
+  if(next===index)return;
+  list.scrollTo({top:next*list.clientHeight,behavior:'smooth'});
+ };
+
  const update=id=>{
    const list=document.getElementById(id);if(!list)return;
    const max=Math.max(0,list.scrollHeight-list.clientHeight);
+   if(id==='radarFeed'){
+     const cards=list.querySelectorAll('.hud-card[data-ca]');
+     const index=cards.length?Math.max(0,Math.min(cards.length-1,Math.round(list.scrollTop/Math.max(1,list.clientHeight)))):0;
+     const counter=document.getElementById('hunterTokenPosition');
+     if(counter)counter.textContent=(cards.length?index+1:0)+' / '+cards.length;
+     list.dataset.activeTokenCa=cards[index]?.dataset.ca||'';
+   }
    document.querySelectorAll('[data-scroll-target="'+id+'"]').forEach(btn=>{
      btn.disabled=max<2||(Number(btn.dataset.scrollDirection)<0?list.scrollTop<=1:list.scrollTop>=max-1);
    });
@@ -1758,9 +1923,34 @@ setTimeout(()=>{
    list.addEventListener('keydown',e=>{
      if(e.target!==list)return; // preserve keyboard behavior for token action buttons
      const move={ArrowDown:60,ArrowUp:-60,PageDown:Math.max(180,list.clientHeight*.8),PageUp:-Math.max(180,list.clientHeight*.8)};
-     if(Object.prototype.hasOwnProperty.call(move,e.key)){e.preventDefault();list.scrollBy({top:move[e.key],behavior:'smooth'})}
+     if(Object.prototype.hasOwnProperty.call(move,e.key)){
+       e.preventDefault();
+       if(id==='radarFeed')advanceToken(list,Math.sign(move[e.key]));
+       else list.scrollBy({top:move[e.key],behavior:'smooth'});
+     }
      if(e.key==='Home'||e.key==='End'){e.preventDefault();list.scrollTo({top:e.key==='Home'?0:list.scrollHeight,behavior:'smooth'})}
    });
+   // A wheel gesture moves exactly one token, except while an expanded
+   // detail has remaining vertical content to read.
+   if(id==='radarFeed'){
+     let lastStep=0,wheelAccum=0;
+     list.addEventListener('wheel',e=>{
+       const detail=e.target.closest('.card-detail-section');
+       if(detail&&detail.scrollHeight>detail.clientHeight+2){
+         const roomDown=e.deltaY>0&&detail.scrollTop<detail.scrollHeight-detail.clientHeight-2;
+         const roomUp=e.deltaY<0&&detail.scrollTop>2;
+         if(roomDown||roomUp){wheelAccum=0;return}
+       }
+       if(!list.querySelector('.hud-card[data-ca]')||!e.deltaY)return;
+       e.preventDefault();
+       wheelAccum+=e.deltaY;
+       if(Math.abs(wheelAccum)<8)return;
+       const now=Date.now();
+       if(now-lastStep<440){wheelAccum=0;return}
+       advanceToken(list,Math.sign(wheelAccum));
+       wheelAccum=0;lastStep=now;
+     },{passive:false});
+   }
    const panel=list.closest('.hunter-panel');
    panel?.addEventListener('wheel',e=>{
      if(list.contains(e.target)||e.target.closest('button,a,select,input,textarea,summary,.hunter-advanced'))return;
@@ -1774,7 +1964,8 @@ setTimeout(()=>{
  }
  document.querySelectorAll('[data-scroll-target]').forEach(btn=>btn.addEventListener('click',()=>{
    const list=document.getElementById(btn.dataset.scrollTarget);if(!list)return;
-   list.scrollBy({top:Number(btn.dataset.scrollDirection)*Math.max(180,list.clientHeight*.78),behavior:'smooth'});
+   if(btn.dataset.scrollTarget==='radarFeed')advanceToken(list,Number(btn.dataset.scrollDirection));
+   else list.scrollBy({top:Number(btn.dataset.scrollDirection)*Math.max(180,list.clientHeight*.78),behavior:'smooth'});
    list.focus({preventScroll:true});
  }));
 })();
