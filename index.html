@@ -221,7 +221,7 @@ body{background:radial-gradient(ellipse at 50% -20%,#143659 0,transparent 58%),l
       <select class="hud-select" id="modeSelect"><option value="auto" selected>AUTO</option><option value="sniper">SNIPER</option><option value="hunter">HUNTER</option></select>
       <select class="hud-select" id="riskProfile"><option value="safe">SAFE</option><option value="balanced" selected>BALANCED</option><option value="degen">DEGEN</option></select>
       <div class="action-row">
-        <button id="scanBtn" class="scan-btn" title="Sinkronisasi hasil scanner dari server (mode baca), bukan pemindaian manual">SCAN</button>
+        <button id="scanBtn" class="scan-btn" title="Perbarui hasil scanner terjadwal dari database; bukan menjalankan scan baru">SINKRON</button>
         <button id="autoPumpToggleBtn" class="auto-pump-btn active" title="Aktifkan/nonaktifkan sinkronisasi otomatis antarmuka, bukan jadwal cron server">AUTO</button>
         <button id="historyBtn" style="background:rgba(255,215,0,.15);border:1.5px solid #ffd700;color:#ffd700">HIST</button>
         <button id="watchlistBtn" style="background:rgba(255,200,0,.15);border:1.5px solid #ffd700;color:#ffd700">WATCH</button>
@@ -629,7 +629,7 @@ const Scanner = (()=>{
       feedback.hidden=false;
       const summary=delta?'+ '+delta+' snapshot baru sejak pembaruan sebelumnya.':'Belum ada snapshot baru sejak pembaruan sebelumnya.';
       const runText=run?'Putaran #'+run.id+' '+run.status+(run.error?' ('+run.error+')':''):'Belum ada putaran server.';
-      feedback.textContent=summary+' '+runText+' Tombol SCAN memperbarui data yang tersimpan, bukan memulai pemindaian manual. Admin sementara NONAKTIF. Scanner server tetap berjalan terjadwal setiap 30 menit; jumlah data baru bergantung pada hasil provider.';
+      feedback.textContent=summary+' '+runText+' Sinkronisasi hanya membaca data tersimpan. Scanner otomatis berjalan setiap 30 menit; pemindaian manual memerlukan akun Admin serta binding server yang aktif.';
     }
     addAILog('Sinkronisasi data: '+delta+' snapshot bertambah; '+(run?.status||'NO_RUN'),'info');
     return state;
@@ -644,7 +644,7 @@ const Scanner = (()=>{
       addAILog('Server scan refresh failed: '+e.message,'warning');
     }).finally(()=>{
       S.scanStatus='READY';
-      if(btn){btn.disabled=false;btn.textContent='SCAN';}
+      if(btn){btn.disabled=false;btn.textContent='SINKRON';}
       S.nextScan=Date.now()+60000;
     });
   }
