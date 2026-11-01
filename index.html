@@ -470,6 +470,131 @@ body{background:#010514;line-height:1.48}
 }
 @media(prefers-reduced-motion:reduce){.hunter-radar-sweep{animation:none!important}.sticky-nav .action-row button{transition:none!important}}
 
+/* NEBULA HUNTER V2.1 — fixed single-viewport command bridge; only live data areas scroll. */
+html,body{width:100%;height:100%;height:100dvh;overflow:hidden!important;overscroll-behavior:none}
+body{margin:0}
+.app{
+ width:100%;max-width:1740px;height:100vh;height:100dvh;min-height:0;
+ margin:0 auto;padding:0 14px 8px!important;
+ display:flex;flex-direction:column;gap:0;overflow:hidden!important;
+}
+.sticky-nav{position:relative!important;flex:0 0 auto;min-height:0;top:auto!important}
+.hunter-banner{min-height:0!important;height:clamp(70px,12vh,116px);flex:0 0 auto}
+.hunter-ship{width:min(26%,310px);top:-27px}
+.hunter-planet{width:min(25%,290px);top:-104px}
+.sticky-nav .endpoint-bar{margin:4px 0 5px}
+.sticky-nav .ep-mini{height:clamp(22px,3.2vh,30px)}
+.sticky-nav .hud-select{min-height:clamp(30px,4vh,40px)!important}
+.sticky-nav .action-row button{height:clamp(30px,4.2vh,40px)}
+.sticky-nav{padding-bottom:7px}
+.hunter-kpi-row{flex:0 0 auto;min-height:0;margin:8px 0;gap:9px}
+.hunter-kpi{min-height:clamp(60px,9vh,82px);padding:7px 15px;gap:10px}
+.hunter-kpi-icon{font-size:1.15rem}
+.hunter-kpi-value{font-size:clamp(1rem,2.05vw,1.84rem)}
+.hunter-layout{flex:1 1 0;min-height:0;max-height:none;height:auto;overflow:hidden!important;gap:10px}
+.hunter-layout > .hunter-panel{height:100%;min-height:0;min-width:0;max-height:100%;display:flex;flex-direction:column;overflow:hidden}
+.hunter-panel-heading{flex:0 0 auto;margin-bottom:7px;padding-bottom:7px}
+.hunter-ai-panel .hunter-ai-main{flex:0 0 auto;margin-bottom:8px;gap:10px}
+.hunter-ai-panel .hunter-ai-gauge{width:clamp(80px,12vh,126px);height:clamp(80px,12vh,126px);padding:8px}
+.hunter-ai-panel .hunter-ai-gauge-value{font-size:clamp(.83rem,1.4vw,1.35rem)}
+.hunter-ai-panel .hunter-ai-facts{gap:4px}
+.hunter-ai-panel .hunter-ai-fact{padding-bottom:4px}
+.hunter-ai-panel .hunter-ai-fact dd{font-size:.86rem}
+.hunter-ai-panel .ai-health-grid{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#2385ad transparent}
+.hunter-ai-panel .hunter-panel-copy{flex:0 0 auto;line-height:1.35;margin:5px 0;font-size:.57rem}
+.hunter-ai-panel .hunter-advanced{flex:0 0 auto;margin-top:4px}
+.hunter-advanced[open]{position:fixed;z-index:70;top:12vh;left:50%;transform:translateX(-50%);width:min(1000px,92vw);max-height:78dvh;overflow-y:auto;background:#06182d;border:2px solid #39dcff;box-shadow:0 10px 80px #000d}
+.hunter-advanced[open] > div{max-height:calc(78dvh - 52px);overflow-y:auto}
+.hunter-targets-panel .hunter-radar-zone{flex:0 0 auto;min-height:0;height:clamp(90px,20vh,152px);margin:0 0 7px;padding:8px}
+.hunter-radar-scope{width:clamp(90px,17vh,140px);height:clamp(90px,17vh,140px);flex:0 0 clamp(90px,17vh,140px)}
+.hunter-radar-status{gap:4px}
+.hunter-radar-status strong{font-size:1.1rem}
+.hunter-radar-status p{font-size:.57rem;line-height:1.4}
+.hunter-targets-heading{flex:0 0 auto;margin:0 0 5px}
+.hunter-targets-panel .radar-grid{flex:1 1 0;min-height:0;max-height:none!important;overflow-y:auto!important;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:thin}
+.hunter-targets-panel .radar-grid>.hud-card{flex:0 0 auto}
+.hunter-history-panel #archiveStatus,.hunter-history-panel .hunter-history-tabs{flex:0 0 auto}
+.hunter-history-panel .archive-status{margin-bottom:5px}
+.hunter-history-tabs{margin:6px 0}
+.hunter-history-panel .hunter-history-list{display:flex;flex-direction:column;flex:1 1 0;min-height:0;max-height:none!important;overflow-y:auto!important;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y}
+.hunter-history-panel .hunter-history-row{flex:0 0 auto}
+.hunter-history-panel .hunter-history-note{flex:0 0 auto;font-size:.57rem;line-height:1.3;padding-top:5px}
+.hunter-console-wrap{flex:0 0 auto;margin-top:5px;min-height:0}
+.hunter-console-wrap .hunter-console-head{font-size:.53rem;padding:0 5px}
+.hunter-console-wrap .ai-console{min-height:22px;max-height:36px;margin:2px 0;font-size:.56rem;line-height:1.2;padding:4px 7px;overflow-y:auto}
+.hunter-cockpit-footer{flex:0 0 clamp(62px,10vh,115px);height:clamp(62px,10vh,115px);margin-top:1px}
+.hunter-cockpit-footer img{width:100%;bottom:-22%}
+.app > #heroPanel{position:absolute;z-index:32;top:30%;left:50%;transform:translateX(-50%);max-width:60vw;pointer-events:none}
+.app > #scanFeedback:not([hidden]){position:fixed;z-index:75;left:50%;bottom:clamp(65px,11vh,130px);transform:translateX(-50%);width:min(760px,92vw);margin:0;max-height:32vh;overflow-y:auto;box-shadow:0 12px 34px rgba(0,0,0,.85)}
+.app > .nebula-server-dock{position:fixed;z-index:65;right:12px;bottom:8px;width:min(340px,34vw);margin:0;max-height:65vh}
+.app > .nebula-server-dock details[open]{max-height:60vh;overflow-y:auto;overscroll-behavior:contain}
+.hunter-mobile-tabs{display:none}
+@media (max-height:730px) and (min-width:1200px){
+ .hunter-banner{height:72px}
+ .hunter-brand{padding:8px}
+ .hunter-brand .header-row-2{font-size:1.3rem}
+ .hunter-brand .header-row-1{font-size:.6rem;margin-top:3px}
+ .hunter-kpi{min-height:58px}
+ .hunter-kpi-caption{display:none}
+ .hunter-targets-panel .hunter-radar-zone{height:100px}
+ .hunter-radar-status p{display:none}
+ .hunter-ai-panel .hunter-panel-copy{display:none}
+ .hunter-cockpit-footer{flex-basis:56px;height:56px}
+}
+@media (max-width:1199px){
+ .hunter-mobile-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:0 0 auto;gap:6px;margin:0 0 7px}
+ .hunter-mobile-tabs button{min-width:0;min-height:34px;border-radius:7px;border:1px solid rgba(45,169,215,.8);background:rgba(4,21,43,.94);color:#a4d3e9;font:800 .65rem 'Orbitron',sans-serif;letter-spacing:.5px;cursor:pointer}
+ .hunter-mobile-tabs button[aria-selected="true"]{color:#71ffff;border-color:#0be8ff;background:rgba(5,74,103,.68);box-shadow:0 0 12px rgba(7,208,255,.2)}
+ .hunter-layout{display:block;position:relative;min-height:0}
+ .hunter-layout > .hunter-panel{display:none!important;height:100%;min-height:0;max-height:100%;width:100%}
+ .hunter-layout > .hunter-panel.hunter-tab-active{display:flex!important}
+ .hunter-ai-panel .ai-health-grid{max-height:none}
+ .hunter-history-panel{grid-column:auto}
+ .hunter-history-panel .hunter-history-list{display:flex;max-height:none!important;grid-template-columns:none}
+ .app > .nebula-server-dock{width:min(320px,58vw)}
+}
+@media (max-width:767px){
+ .app{width:100%;padding:0 5px 5px!important;overflow:hidden}
+ .sticky-nav{padding:0 5px 5px}
+ .hunter-banner{height:clamp(64px,10vh,82px);min-height:0}
+ .hunter-brand .header-row-2{font-size:clamp(.9rem,4vw,1.2rem)}
+ .hunter-brand .header-row-1{font-size:clamp(.43rem,1.6vw,.60rem)}
+ .hunter-ship{width:33%;left:-14%;top:0}
+ .hunter-planet{width:34%;right:-13%;top:-52px}
+ .sticky-nav .endpoint-bar{margin:3px 0}
+ .sticky-nav .ep-mini{height:23px}
+ .sticky-nav .hud-select{min-height:30px!important}
+ .sticky-nav .action-row button{height:30px;font-size:clamp(.49rem,1.9vw,.65rem)}
+ .hunter-kpi-row{gap:5px;margin:6px 0}
+ .hunter-kpi{min-height:60px;padding:5px 4px}
+ .hunter-kpi-icon{display:none}
+ .hunter-kpi-label{font-size:clamp(.41rem,1.8vw,.63rem)}
+ .hunter-kpi-value{font-size:clamp(.81rem,3.35vw,1.25rem)}
+ .hunter-panel{padding:8px}
+ .hunter-panel-heading{margin-bottom:5px;padding-bottom:5px}
+ .hunter-mobile-tabs{margin-bottom:5px}
+ .hunter-mobile-tabs button{min-height:30px;font-size:.59rem}
+ .hunter-targets-panel .hunter-radar-zone{height:clamp(75px,13vh,105px)}
+ .hunter-radar-scope{height:clamp(67px,12vh,95px);width:clamp(67px,12vh,95px);flex-basis:clamp(67px,12vh,95px)}
+ .hunter-radar-status p{display:none}
+ .hunter-targets-panel .radar-grid{max-height:none}
+ .hunter-console-wrap .hunter-console-head{display:none}
+ .hunter-console-wrap .ai-console{max-height:26px;min-height:20px}
+ .hunter-cockpit-footer{flex-basis:clamp(45px,8vh,78px);height:clamp(45px,8vh,78px);margin:0}
+ .hunter-cockpit-footer img{width:135%;left:-17.5%;bottom:-45%}
+ .app > .nebula-server-dock{width:min(250px,70vw);bottom:4px;right:5px}
+ .app > #scanFeedback:not([hidden]){bottom:clamp(42px,9vh,80px)}
+}
+@media (max-height:640px) and (max-width:767px){
+ .hunter-banner{height:60px}
+ .sticky-nav .ep-mini{height:19px}
+ .sticky-nav .hud-select,.sticky-nav .action-row button{height:27px!important;min-height:27px!important}
+ .hunter-kpi{min-height:48px}
+ .hunter-kpi-value{font-size:.85rem}
+ .hunter-targets-panel .hunter-radar-zone{height:69px}
+ .hunter-cockpit-footer{flex-basis:42px;height:42px}
+}
+
 @media(prefers-reduced-motion:reduce){.bg-scanline,.hero-card,.ep-mini{animation:none!important}.gauge-fill{transition:none}}
 
   </style>
@@ -518,6 +643,11 @@ body{background:#010514;line-height:1.48}
       <div class="hunter-kpi-inner"><span class="hunter-kpi-label">UNIQUE</span><strong class="hunter-kpi-value" id="hunterUniqueValue">—</strong><span class="hunter-kpi-caption">DISTINCT SOLANA MINTS</span></div>
     </div>
   </section>
+  <nav class="hunter-mobile-tabs" aria-label="Pilih panel NEBULA">
+    <button id="hunterTabAi" type="button" data-hunter-tab="ai" aria-selected="false" aria-controls="hunterAiTitle">AI</button>
+    <button id="hunterTabRadar" type="button" data-hunter-tab="radar" aria-selected="true" aria-controls="hunterRadarTitle">RADAR</button>
+    <button id="hunterTabHistory" type="button" data-hunter-tab="history" aria-selected="false" aria-controls="hunterHistoryTitle">HISTORY</button>
+  </nav>
   <main class="hunter-layout" aria-label="NEBULA Hunter command bridge">
     <section class="hunter-panel hunter-ai-panel" aria-labelledby="hunterAiTitle">
       <header class="hunter-panel-heading"><span class="hunter-panel-icon" aria-hidden="true">◉</span><div><h2 id="hunterAiTitle">AI PERFORMANCE</h2><small>HUNTER ANALYSIS &amp; VERIFICATION</small></div></header>
@@ -1303,6 +1433,18 @@ setTimeout(()=>{
 })();
 
 /* Hunter V2 UI companion: read-only, same-origin verified D1 data. No scanner side effects. */
+// Responsive full-viewport panel switching; no page scrolling, no duplicate network calls.
+ const chooseTab=tab=>{
+   const target={ai:'hunter-ai-panel',radar:'hunter-targets-panel',history:'hunter-history-panel'}[tab];
+   if(!target)return;
+   for(const panel of document.querySelectorAll('.hunter-layout > .hunter-panel'))
+     panel.classList.toggle('hunter-tab-active',panel.classList.contains(target));
+   for(const button of document.querySelectorAll('[data-hunter-tab]'))
+     button.setAttribute('aria-selected',String(button.dataset.hunterTab===tab));
+ };
+ document.querySelectorAll('[data-hunter-tab]').forEach(button=>button.addEventListener('click',()=>chooseTab(button.dataset.hunterTab)));
+ chooseTab('radar');
+
 (function(){
  "use strict";
  const el=id=>document.getElementById(id);
