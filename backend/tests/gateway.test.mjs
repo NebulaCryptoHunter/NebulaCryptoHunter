@@ -67,7 +67,7 @@ test('legacy predictions and scanner candidates share a single history timeline 
  assert.match(html,/DATABASE NEBULA/);
  assert.match(html,/\/api\/research\/history\?limit=/);
  assert.doesNotMatch(html,/fetch\('\/api\/v1\/predictions\?limit=/);
- assert.match(html,/legacyArchiveCount=n/);
+ assert.match(html,/legacyArchiveCount=c\.total_records/);
  assert.match(html,/function showHistoryPanel\(offset=0\)/);
  assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.database_records/);
  assert.match(html,/S\.dash\.tot=json\.counts\?\.unique_mints/);
