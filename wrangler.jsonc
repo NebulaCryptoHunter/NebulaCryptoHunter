@@ -27,6 +27,10 @@
     {
       "binding": "API",
       "service": "nebula-api"
+    },
+    {
+      "binding": "SCANNER",
+      "service": "nebula-scanner"
     }
   ],
   "vars": {
