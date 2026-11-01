@@ -138,3 +138,15 @@ test('first-admin provisioning matches Cloudflare WebCrypto PBKDF2 limit',()=>{
  assert.match(provision,/mode:0o600/);
  assert.match(provision,/flag:'wx'/);
 });
+
+test('unified research feed orders migrated rows by timestamps, not legacy ids',()=>{
+ const research=fs.readFileSync('backend/workers/research-api.mjs','utf8');
+ const scanner=fs.readFileSync('backend/workers/nebula-scanner.mjs','utf8');
+ assert.match(research,/WHERE s\.observed_at=\(SELECT MAX\(x\.observed_at\)/);
+ assert.match(research,/ORDER BY s\.observed_at DESC,s\.id DESC LIMIT 50/);
+ assert.match(research,/scanner_runs ORDER BY started_at DESC,id DESC LIMIT 10/);
+ assert.match(research,/prediction_candidates c[\\s\\S]*ORDER BY c\.observed_at DESC,c\.id DESC LIMIT 50/);
+ assert.match(research,/candidate_evaluations e[\\s\\S]*ORDER BY e\.evaluated_at DESC,e\.id DESC LIMIT 50/);
+ assert.doesNotMatch(research,/scanner_runs ORDER BY id DESC/);
+ assert.match(scanner,/predictions ORDER BY created_at DESC,id DESC LIMIT 150/);
+});
