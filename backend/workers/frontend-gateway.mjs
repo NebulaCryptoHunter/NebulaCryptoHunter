@@ -17,7 +17,7 @@ export default {async fetch(request,env){
  if(adminDisabled){
   if(path==='/account'&&method==='GET')return new Response(disabledAdminHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex','X-Frame-Options':'DENY'}});
   if(path.startsWith('/api/auth/'))return json({error:'ADMIN_TEMPORARILY_DISABLED',adminEnabled:false},503);
-  if(path==='/api/research/scan'&&method==='POST')return json({error:'MANUAL_SCAN_PAUSED_ADMIN_DISABLED',scanMode:'scheduled-only'},503);
+  if((path==='/api/research/scan'||path==='/api/research/scan-now')&&method==='POST')return json({error:'MANUAL_SCAN_PAUSED_ADMIN_DISABLED',scanMode:'scheduled-only'},503);
   if(path.startsWith('/api/v1/')&&method!=='GET')return json({error:'WRITES_DISABLED_READ_ONLY_MODE'},403);
  }
 
@@ -36,6 +36,23 @@ export default {async fetch(request,env){
  if(path==='/api/research/latest'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   return json({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null});
+ }
+ if(path==='/api/research/scan-now'&&method==='POST'){
+  // One-click primary SCAN: private Worker-to-Worker call, never accept mint/pair payload from the browser.
+  const user=await authenticate(env.AUTH_DB,request);
+  if(user?.role!=='SUPER_ADMIN'||Number(user.must_change_password)===1)
+   return json({success:false,error:Number(user?.must_change_password)===1?'PASSWORD_CHANGE_REQUIRED':'ADMIN_REQUIRED'},401);
+  if(!env.SCANNER||!env.MANUAL_SCAN_TOKEN)return json({success:false,error:'SCANNER_NOT_CONFIGURED'},503);
+  try{
+   const response=await env.SCANNER.fetch('https://scanner.internal/run',{method:'POST',headers:{Authorization:'Bearer '+env.MANUAL_SCAN_TOKEN}});
+   const data=await response.json();
+   const status=['COMPLETED','EMPTY','RATE_LIMITED','FAILED','SKIPPED_DUPLICATE'].includes(data?.status)?data.status:'UNKNOWN';
+   const selectedCount=Number.isSafeInteger(data?.selectedCount)&&data.selectedCount>=0?data.selectedCount:0;
+   const snapshotCount=Number.isSafeInteger(data?.snapshotCount)&&data.snapshotCount>=0?data.snapshotCount:0;
+   if(response.status===429)return json({success:false,error:status==='SKIPPED_DUPLICATE'?'UPSTREAM_RATE_LIMITED':'UPSTREAM_RATE_LIMITED',status,selectedCount,snapshotCount},429);
+   if(!response.ok||data?.success!==true)return json({success:false,error:'SCANNER_FAILED',status,selectedCount,snapshotCount},502);
+   return json({success:true,status,selectedCount,snapshotCount});
+  }catch{return json({success:false,error:'SCANNER_UNAVAILABLE'},502);}
  }
  if(path==='/api/research/scan'&&method==='POST'){
   const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN'||Number(user.must_change_password)===1)return json({error:Number(user?.must_change_password)===1?'PASSWORD_CHANGE_REQUIRED':'ADMIN_REQUIRED'},401);
