@@ -735,8 +735,10 @@ const Scanner = (()=>{
       const response=await fetch('/api/research/scan-now',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(45000)});
       const result=await response.json();
       if(!response.ok){
-        const messages={ADMIN_REQUIRED:'Masuk sebagai Admin melalui /account terlebih dahulu.',PASSWORD_CHANGE_REQUIRED:'Ganti password awal di /account sebelum menggunakan SCAN.',UPSTREAM_RATE_LIMITED:'Provider sedang cooldown atau kuota scan manual 15 menit sudah terpakai.',SCANNER_BUSY:'Scanner sedang menjalankan putaran lain.',SCANNER_NOT_CONFIGURED:'Binding scanner manual belum tersedia.'};
-        const message=messages[result.error]||('Pemindaian belum berhasil: '+(result.error||'HTTP '+response.status));
+        const messages={ADMIN_REQUIRED:'Masuk sebagai Admin melalui /account terlebih dahulu.',PASSWORD_CHANGE_REQUIRED:'Ganti password awal di /account sebelum menggunakan SCAN.',PROVIDER_COOLDOWN:'DexScreener membatasi permintaan (HTTP 429). Scanner menjaga cooldown agar tidak terus mengirim request.',MANUAL_SCAN_COOLDOWN:'Scan manual sudah dipakai pada interval 15 menit ini. Scanner otomatis tetap berjalan.',UPSTREAM_RATE_LIMITED:'Provider membatasi pemindaian. Coba lagi setelah cooldown.',SCANNER_BUSY:'Scanner sedang menjalankan putaran lain.',SCANNER_NOT_CONFIGURED:'Binding scanner manual belum tersedia.'};
+        const retry=typeof result.retryAt==='string'?Date.parse(result.retryAt):NaN;
+        const when=Number.isFinite(retry)&&retry>Date.now()?' Perkiraan dapat dicoba lagi: '+new Date(retry).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hour12:false})+' WIB.':'';
+        const message=(messages[result.error]||('Pemindaian belum berhasil: '+(result.error||'HTTP '+response.status)))+when;
         if(feedback)feedback.textContent='SCAN: '+message+' Tidak ada hasil baru yang diklaim.';
         addAILog('Manual SCAN: '+(result.error||response.status),'warning');
         return;
