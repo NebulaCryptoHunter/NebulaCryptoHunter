@@ -60,17 +60,20 @@ test('HUD details render every section without raw source leaks or trapped scrol
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
 });
 
-test('historical archive stays separate and visible beside scanner snapshots',()=>{
+test('legacy predictions and scanner candidates share a single history timeline from D1',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/id="archiveStatus"/);
  assert.match(html,/id="archiveCount"/);
- assert.match(html,/\/api\/v1\/stats/);
- assert.match(html,/\/api\/v1\/predictions\?limit=/);
+ assert.match(html,/DATABASE NEBULA/);
+ assert.match(html,/\/api\/research\/history\?limit=/);
+ assert.doesNotMatch(html,/fetch\('\/api\/v1\/predictions\?limit=/);
  assert.match(html,/legacyArchiveCount=n/);
  assert.match(html,/function showHistoryPanel\(offset=0\)/);
- assert.match(html,/Menampilkan /);
- assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.snapshots/);
+ assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.total_records/);
+ assert.match(html,/S\.dash\.tot=json\.counts\?\.unique_mints/);
  assert.match(html,/S\.serverResearchCounts=json\.counts/);
+ assert.match(html,/row\.record_source==='LEGACY'/);
+ assert.match(html,/row\.record_key/);
 });
 test('HUD separates real one-click SCAN from read-only SINKRON and unchanged AUTO',()=>{
  const html=fs.readFileSync('index.html','utf8');
@@ -336,4 +339,22 @@ test('redundant manual scan panel is absent and server research dock remains',()
  assert.ok(gatewaySource.includes("if(path==='/api/research/scan')return json({error:'NOT_FOUND'},404)"));
  assert.ok(gatewaySource.includes("if(path==='/api/research/scan-now'&&method==='POST')"));
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+});
+
+test('canonical D1 read layer tracks both sources without copying legacy rows',()=>{
+ const research=fs.readFileSync('backend/workers/research-api.mjs','utf8');
+ const view=fs.readFileSync('backend/migrations/0010_nebula_unified_read_model.sql','utf8');
+ assert.match(view,/CREATE VIEW IF NOT EXISTS nebula_unified_records_v1/);
+ assert.match(view,/FROM predictions p/);
+ assert.match(view,/FROM prediction_candidates c/);
+ assert.match(view,/UNION ALL/);
+ assert.match(view,/legacy:/);
+ assert.match(view,/scanner:/);
+ assert.doesNotMatch(view,/INSERT INTO|DELETE FROM|DROP TABLE|UPDATE predictions/);
+ assert.match(research,/SELECT COUNT\(\*\) FROM predictions\)\+\(SELECT COUNT\(\*\) FROM prediction_candidates\)/);
+ assert.match(research,/export async function unifiedHistory/);
+ assert.match(research,/FROM nebula_unified_records_v1/);
+ const gw=fs.readFileSync('backend/workers/frontend-gateway.mjs','utf8');
+ assert.match(gw,/\/api\/research\/history/);
+ assert.match(gw,/unifiedHistory\(env.RESEARCH_DB/);
 });
