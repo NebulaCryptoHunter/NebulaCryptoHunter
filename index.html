@@ -1445,54 +1445,122 @@ setTimeout(()=>{
  const set=(id,value)=>{const e=el(id);if(e)e.textContent=String(value)};
  const safeNum=value=>typeof value==='number'&&Number.isFinite(value)?value:null;
  const toTime=value=>{const date=value?new Date(String(value).replace(' ','T')):null;return date&&!Number.isNaN(date.getTime())?date.toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Jakarta'}):'—'};
- const get=async(path)=>{const res=await fetch(path,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!res.ok)throw Error('HTTP '+res.status);return res.json()};
+ // Each public endpoint is independent; partial failures never blank healthy sections.
+ const cachePrefix='nebula_hunter_public_v2:';
+ const lastGood=key=>{
+   try{
+     const saved=JSON.parse(sessionStorage.getItem(cachePrefix+key)||'null');
+     if(!saved||!Number.isFinite(saved.time)||Date.now()-saved.time>86400000||saved.time>Date.now()+60000)return null;
+     if(!saved.value||typeof saved.value!=='object')return null;
+     return {...saved.value,dataStatus:'STALE',warning:'LOCAL_LAST_GOOD',cacheAt:new Date(saved.time).toISOString()};
+   }catch{return null}
+ };
+ const get=async(path,key)=>{
+   try{
+     const r=await fetch(path,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+     const payload=await r.json().catch(()=>null);
+     if(!r.ok){
+       const err=new Error(payload?.error||'HTTP_'+r.status);
+       err.code=payload?.error||'HTTP_'+r.status;
+       err.resetAt=payload?.resetAt||null;
+       throw err;
+     }
+     if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Error('INVALID_RESEARCH_RESPONSE');
+     if(payload.dataStatus!=='STALE')try{sessionStorage.setItem(cachePrefix+key,JSON.stringify({time:Date.now(),value:payload}))}catch{}
+     return payload;
+   }catch(err){
+     const old=lastGood(key);
+     if(old){old.warning=err.code||err.message||'CONNECTION_INTERRUPTED';old.resetAt=err.resetAt||null;return old}
+     throw err;
+   }
+ };
+ const txt=(id,message,state='warning')=>{
+   const e=el(id);if(!e)return;
+   e.textContent=message||'';e.hidden=!message;e.dataset.state=state;
+ };
+ const quotaReason=(errors,data)=>{
+   const failed=errors.find(x=>x?.code==='D1_DAILY_READ_LIMIT');
+   const fromCache=data.find(x=>x?.warning==='D1_DAILY_READ_LIMIT');
+   const source=failed||fromCache;
+   if(!source)return null;
+   const t=Date.parse(source.resetAt||'');
+   return 'Kuota baca Cloudflare D1 sedang habis.'+(Number.isFinite(t)?' Reset: '+new Date(t).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Jakarta'})+' WIB.':' Tunggu reset kuota.');
+ };
  let busy=false;
  async function refresh(){
    if(busy)return;busy=true;
    try{
-     const [latest,history]=await Promise.all([get('/api/research/latest'),get('/api/research/history?limit=10&offset=0')]);
-     const c=latest.counts||{};
-     set('hunterDatabaseValue',fmt(safeNum(c.database_records)));
-     set('hunterPredictionValue',fmt(safeNum(c.total_records)));
-     set('hunterUniqueValue',fmt(safeNum(c.unique_mints)));
-     set('hunterEvaluationValue',fmt(safeNum(c.total_evaluations)));
-     set('hunterActiveTargetCount',fmt(Array.isArray(latest.items)?latest.items.length:null));
-     set('hunterWatchValue',fmt(Array.isArray(latest.items)?latest.items.filter(x=>x.decision==='WATCH').length:null));
-     const calibrated=latest.modelCalibrated===true;
-     set('hunterCalibratedValue',calibrated?'READY':'—');
-     set('hunterCalibrationStatus',calibrated?'CALIBRATED':'NOT CALIBRATED');
-     const run=Array.isArray(latest.runs)?latest.runs[0]:null;
-     set('hunterLastScan',run?('RUN '+String(run.status||'UNKNOWN')+' · '+toTime(run.started_at)):'BELUM ADA PUTARAN');
-     const badge=el('hunterRadarBadge'),sys=el('hunterSystemStatus');
-     const stale=latest.dataStatus==='STALE'||history.dataStatus==='STALE';
-     if(badge){badge.textContent=stale?'● CACHED / STALE':'● DATA '+(latest.dataStatus==='LIVE'?'UPDATED':'CACHED');badge.className='hunter-live-badge'+(stale?'':' online')}
-     if(sys){sys.textContent=stale?'● DATABASE QUOTA / STALE':'● RESEARCH FEED ONLINE';sys.className='hunter-system-status '+(stale?'offline':'online')}
-     const list=el('hunterRecentList');
-     if(list){
-       list.replaceChildren();
-       const items=Array.isArray(history.items)?history.items:[];
-       if(!items.length){const p=document.createElement('p');p.className='hunter-history-empty';p.textContent='Belum ada catatan yang tersedia';list.append(p)}
-       for(const row of items){
-         const item=document.createElement('article');item.className='hunter-history-row';item.setAttribute('role','listitem');
-         const top=document.createElement('div');top.className='hunter-history-row-line';
-         const name=document.createElement('strong');name.className='hunter-history-symbol';name.textContent=String(row.symbol||row.mint?.slice(0,9)||'UNKNOWN').slice(0,33);
-         const decision=document.createElement('span');decision.className='hunter-history-status'+(row.decision==='WATCH'?'':' unknown');decision.textContent=String(row.decision||'UNVERIFIED').replaceAll('_',' ');
-         top.append(name,decision);
-         const foot=document.createElement('div');foot.className='hunter-history-meta';
-         const source=document.createElement('span');source.textContent=row.record_source==='LEGACY'?'HISTORIS':'SCANNER';
-         const timestamp=document.createElement('time');timestamp.textContent=toTime(row.observed_at);
-         foot.append(source,timestamp);
-         const sub=document.createElement('div');sub.className='hunter-history-meta';
-         const score=document.createElement('span');score.textContent='AI: '+(safeNum(row.ai_score)===null?'—':Number(row.ai_score).toFixed(1));
-         const evalText=document.createElement('span');evalText.textContent=String(row.evaluation_status||'PENDING').replaceAll('_',' ');
-         sub.append(score,evalText);item.append(top,foot,sub);list.append(item);
-       }
+     const [rLatest,rHistory]=await Promise.allSettled([
+       get('/api/research/latest','latest'),
+       get('/api/research/history?limit=10&offset=0','history')
+     ]);
+     const latest=rLatest.status==='fulfilled'?rLatest.value:null;
+     const history=rHistory.status==='fulfilled'?rHistory.value:null;
+     const errors=[rLatest.status==='rejected'?rLatest.reason:null,rHistory.status==='rejected'?rHistory.reason:null];
+     const quota=quotaReason(errors,[latest,history]);
+     const stale=[latest,history].some(d=>d?.dataStatus==='STALE');
+     if(latest){
+       const c=latest.counts||{};
+       set('hunterDatabaseValue',fmt(safeNum(c.database_records)));
+       set('hunterPredictionValue',fmt(safeNum(c.total_records)));
+       set('hunterUniqueValue',fmt(safeNum(c.unique_mints)));
+       set('hunterEvaluationValue',fmt(safeNum(c.total_evaluations)));
+       set('hunterActiveTargetCount',fmt(Array.isArray(latest.items)?latest.items.length:null));
+       set('hunterWatchValue',fmt(Array.isArray(latest.items)?latest.items.filter(x=>x.decision==='WATCH').length:null));
+       const calibrated=latest.modelCalibrated===true;
+       set('hunterCalibratedValue',calibrated?'READY':'—');
+       set('hunterCalibrationStatus',calibrated?'CALIBRATED':'NOT CALIBRATED');
+       const run=Array.isArray(latest.runs)?latest.runs[0]:null;
+       set('hunterLastScan',run?('RUN '+String(run.status||'UNKNOWN')+' · '+toTime(run.started_at)):'BELUM ADA PUTARAN');
      }
-   }catch(e){
-     const sys=el('hunterSystemStatus'),badge=el('hunterRadarBadge'),list=el('hunterRecentList');
-     if(sys){sys.textContent='● RESEARCH FEED UNAVAILABLE';sys.className='hunter-system-status offline'}
-     if(badge){badge.textContent='● FEED UNAVAILABLE';badge.className='hunter-live-badge'}
-     if(list&&!list.querySelector('.hunter-history-row'))list.textContent='Database belum dapat dimuat. Periksa koneksi atau tekan LATEST.';
+     if(history){
+       const list=el('hunterRecentList');
+       if(list){
+         const top=list.scrollTop;
+         const items=Array.isArray(history.items)?history.items:[];
+         list.replaceChildren();
+         if(!items.length){const p=document.createElement('p');p.className='hunter-history-empty';p.textContent='Belum ada baris pada respons riwayat';list.append(p)}
+         for(const row of items){
+           const item=document.createElement('article');item.className='hunter-history-row';item.setAttribute('role','listitem');
+           const first=document.createElement('div');first.className='hunter-history-row-line';
+           const name=document.createElement('strong');name.className='hunter-history-symbol';name.textContent=String(row.symbol||row.mint?.slice(0,9)||'UNKNOWN').slice(0,33);
+           const decision=document.createElement('span');decision.className='hunter-history-status'+(row.decision==='WATCH'?'':' unknown');decision.textContent=String(row.decision||'UNVERIFIED').replaceAll('_',' ');
+           first.append(name,decision);
+           const second=document.createElement('div');second.className='hunter-history-meta';
+           const source=document.createElement('span');source.textContent=row.record_source==='LEGACY'?'HISTORIS':'SCANNER';
+           const time=document.createElement('time');time.textContent=toTime(row.observed_at);
+           second.append(source,time);
+           const third=document.createElement('div');third.className='hunter-history-meta';
+           const score=document.createElement('span');score.textContent='AI: '+(safeNum(row.ai_score)===null?'—':Number(row.ai_score).toFixed(1));
+           const evaluation=document.createElement('span');evaluation.textContent=String(row.evaluation_status||'PENDING').replaceAll('_',' ');
+           third.append(score,evaluation);item.append(first,second,third);list.append(item);
+         }
+         list.scrollTop=top;
+       }
+     }else{
+       const list=el('hunterRecentList'),placeholder=list?.querySelector('.hunter-history-empty');
+       if(placeholder)placeholder.textContent='Riwayat belum terbaca; lihat alasan di atas.';
+     }
+     const badge=el('hunterRadarBadge'),system=el('hunterSystemStatus');
+     let label='● DATA '+(latest?.dataStatus==='LIVE'?'BARU':'CACHE'),title='● RESEARCH FEED ONLINE',message='',kind='warning';
+     if(quota){
+       label=latest?'● ARSIP D1':'● KUOTA D1 HABIS';
+       title='● DATABASE TERBATAS';
+       message=quota+(latest||history?' Menampilkan data tersimpan yang tersedia, bukan hasil live.':' Tidak ada snapshot lokal untuk ditampilkan.');
+     }else if(!latest){
+       label='● RADAR TERTUNDA';title='● RADAR BELUM TERHUBUNG';
+       message='Radar belum dapat membaca API ('+String(errors[0]?.code||errors[0]?.message||'NETWORK_ERROR')+'). Data tersimpan tidak dihapus.';
+     }else if(!history){
+       label='● RADAR OK · HISTORY TERTUNDA';title='● RADAR AKTIF';
+       message='Radar tersedia, tetapi history gagal dimuat ('+String(errors[1]?.code||errors[1]?.message||'NETWORK_ERROR')+').';
+     }else if(stale){
+       label='● DATA TERSIMPAN';title='● ARSIP · BUKAN LIVE';
+       message='Menampilkan cache terakhir; data terbaru belum terverifikasi.';kind='cached';
+     }
+     if(badge){badge.textContent=label;badge.className='hunter-live-badge'+(message?'':' online');badge.title=message||'Data riset tersedia'}
+     if(system){system.textContent=title;system.className='hunter-system-status '+(message?'offline':'online');system.title=message||'Riset terhubung'}
+     txt('hunterFeedNotice',message,kind);
+     txt('hunterHistoryNotice',!history?(quota||'History belum dapat diperbarui. Riwayat sebelumnya tetap tersedia jika ada.'):history.dataStatus==='STALE'?'Riwayat terakhir dari cache (bukan real-time).':'',history?'cached':'warning');
    }finally{busy=false}
  }
  el('hunterRecentRefresh')?.addEventListener('click',refresh);
