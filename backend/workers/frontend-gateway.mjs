@@ -1,4 +1,4 @@
-import {researchData} from './research-api.mjs';
+import {researchData,unifiedHistory} from './research-api.mjs';
 import {authenticate,validMutationOrigin} from '../auth-v1.mjs';
 import {handleAuth} from '../auth-routes-v1.mjs';
 import {activateAdmin} from '../auth-activation-v1.mjs';
@@ -35,6 +35,12 @@ export default {async fetch(request,env){
  if(path==='/api/research/latest'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   return json({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null});
+ }
+ if(path==='/api/research/history'&&method==='GET'){
+  if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
+  const limit=Number.parseInt(u.searchParams.get('limit')||'25',10);
+  const offset=Number.parseInt(u.searchParams.get('offset')||'0',10);
+  return json(await unifiedHistory(env.RESEARCH_DB,{limit,offset}));
  }
  if(path==='/api/research/scan-now'&&method==='POST'){
   // One-click primary SCAN: private Worker-to-Worker call, never accept mint/pair payload from the browser.
