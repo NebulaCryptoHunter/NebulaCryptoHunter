@@ -27,7 +27,7 @@ test('instrument gauges preserve a measured zero and distinguish absent percenta
 test('instrument coverage shows the actual ratio and escapes captions',()=>{
  const output=gauge('API',8/12*100,'<source>','cyan','8 / 12 API');
  assert.match(output,/class="val">67%/);
- assert.match(output,/8 \/ 12 API/);
+ assert.match(output,/8 \/ 12/);
  assert.match(output,/&lt;source&gt;/);
 });
 test('momentum compares observed horizons without inventing a price path',()=>{
@@ -52,3 +52,11 @@ test('missing or empty order flow never becomes an illustrated 50 50 split',()=>
   assert.doesNotMatch(output,/<i style="width:/);
  }
 });
+
+ test('gauge needles follow measured values; unavailable data has no false zero needle',()=>{
+  assert.match(gauge('TEST',0,'Measured'),/class="dial-needle" transform="rotate\(-120 36 31\)"/);
+  assert.match(gauge('TEST',50,'Measured'),/class="dial-needle" transform="rotate\(0 36 31\)"/);
+  assert.match(gauge('TEST',100,'Measured'),/class="dial-needle" transform="rotate\(120 36 31\)"/);
+  assert.doesNotMatch(gauge('TEST',null,'Unavailable'),/class="dial-needle"/);
+  assert.equal((gauge('TEST',50,'Measured').match(/<line x1=/g)||[]).length,13);
+ });

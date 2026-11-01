@@ -1322,6 +1322,65 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  .hunter-ai-panel #aiHealthDash .instrument-gauge{padding:3px 1px!important}
 }
 
+
+/* Horizontal instruments keep needles and labels readable at narrow widths. */
+.hunter-ai-panel #aiHealthDash{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(4,minmax(0,1fr))!important;gap:5px!important}
+.hunter-ai-panel #aiHealthDash .instrument-gauge{display:grid;grid-template-columns:minmax(40px,.9fr) minmax(0,1.1fr);align-items:center;justify-content:normal;gap:4px;padding:4px 5px!important;overflow:hidden}
+.instrument-dial{width:100%;height:100%;min-height:0;max-height:68px;aspect-ratio:auto;flex-shrink:0}
+.instrument-dial svg{display:block;overflow:visible}
+.hunter-ai-panel .instrument-dial .val{bottom:1px;top:auto;line-height:1;color:#dbfbff!important}
+.dial-scale{stroke:#7ba9bb;stroke-width:1;opacity:.9}
+.dial-needle{fill:var(--instrument);stroke:var(--instrument);stroke-width:.5;filter:drop-shadow(0 0 2px var(--instrument))}
+.dial-needle circle{fill:#d7ffff;stroke:#081c30;stroke-width:1}
+.dial-waiting{fill:#9b8aa8;stroke:#081c30;stroke-width:1}
+.instrument-reading{min-width:0;display:grid;align-content:center;gap:4px}
+.hunter-ai-panel .instrument-gauge .lbl{display:block;line-height:1.15;white-space:normal;overflow-wrap:anywhere;text-align:left!important}
+.instrument-level{display:block;height:5px;background:#213e54;overflow:hidden;border-radius:2px;mask-image:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 7px)}
+.instrument-level i{display:block;height:100%;background:var(--instrument);box-shadow:0 0 5px var(--instrument)}
+.instrument-caption{display:flex;align-items:center;gap:5px;text-align:left;min-height:7px;line-height:1.1;margin:0;overflow-wrap:anywhere}
+.instrument-status-light{display:block;width:4px;height:4px;flex:0 0 4px;border-radius:50%;background:var(--instrument);box-shadow:0 0 5px var(--instrument)}
+.instrument-gauge.is-unknown .instrument-status-light{background:#9a7b5f;box-shadow:none}
+.instrument-gauge.is-unknown .instrument-level{background:repeating-linear-gradient(90deg,#4a405a 0 4px,#102238 4px 7px)}
+.hunter-ai-panel .hunter-panel-heading h2,.hunter-ai-panel .hunter-panel-heading small{white-space:normal;overflow-wrap:anywhere}
+/* Archive summary, toolbar and timeline stay within the history panel. */
+.hunter-history-panel>.hunter-panel-heading{min-height:0;flex:0 0 auto}
+.hunter-history-panel .hunter-panel-heading h2,.hunter-history-panel .hunter-panel-heading small{white-space:normal;overflow:visible;overflow-wrap:anywhere;max-width:100%}
+.hunter-history-panel .archive-status{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 10px;padding:9px 11px;min-width:0;background:linear-gradient(110deg,#172641aa,#0b1d32cc);border-color:#7257a5;border-left-color:#ad8aff}
+.archive-heading{min-width:0;color:#aacbdf;overflow-wrap:anywhere}
+.archive-open{justify-self:end;color:#a2f8ee;border:1px solid #386071;border-radius:3px;padding:1px 5px;white-space:nowrap}
+.hunter-history-panel .archive-status strong{min-width:0;overflow-wrap:anywhere;white-space:normal}
+#archiveEvalCount{align-self:end;white-space:normal;overflow-wrap:anywhere;text-align:right;min-width:0}
+.hunter-history-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center;flex:0 0 auto;margin:2px 0 7px;min-width:0}
+.hunter-history-toolbar .hunter-history-tabs{margin:0;gap:5px;min-width:0}
+.hunter-history-toolbar .hunter-history-tabs button{min-width:0;padding:6px 3px;overflow-wrap:anywhere}
+.hunter-history-toolbar .hunter-history-scroll-bar{margin:0}
+.hunter-history-toolbar .hunter-scroll-hint{display:none}
+.hunter-history-toolbar .hunter-scroll-controls{gap:4px}
+.hunter-history-toolbar .hunter-scroll-controls button{width:32px;min-height:40px}
+.hunter-history-panel .hunter-history-notice{padding:5px 7px;margin-bottom:6px;white-space:normal;overflow-wrap:anywhere}
+.hunter-history-panel .hunter-history-list{gap:6px;padding-right:3px}
+.hunter-history-panel .hunter-history-row{display:grid;grid-template-columns:40px minmax(0,1fr);gap:9px;align-items:center;padding:8px;margin:0;background:linear-gradient(105deg,#0e2b4180,#07172baa);border:1px solid #244859;border-left:2px solid #466985;border-radius:5px;min-width:0}
+.history-score-instrument{position:relative;width:40px;height:48px;align-self:center;color:#bca8ff}
+.history-score-instrument svg{width:40px;height:40px;fill:none;transform:rotate(-90deg)}
+.history-score-rail{stroke:#263f54;stroke-width:2}.history-score-fill{stroke:#ae95ff;stroke-width:2;filter:drop-shadow(0 0 2px #ad95ff55)}
+.history-score-instrument b{position:absolute;top:12px;left:0;right:0;text-align:center;line-height:1;color:#d9effb;font-weight:700}
+.history-score-instrument small{position:absolute;bottom:0;left:0;right:0;text-align:center;color:#8a9dbb;line-height:1}
+.history-score-instrument.is-unknown .history-score-fill{stroke:transparent}
+.history-record-content{min-width:0;display:grid;gap:4px}
+.hunter-history-row-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start}
+.hunter-history-symbol{white-space:normal;overflow:visible;overflow-wrap:anywhere}
+.hunter-history-status{padding:2px 4px;border:1px solid #2c685f;background:#10392c66;border-radius:3px;line-height:1.2;white-space:normal;overflow-wrap:anywhere;max-width:90px;text-align:center}
+.hunter-history-status.unknown{border-color:#79603d;background:#382b1766}
+.hunter-history-meta{min-width:0;gap:4px 8px;align-items:center;line-height:1.2;flex-wrap:wrap}
+.hunter-history-meta time{white-space:normal;overflow-wrap:anywhere;color:#9fbfce;max-width:100%}
+.history-source-chip{color:#679cb6;letter-spacing:.4px}.history-evaluation-chip{color:#b39aca;overflow-wrap:anywhere}
+.hunter-history-panel .hunter-history-note{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;padding:6px 0 0;line-height:1.2;overflow-wrap:anywhere}
+@media(max-height:760px){
+ .hunter-ai-panel #aiHealthDash .instrument-gauge{padding:2px 4px!important;gap:3px}
+ .instrument-reading{gap:4px}.instrument-dial{max-height:54px}
+ .hunter-history-panel .hunter-history-row{padding:6px;gap:6px}
+}
+
 </style>
 </head>
 <body>
@@ -1386,7 +1445,7 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
         </dl>
       </div>
       <div class="hunter-ai-scroll-head"><strong>INSTRUMENTS</strong><button type="button" id="showAllIndicators" class="hud-indicator-details" aria-label="Lihat semua indikator AI, trading, dan API">DETAIL ↗</button></div>
-      <div id="aiHealthDash" class="ai-health-grid hunter-scrollable" tabindex="0" role="region" aria-label="Indikator AI, gulir untuk melihat seluruh indikator"></div>
+      <div id="aiHealthDash" class="ai-health-grid hunter-scrollable" tabindex="0" role="region" aria-label="Delapan instrumen AI, seluruhnya terlihat tanpa gulir"></div>
       <p class="hunter-panel-copy instrument-footnote" title="Hasil pengamatan dan evaluasi asli. Win rate / ROI hanya ditampilkan jika memiliki dasar pengukuran yang sah; tidak ada angka ilustrasi.">◈ DATA ASLI <span>— = BELUM TERUKUR</span></p>
       <details class="hunter-advanced" id="hunterAdvancedTelemetry">
         <summary>ADVANCED SYSTEM TELEMETRY</summary>
@@ -1407,15 +1466,15 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
       <div id="radarFeed" class="radar-grid hunter-scrollable" tabindex="0" role="region" aria-label="Daftar token dapat digulir vertikal"></div>
     </section>
     <aside class="hunter-panel hunter-history-panel" aria-labelledby="hunterHistoryTitle">
-      <header class="hunter-panel-heading"><span class="hunter-panel-icon" aria-hidden="true">▱</span><div><h2 id="hunterHistoryTitle">DATABASE / HISTORY</h2><small>UNIFIED PREDICTIONS &amp; SCANNER</small></div></header>
+      <header class="hunter-panel-heading"><span class="hunter-panel-icon" aria-hidden="true">▱</span><div><h2 id="hunterHistoryTitle">DATABASE / HISTORY</h2><small>RESEARCH RECORDS · NEBULA DB</small></div></header>
       <button id="archiveStatus" class="archive-status" type="button" aria-label="Lihat database terpadu prediksi dan kandidat NEBULA">
-        <span>◈ DATABASE NEBULA</span><strong id="archiveCount">Memuat…</strong><span id="archiveEvalCount">Evaluasi: —</span><span>HIST ▸</span>
+        <span class="archive-heading">◈ DATABASE NEBULA</span><span class="archive-open">OPEN ↗</span><strong id="archiveCount">Memuat…</strong><span id="archiveEvalCount">Evaluasi: —</span>
       </button>
-      <div class="hunter-history-tabs"><button id="hunterRecentRefresh" type="button">LATEST</button><button id="hunterOpenHistory" type="button">HISTORY</button></div>
-      <div class="hunter-history-scroll-bar"><span class="hunter-scroll-controls"><span class="hunter-scroll-hint">GULIR HISTORY</span><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="-1" aria-label="Gulir history ke atas">↑</button><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="1" aria-label="Gulir history ke bawah">↓</button></span></div>
+      <div class="hunter-history-toolbar"><div class="hunter-history-tabs"><button id="hunterRecentRefresh" type="button">LATEST</button><button id="hunterOpenHistory" type="button">HISTORY</button></div>
+      <div class="hunter-history-scroll-bar"><span class="hunter-scroll-controls"><span class="hunter-scroll-hint">GULIR HISTORY</span><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="-1" aria-label="Gulir history ke atas">↑</button><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="1" aria-label="Gulir history ke bawah">↓</button></span></div></div>
       <p id="hunterHistoryNotice" class="hunter-history-notice" role="status" aria-live="polite" hidden></p>
       <div id="hunterRecentList" class="hunter-history-list hunter-scrollable" role="list" tabindex="0" aria-label="Riwayat dapat digulir vertikal" aria-live="polite"><p class="hunter-history-empty">Memuat catatan dari nebula-db…</p></div>
-      <p class="hunter-history-note">Sumber data: nebula-db. HISTORIS dan SCANNER dibedakan; hasil belum berarti transaksi atau sinyal beli tervalidasi.</p>
+      <p class="hunter-history-note" title="Sumber data: nebula-db. HISTORIS dan SCANNER dibedakan; hasil belum berarti transaksi atau sinyal beli tervalidasi."><span>◈ NEBULA-DB</span><span>RESEARCH · NOT TRADE RESULTS</span></p>
     </aside>
   </main>
   <div id="scanFeedback" class="scan-feedback" role="status" aria-live="polite" hidden></div>
@@ -1691,11 +1750,14 @@ function researchIndicatorGroups(data=S.serverResearch){
  return [{name:'AI · MARKET DATA',rows:market},{name:'AI · PERFORMANCE',rows:performance},{name:'TRADING · ACTIVE FEED',rows:trading},{name:'DATABASE',rows:database},{name:'SYSTEM / VALIDATION',rows:system},{name:'12 API CONNECTIONS',rows:providers}];
 }
 function instrumentGauge(label,value,note,color='#43edec',caption=''){
- const known=typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100,pct=known?Math.max(0,Math.min(100,value)):0;
- const display=known?Math.round(value)+'%':'—';
+ const known=typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100,pct=known?value:0;
+ const display=known?Math.round(value)+'%':'—',angle=-120+pct*2.4;
+ const shortCaption=known?String(caption||'').replace(/ TOKEN$| API$/,''):'';
+ const ticks=Array.from({length:13},(_,i)=>'<line x1="36" y1="1" x2="36" y2="'+(i%3===0?'6':'4')+'" transform="rotate('+(-120+i*20)+' 36 31)"/>').join('');
+ const needle=known?'<g class="dial-needle" transform="rotate('+angle+' 36 31)"><path d="M34.6 31 36 9 37.4 31Z"/><circle cx="36" cy="31" r="3"/></g>':'<circle class="dial-waiting" cx="36" cy="31" r="3"/>';
  return '<div class="ai-health-item instrument-gauge '+(known?'':'is-unknown')+'" title="'+escapeHTML(note)+'" aria-label="'+escapeHTML(label+': '+display+'. '+note)+'" role="img" style="--instrument:'+color+'">'
-   +'<div class="instrument-dial"><svg viewBox="0 0 72 58" aria-hidden="true"><path class="dial-rail" d="M 12 43 A 27 27 0 1 1 60 43" pathLength="100"/><path class="dial-ticks" d="M 8 46 A 32 32 0 1 1 64 46" pathLength="100"/><path class="dial-value" d="M 12 43 A 27 27 0 1 1 60 43" pathLength="100" stroke-dasharray="'+pct+' 100"/></svg><strong class="val">'+display+'</strong></div>'
-   +'<span class="lbl">'+escapeHTML(label)+'</span><small class="instrument-caption">'+escapeHTML(caption||(known?'TERUKUR':'BELUM TERUKUR'))+'</small></div>';
+   +'<div class="instrument-dial"><svg viewBox="0 0 72 64" aria-hidden="true"><path class="dial-rail" d="M 12 43 A 27 27 0 1 1 60 43" pathLength="100"/><g class="dial-scale">'+ticks+'</g><path class="dial-value" d="M 12 43 A 27 27 0 1 1 60 43" pathLength="100" stroke-dasharray="'+pct+' 100"/>'+needle+'</svg><strong class="val">'+display+'</strong></div>'
+   +'<div class="instrument-reading"><span class="lbl">'+escapeHTML(label)+'</span><span class="instrument-level" aria-hidden="true"><i style="width:'+pct+'%"></i></span><small class="instrument-caption"><i class="instrument-status-light" aria-hidden="true"></i>'+escapeHTML(shortCaption)+'</small></div></div>';
 }
 function renderResearchIndicators(data=S.serverResearch){
  const dash=$('aiHealthDash');if(!dash)return;
@@ -2453,18 +2515,22 @@ setTimeout(()=>{
          if(!items.length){const p=document.createElement('p');p.className='hunter-history-empty';p.textContent='Belum ada baris pada respons riwayat';list.append(p)}
          for(const row of items){
            const item=document.createElement('article');item.className='hunter-history-row';item.setAttribute('role','listitem');
+           const rawScore=safeNum(row.ai_score),scoreKnown=rawScore!==null&&rawScore>=0&&rawScore<=100;
+           const instrument=document.createElement('div');instrument.className='history-score-instrument'+(scoreKnown?'':' is-unknown');instrument.title='AI heuristic score: '+(scoreKnown?rawScore.toFixed(1)+' / 100':'unavailable');
+           instrument.innerHTML='<svg viewBox="0 0 40 40" aria-hidden="true"><circle class="history-score-rail" cx="20" cy="20" r="16"/><circle class="history-score-fill" cx="20" cy="20" r="16" pathLength="100" stroke-dasharray="'+(scoreKnown?rawScore:0)+' 100"/></svg>';
+           const scoreValue=document.createElement('b');scoreValue.textContent=scoreKnown?rawScore.toFixed(1):'—';instrument.append(scoreValue);
+           const scoreLabel=document.createElement('small');scoreLabel.textContent='AI';instrument.append(scoreLabel);
+           const content=document.createElement('div');content.className='history-record-content';
            const first=document.createElement('div');first.className='hunter-history-row-line';
-           const name=document.createElement('strong');name.className='hunter-history-symbol';name.textContent=String(row.symbol||row.mint?.slice(0,9)||'UNKNOWN').slice(0,33);
+           const name=document.createElement('strong');name.className='hunter-history-symbol';name.textContent=String(row.symbol||row.mint?.slice(0,9)||'UNKNOWN');name.title=String(row.symbol||row.mint||'UNKNOWN');
            const decision=document.createElement('span');decision.className='hunter-history-status'+(row.decision==='WATCH'?'':' unknown');decision.textContent=String(row.decision||'UNVERIFIED').replaceAll('_',' ');
            first.append(name,decision);
-           const second=document.createElement('div');second.className='hunter-history-meta';
-           const source=document.createElement('span');source.textContent=row.record_source==='LEGACY'?'HISTORIS':'SCANNER';
-           const time=document.createElement('time');time.textContent=toTime(row.observed_at);
-           second.append(source,time);
+           const second=document.createElement('div');second.className='hunter-history-meta history-record-time';
+           const time=document.createElement('time'),stamp=toTime(row.observed_at);time.textContent=stamp==='—'?'—':stamp+' WIB';if(row.observed_at)time.dateTime=String(row.observed_at);second.append(time);
            const third=document.createElement('div');third.className='hunter-history-meta';
-           const score=document.createElement('span');score.textContent='AI: '+(safeNum(row.ai_score)===null?'—':Number(row.ai_score).toFixed(1));
-           const evaluation=document.createElement('span');evaluation.textContent=String(row.evaluation_status||'PENDING').replaceAll('_',' ');
-           third.append(score,evaluation);item.append(first,second,third);list.append(item);
+           const source=document.createElement('span');source.className='history-source-chip';source.textContent=row.record_source==='LEGACY'?'HISTORIS':'SCANNER';
+           const evaluation=document.createElement('span');evaluation.className='history-evaluation-chip';evaluation.textContent=String(row.evaluation_status||'PENDING').replaceAll('_',' ');
+           third.append(source,evaluation);content.append(first,second,third);item.append(instrument,content);list.append(item);
          }
          list.scrollTop=top;
        }
