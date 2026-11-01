@@ -1059,7 +1059,8 @@ body{margin:0}
 .hunter-ai-panel .ai-health-item .val{color:#c5f8ff!important;overflow-wrap:anywhere}
 .hunter-ai-panel .ai-health-item .lbl{color:#d6e9f5!important;margin-top:4px}
 .ai-indicator-note{display:block;color:#a8c4d7;margin-top:4px}
-.hunter-targets-panel .hunter-radar-zone{display:none!important}
+/* Keep the original animated radar visible above the token feed. */
+.hunter-targets-panel .hunter-radar-zone{display:flex!important}
 .hunter-targets-panel .radar-grid>.hud-card{overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-width:thin;padding:15px!important;gap:10px!important;background:linear-gradient(140deg,rgba(3,26,48,.91),rgba(3,12,29,.92))!important}
 .token-card-head{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:0}
 .token-card-identity{flex:1;min-width:0}
