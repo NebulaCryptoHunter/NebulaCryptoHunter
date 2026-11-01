@@ -69,8 +69,11 @@ test('historical archive stays separate and visible beside scanner snapshots',()
 test('SCAN reports read-only synchronization truthfully and cannot claim a new scan',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/id="scanFeedback"/);
- assert.match(html,/Tombol SCAN memperbarui data yang tersimpan, bukan memulai pemindaian manual/);
- assert.match(html,/Admin sementara NONAKTIF/);
+ assert.match(html,/Sinkronisasi hanya membaca data tersimpan/);
+ assert.match(html,/Scanner otomatis berjalan setiap 30 menit/);
+ assert.match(html,/<button id="scanBtn"[^>]*>SINKRON<\/button>/);
+ assert.doesNotMatch(html,/Admin sementara NONAKTIF/);
+ assert.match(html,/btn.textContent='SINKRON'/);
  assert.match(html,/performScan\(\)\.catch\(e=>/);
  assert.match(html,/\.finally\(\(\)=>/);
  assert.match(html,/return json;\n\}/);
@@ -149,4 +152,13 @@ test('unified research feed orders migrated rows by timestamps, not legacy ids',
  assert.match(research,/candidate_evaluations e[\s\S]*ORDER BY e\.evaluated_at DESC,e\.id DESC LIMIT 50/);
  assert.doesNotMatch(research,/scanner_runs ORDER BY id DESC/);
  assert.match(scanner,/predictions ORDER BY created_at DESC,id DESC LIMIT 150/);
+});
+
+
+test('evaluation Wrangler config keeps both production D1 bindings canonical',()=>{
+ const config=JSON.parse(fs.readFileSync('backend/wrangler.evaluation.jsonc','utf8'));
+ const databases=Object.fromEntries(config.d1_databases.map(({binding,database_name,database_id})=>[binding,{database_name,database_id}]));
+ const expected={database_name:'nebula-db',database_id:'6eeadd5e-5e58-4a8c-90d9-92d039438a8f'};
+ assert.deepEqual(databases.DB,expected);
+ assert.deepEqual(databases.RESEARCH_DB,expected);
 });
