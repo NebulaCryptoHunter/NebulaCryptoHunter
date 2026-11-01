@@ -495,7 +495,7 @@ test('Hunter controls remain connected and AUTO controls read-only periodic refr
  for(const id of ids)assert.ok(html.includes('id="'+id+'"'),id+' is missing');
  for(const pattern of [
   "$('scanBtn').onclick=Scanner.requestManualScan",
-  "$('syncBtn').onclick=Scanner.requestScan",
+  "$('syncBtn').onclick=()=>{S.explicitSyncFeedback=true;Scanner.requestScan();}",
   "$('historyBtn').onclick=()=>showHistoryPanel(0)",
   "$('archiveStatus').onclick=()=>showHistoryPanel(0)",
   "$('watchlistBtn').onclick=showWatchlistPanel",
