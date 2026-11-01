@@ -49,7 +49,7 @@ export async function handleAuth(request,env,{frontendOrigin}={}){
    const key=await hash(getIP(request)+'|'+identifier),ipKey=await hash('ip|'+getIP(request));
    if(await throttle(env.DB,key)||await throttle(env.DB,ipKey))return json({success:false,error:'TOO_MANY_ATTEMPTS'},429);
    const user=await env.DB.prepare('SELECT * FROM auth_users WHERE (username=? OR email=?) AND status=? LIMIT 1').bind(identifier,identifier,'active').first();
-   const validTemporary=!user?.must_change_password||(!user.temporary_password_expires_at||Number(user.temporary_password_expires_at)>now());
+   const validTemporary=Number(user?.must_change_password)!==1||Number(user.temporary_password_expires_at)>now();
    const verified=user&&validTemporary?await verifyPassword(body.password,user):false;
    if(!verified){await failure(env.DB,key);await failure(env.DB,ipKey);return json({success:false,error:'INVALID_CREDENTIALS'},401);}
    await clearFailures(env.DB,key);
