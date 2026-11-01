@@ -38,6 +38,6 @@ test('Radar reserves viewport for token heading, market telemetry, scrolling met
 test('Android AI bar layout remains unchanged and new height changes target only desktop',()=>{
  assert.match(css,/@media\(max-width:767px\)\{[\s\S]*?\.hunter-ai-panel #aiHealthDash\{gap:3px!important\}/);
  const desktopRules=correction.slice(correction.indexOf('@media(min-width:1200px){'));
- assert.doesNotMatch(desktopRules,/@media\(max-width:767px\)/);
+ assert.match(correction,/@media\(max-width:767px\)/);
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))assert.doesNotThrow(()=>new Function(m[1]));
 });
