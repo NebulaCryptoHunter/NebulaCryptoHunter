@@ -20,7 +20,8 @@ test('Android token actions preserve the exact Solana mint and report copy error
   assert.match(html, /return 'https:\/\/dexscreener\.com\/solana\/'\s*\+\s*ca/);
   assert.match(html, /async function copyToClipboard\(value\)/);
   assert.match(html, /showScanFeedback\('Alamat token gagal disalin:/);
-  for (const action of ['watch', 'copyca', 'phantom', 'pump', 'dex', 'buy']) assert.ok(html.includes("data-action=\""+action+"\""));
+  for (const action of ['watch', 'copyca', 'phantom', 'pump', 'dex']) assert.ok(html.includes("data-action=\""+action+"\""));
+  assert.doesNotMatch(html,/data-action="buy"/);
 });
 
 test('Local WATCH does not claim a server write when read-only', () => {

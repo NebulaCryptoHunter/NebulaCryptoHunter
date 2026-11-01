@@ -1745,6 +1745,122 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  .hunter-targets-panel .token-card-footer .token-open-details{height:26px!important;min-height:26px!important}
 }
 
+/* NEBULA V3.1: six visible controls, five actions + DETAIL, no duplicate DEX. */
+.hunter-targets-panel .radar-grid>.hud-card>.token-card-footer{
+ display:block!important;flex:0 0 auto!important;min-height:0!important;
+ margin:0!important;padding:3px 0 0!important;overflow:visible!important
+}
+.hunter-targets-panel .token-card-footer>.token-card-actions{
+ display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;
+ grid-template-rows:32px!important;gap:4px!important;min-width:0!important;width:100%!important
+}
+.hunter-targets-panel .token-card-footer .action-btn-text{
+ width:100%!important;min-width:0!important;height:32px!important;min-height:32px!important;
+ margin:0!important;padding:4px 2px!important;display:flex!important;align-items:center!important;justify-content:center!important;
+ font:800 clamp(9px,.65vw,11px)/1 'Orbitron',sans-serif!important;letter-spacing:0!important;
+ white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important
+}
+.hunter-targets-panel .token-card-footer .action-dex{
+ border-color:#36efbd!important;color:#b7ffe9!important;
+ background:linear-gradient(115deg,#075548,#07394f)!important
+}
+.hunter-targets-panel .token-card-footer .token-open-details{
+ position:static!important;width:100%!important;margin:0!important;
+ border:1px solid #3b97aa!important;border-radius:5px!important;
+ background:linear-gradient(110deg,#0a4b64,#10344d)!important;cursor:pointer!important
+}
+/* Model Validation is a real HUD scanner animation: text left, independent lens right. */
+.hunter-model-validation{
+ display:grid!important;grid-template-columns:minmax(0,1fr) 52px!important;
+ grid-template-rows:1fr 1fr!important;gap:2px 4px!important;align-items:center!important;
+ overflow:hidden!important;isolation:isolate!important
+}
+.hunter-model-validation>span:first-child{
+ grid-column:1!important;grid-row:1!important;
+ font:800 9px/1.2 'Orbitron',sans-serif!important;white-space:normal!important;z-index:3!important
+}
+.hunter-model-validation>strong{
+ grid-column:1!important;grid-row:2!important;align-self:start!important;
+ font-size:12px!important;line-height:1.2!important;overflow-wrap:anywhere!important;z-index:3!important
+}
+.hunter-model-validation>.hunter-validation-status-dot{
+ grid-column:2!important;grid-row:2!important;
+ justify-self:center!important;align-self:end!important;z-index:4!important
+}
+.hunter-model-validation>.hunter-validation-orbit{
+ position:relative!important;inset:auto!important;
+ grid-column:2!important;grid-row:1/3!important;justify-self:center!important;align-self:center!important;
+ width:52px!important;height:52px!important;min-width:52px!important;border:0!important;border-radius:50%!important;
+ background:radial-gradient(circle,#0c8bba 0 6%,#072e4e 19%,#05122a 41%,transparent 52%),
+ conic-gradient(from 40deg,transparent 0 13%,#1dc9f9 23%,#35fcff 35%,transparent 44%,transparent 60%,#ac56ff 76%,transparent 89%)!important;
+ box-shadow:0 0 16px #00d9ff75,inset 0 0 13px #42eaff91!important;
+ animation:hunterValidationOrbit 15s linear infinite!important;pointer-events:none!important
+}
+.hunter-model-validation>.hunter-validation-orbit:before{
+ content:""!important;position:absolute!important;inset:3px!important;border-radius:50%!important;opacity:1!important;
+ background:conic-gradient(#18e9ff 0 44deg,transparent 46deg 82deg,#b46aff 90deg 135deg,transparent 138deg 206deg,#0e90f0 213deg 271deg,transparent 276deg 331deg,#83ffff 334deg 353deg,transparent 354deg)!important;
+ -webkit-mask:radial-gradient(circle,transparent 52%,#000 56% 82%,transparent 87%)!important;
+ mask:radial-gradient(circle,transparent 52%,#000 56% 82%,transparent 87%)!important;
+ animation:hunterValidationOrbit 5.2s linear infinite reverse!important;filter:drop-shadow(0 0 6px #46eaff)
+}
+.hunter-model-validation>.hunter-validation-orbit:after{
+ content:""!important;position:absolute!important;inset:11px!important;border-radius:50%!important;
+ border:1px dashed #99ecffbc!important;background:radial-gradient(circle,#0deaff83 0 9%,transparent 23%)!important;
+ box-shadow:inset 0 0 9px #11efff8c!important;animation:hunterValidationOrbit 11s linear infinite!important
+}
+@media(prefers-reduced-motion:reduce){
+ .hunter-model-validation>.hunter-validation-orbit,
+ .hunter-model-validation>.hunter-validation-orbit:before,
+ .hunter-model-validation>.hunter-validation-orbit:after{animation:none!important}
+}
+/* Desktop: compact radar header, fixed 1-row actions, internal metric scroll. */
+@media(min-width:1200px){
+ .hunter-ai-panel .hunter-model-validation{
+  flex:0 0 136px!important;width:136px!important;grid-template-columns:minmax(0,1fr) 54px!important
+ }
+ .hunter-ai-panel .hunter-ai-fact dd.hunter-muted{font-size:9px!important;line-height:1.1!important}
+ .hunter-layout>.hunter-targets-panel{grid-template-rows:34px 38px auto minmax(0,1fr)!important}
+ .hunter-targets-panel>.hunter-radar-zone{height:38px!important;min-height:38px!important;max-height:38px!important;flex-basis:38px!important}
+ .hunter-targets-panel>.hunter-targets-heading{height:38px!important;min-height:38px!important}
+ .hunter-targets-panel .radar-grid>.hud-card{padding:7px 9px!important;gap:3px!important;overflow:hidden!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head{height:44px!important;flex:0 0 44px!important;min-height:0!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-market-hero{height:54px!important;flex:0 0 54px!important;min-height:0!important;overflow:hidden!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-body{
+  flex:1 1 0!important;height:0!important;min-height:26px!important;overflow-y:auto!important;
+  overflow-x:hidden!important;overscroll-behavior:contain!important;scrollbar-gutter:stable!important
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-footer{
+  height:36px!important;flex:0 0 36px!important;min-height:36px!important;max-height:36px!important;overflow:hidden!important
+ }
+ .hunter-targets-panel .token-card-footer>.token-card-actions{grid-template-columns:repeat(6,minmax(0,1fr))!important;grid-template-rows:32px!important}
+ .hunter-targets-panel .token-card-body .token-card-metrics{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+@media(min-width:1200px) and (max-height:740px){
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head{height:40px!important;flex-basis:40px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-market-hero{height:49px!important;flex-basis:49px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-footer{height:34px!important;min-height:34px!important;max-height:34px!important;flex-basis:34px!important}
+ .hunter-targets-panel .token-card-footer .action-btn-text{height:30px!important;min-height:30px!important}
+}
+@media(max-width:1199px){
+ .hunter-targets-panel .token-card-footer>.token-card-actions{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:repeat(2,34px)!important;gap:3px!important
+ }
+ .hunter-targets-panel .token-card-footer .action-btn-text{
+  min-height:34px!important;height:34px!important;font-size:clamp(9px,2.4vw,11px)!important
+ }
+}
+@media(max-width:767px){
+ .hunter-model-validation{grid-template-columns:minmax(0,1fr) 36px!important;column-gap:3px!important}
+ .hunter-model-validation>span:first-child{font-size:8px!important}
+ .hunter-model-validation>strong{font-size:11px!important}
+ .hunter-model-validation>.hunter-validation-orbit{width:35px!important;height:35px!important;min-width:35px!important}
+ .hunter-targets-panel .radar-grid>.hud-card{padding:7px!important;gap:3px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head{height:50px!important;min-height:0!important;flex:0 0 50px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-market-hero{height:51px!important;min-height:0!important;flex:0 0 51px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-body{height:0!important;flex:1 1 0!important;min-height:0!important;overflow-y:auto!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-footer{height:75px!important;min-height:75px!important;max-height:75px!important;flex:0 0 75px!important;overflow:hidden!important}
+}
+
 </style>
 </head>
 <body>
@@ -2404,7 +2520,7 @@ const RenderEngine = (()=>{
       const icons={liquidity:'M3 12h4v8H3zm7-6h4v14h-4zm7-4h4v18h-4z',volume:'M2 15l5-7 5 4 5-9 5 3M2 21h20',change:'M3 17l6-6 4 3 8-10M15 4h6v6',score:'M12 2l8 4v7c0 4-8 9-8 9s-8-5-8-9V6zM8 12l3 3 5-6'};
       const metric=(label,value,kind)=>'<div class="token-card-metric metric-'+kind+'"><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+icons[kind]+'"/></svg>'+label+'</dt><dd>'+escapeHTML(value)+'</dd>'+(kind==='score'?'<span class="metric-score-track" aria-hidden="true"><i style="width:'+(known?Math.max(0,Math.min(100,t._finalAIScore)):0)+'%"></i></span>':'')+'</div>';
       const observed=t.observedAt?new Date(t.observedAt):null,time=observed&&!Number.isNaN(observed.getTime())?observed.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'})+' WIB':'—';
-      let innerHTML='<div class="token-card-head">'+tokenEmblem(t)+'<div class="token-card-identity"><div class="token-card-eyebrow"><span class="token-live-dot"></span> TARGET '+String(rank).padStart(2,'0')+' · SOLANA</div><span class="token-name">'+escapeHTML(getName(t))+'</span><span class="decision-tag decision-'+decClass+'">'+escapeHTML(d.replaceAll('_',' '))+'</span><span class="token-data-chip">'+(priceOnly?'PRICE FEED':'POOL DATA')+'</span></div><a class="token-dex-shortcut" href="'+escapeHTML(getTokenDexUrl(t)||'#')+'" target="_blank" rel="noopener noreferrer" data-dex-mint="'+escapeHTML(t.ca)+'" '+(getTokenDexUrl(t)?'':'aria-disabled="true" tabindex="-1"')+' aria-label="Lihat token '+escapeHTML(getName(t))+' di DexScreener">DEX <span aria-hidden="true">↗</span></a><div class="token-score-instrument">'+createRing(known?t._finalAIScore:null)+'<span>AI SCORE</span></div></div>';
+      let innerHTML='<div class="token-card-head">'+tokenEmblem(t)+'<div class="token-card-identity"><div class="token-card-eyebrow"><span class="token-live-dot"></span> TARGET '+String(rank).padStart(2,'0')+' · SOLANA</div><span class="token-name">'+escapeHTML(getName(t))+'</span><span class="decision-tag decision-'+decClass+'">'+escapeHTML(d.replaceAll('_',' '))+'</span><span class="token-data-chip">'+(priceOnly?'PRICE FEED':'POOL DATA')+'</span></div><div class="token-score-instrument">'+createRing(known?t._finalAIScore:null)+'<span>AI SCORE</span></div></div>';
       innerHTML+='<div class="token-market-hero"><div class="token-price-console"><span class="token-instrument-label">MARKET PRICE · USD</span><div class="token-card-price">'+escapeHTML(fmtPrice(t.price))+'</div><span class="token-price-venue">'+escapeHTML((t.source||'API').toUpperCase())+'</span></div>'+tokenPulse(t)+'</div>';
       innerHTML+='<div class="token-card-body" tabindex="0" role="region" aria-label="Data ringkas token"><dl class="token-card-metrics">'+metric('LIKUIDITAS',Number.isFinite(t.liq)?'$'+fmtNum(t.liq):'—','liquidity')+metric('VOLUME 24J',Number.isFinite(t.vol24h)?'$'+fmtNum(t.vol24h):'—','volume')+metric('Δ 24 JAM',Number.isFinite(t.change24h)?t.change24h.toFixed(2)+'%':'—','change')+metric('SKOR HEURISTIK',known?t._finalAIScore.toFixed(1)+' / 100':'—','score')+'</dl>';
       innerHTML+=tokenOrderFlow(t);
@@ -2414,9 +2530,9 @@ const RenderEngine = (()=>{
         '<button class="action-btn-text" data-action="copyca" data-ca="'+t.ca+'">SALIN CA</button>'+
         '<button class="action-btn-text" data-action="phantom" data-ca="'+t.ca+'">PHANTOM</button>'+
         '<button class="action-btn-text" data-action="pump" data-ca="'+t.ca+'">PUMP</button>'+
-        '<button class="action-btn-text" data-action="dex" data-ca="'+t.ca+'">DEX</button>'+
-        '<button class="action-btn-text" data-action="buy" data-ca="'+t.ca+'">LIHAT PASAR</button></div>';
-      innerHTML+='<button type="button" class="token-open-details" data-token-detail="'+t.ca+'" aria-label="Lihat detail token '+escapeHTML(getName(t))+'"><span class="token-detail-icon" aria-hidden="true">⌖</span> BUKA TELEMETRI TOKEN <span aria-hidden="true">↗</span></button></div><div class="card-detail-section"></div>';
+        '<button class="action-btn-text action-dex" data-action="dex" data-ca="'+t.ca+'">DEX</button>'+
+        '<button type="button" class="action-btn-text token-open-details" data-token-detail="'+t.ca+'" aria-label="Lihat detail token '+escapeHTML(getName(t))+'">DETAIL ↗</button></div>';
+      innerHTML+='</div><div class="card-detail-section"></div>';
       div.innerHTML=innerHTML;
       div.querySelector('[data-token-detail]').addEventListener('click',e=>{e.stopPropagation();openTokenDetails(t)});
       div.tabIndex=0;div.setAttribute('aria-label','Token '+getName(t));

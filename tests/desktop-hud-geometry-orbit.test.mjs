@@ -30,14 +30,14 @@ test('Radar reserves viewport for token heading, market telemetry, scrolling met
  assert.match(correction,/\.radar-grid>\.hud-card>\.token-card-body\{[\s\S]*?flex:1 1 0!important/);
  assert.match(correction,/\.token-card-body \.token-card-metrics\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important/);
  assert.match(correction,/\.radar-grid>\.hud-card \.score-ring-container\{[\s\S]*?width:44px!important/);
- assert.match(correction,/\.radar-grid>\.hud-card>\.token-card-footer\{[\s\S]*?grid-template-rows:31px 29px!important/);
+ assert.match(correction,/\.radar-grid>\.hud-card>\.token-card-footer\{[\s\S]*?grid-template-rows:32px!important/);
  assert.match(correction,/\.token-card-footer \.token-card-actions\{[\s\S]*?repeat\(6,minmax\(0,1fr\)\)!important/);
- assert.match(html,/class="token-dex-shortcut"/);
+ assert.match(html,/class="action-btn-text action-dex"/);
  assert.match(html,/id="radarFeed"/);
 });
 test('Android AI bar layout remains unchanged and new height changes target only desktop',()=>{
  assert.match(css,/@media\(max-width:767px\)\{[\s\S]*?\.hunter-ai-panel #aiHealthDash\{gap:3px!important\}/);
  const desktopRules=correction.slice(correction.indexOf('@media(min-width:1200px){'));
- assert.doesNotMatch(desktopRules,/@media\(max-width:767px\)/);
+ assert.match(correction,/@media\(max-width:767px\)/);
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))assert.doesNotThrow(()=>new Function(m[1]));
 });

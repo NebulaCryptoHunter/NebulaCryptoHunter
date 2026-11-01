@@ -16,12 +16,14 @@ test('Eight accessible AI bars use different colors without simulated calibratio
   assert.match(script,/known\?Math\.round\(pct\)\+'%'\:'—'/);
   assert.match(html,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important;grid-template-rows:repeat\(4,minmax\(0,1fr\)\)!important/);
 });
-test('Header DEX link points to exact token mint and is visible before token footer',()=>{
-  const i=script.indexOf('class="token-dex-shortcut"'),footer=script.indexOf('class="token-card-footer"');
-  assert.ok(i>0&&footer>i);
-  assert.ok(script.includes("getTokenDexUrl(t)||'#'"));
-  assert.match(script,/data-dex-mint=/);
-  assert.match(script,/target="_blank" rel="noopener noreferrer"/);
+test('Exactly one visible DEX action follows PUMP, with token-detail control after it',()=>{
+ const card=script.slice(script.indexOf("function buildCard("),script.indexOf("function openTokenDetails("));
+ assert.equal((card.match(/data-action="dex"/g)||[]).length,1);
+ assert.doesNotMatch(card,/data-action="buy"/);
+ assert.doesNotMatch(card,/class="token-dex-shortcut" href/);
+ assert.ok(card.indexOf('data-action="pump"')<card.indexOf('data-action="dex"'));
+ assert.ok(card.indexOf('data-action="dex"')<card.indexOf('data-token-detail='));
+ assert.match(card,/class="action-btn-text token-open-details"/);
 });
 test('Quota read warnings never become persistent feed banners on refresh',()=>{
   assert.doesNotMatch(script,/message=quota\+/);
