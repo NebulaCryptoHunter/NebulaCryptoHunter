@@ -37,6 +37,20 @@ test('public D1 cache serves repeat requests with no repeated query',async()=>{
  }finally{if(old===undefined)delete globalThis.caches;else globalThis.caches=old}
 });
 
+test('concurrent cache requests share one D1 producer per isolate',async()=>{
+ const old=globalThis.caches,cache=fakeCache();
+ try{
+  globalThis.caches={default:cache};
+  const request=new Request(origin+'/api/research/latest?test-coalesce=1');
+  let queries=0;
+  const producer=async()=>{queries++;await new Promise(resolve=>setTimeout(resolve,10));return {counts:{total_records:7}}};
+  const responses=await Promise.all(Array.from({length:7},()=>cachedResearch(request,producer)));
+  assert.equal(queries,1);
+  assert.ok(responses.every(x=>x.ok));
+ }finally{if(old===undefined)delete globalThis.caches;else globalThis.caches=old}
+});
+
+
 test('stale D1 data is labelled and never claimed as live after quota error',async()=>{
  const old=globalThis.caches,cache=fakeCache();
  try{
@@ -74,18 +88,6 @@ test('D1 exhaustion without cached payload produces honest 503 and UTC reset',()
  assert.equal(quotaResponse(Error('OTHER_ISSUE')),null);
 });
 
-test('concurrent cache requests share one D1 producer per isolate',async()=>{
- const old=globalThis.caches,cache=fakeCache();
- try{
-  globalThis.caches={default:cache};
-  const request=new Request(origin+'/api/research/latest?test-coalesce=1');
-  let queries=0;
-  const producer=async()=>{queries++;await new Promise(resolve=>setTimeout(resolve,10));return {counts:{total_records:7}}};
-  const responses=await Promise.all(Array.from({length:7},()=>cachedResearch(request,producer)));
-  assert.equal(queries,1);
-  assert.ok(responses.every(x=>x.ok));
- }finally{if(old===undefined)delete globalThis.caches;else globalThis.caches=old}
-});
 
 test('D1 limit marker produces an explicit retry response, not a fabricated success',async()=>{
  assert.equal(d1DailyLimitError(Error('D1_DAILY_READ_LIMIT')),true);
