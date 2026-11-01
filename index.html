@@ -942,7 +942,6 @@ body{margin:0}
 .hunter-history-panel .hunter-history-tabs button{
  background-color:rgba(4,19,40,.58)!important;
 }
-.hunter-panel,.hunter-panel *{text-shadow:inherit}
 .hunter-panel-heading h2,.hunter-kpi-value,.hunter-history-symbol,.hunter-radar-status strong{opacity:1}
 
 /* ONE TOKEN per radar viewport. The radar-list itself scrolls/snap-aligns;
@@ -980,7 +979,7 @@ body{margin:0}
 /* Compact action buttons inside shorter viewport without hiding controls. */
 @media(min-width:1200px) and (max-height:820px){
  .hunter-targets-panel .radar-grid>.hud-card{gap:3px;padding:9px!important}
- .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:36px!important}
+ .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:40px!important}
  .hunter-targets-panel .radar-grid>.hud-card>div:nth-child(3){padding-top:4px!important;margin-top:3px!important}
 }
 .hunter-token-position{color:#aaf4ff;font-size:11px;white-space:nowrap;font-weight:800;font-family:'Share Tech Mono',monospace}
@@ -1033,14 +1032,14 @@ body{margin:0}
  .hunter-system-status{top:auto!important;bottom:2px!important;right:6px!important;font-size:8px!important}
  .hunter-banner .hunter-brand{padding-left:8px;padding-right:8px}
  .hunter-targets-panel .radar-grid>.hud-card{padding:9px!important;gap:4px}
- .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:36px!important;padding:5px 3px!important}
+ .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:40px!important;padding:5px 3px!important}
  .hunter-targets-panel .radar-grid>.hud-card>div:nth-child(3){padding-top:4px!important;margin-top:3px!important}
  .hunter-ai-scroll-head strong{font-size:10px}
  .hunter-ai-panel .ai-health-grid{grid-auto-rows:minmax(48px,auto)}
 }
 @media(max-height:620px){
  .hunter-login{height:27px}
- .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:34px!important}
+ .hunter-targets-panel .radar-grid>.hud-card .action-btn-text{min-height:38px!important}
  .hunter-ai-scroll-head{padding:0}
 }
 @media(prefers-reduced-motion:reduce){
@@ -1749,6 +1748,8 @@ const RenderEngine = (()=>{
         expanded.set(item.dataset.ca,closed);
       }
     }
+    // Preserve the visible token across background refreshes/re-ranking.
+    const lastActiveCA=grid.dataset.activeTokenCa||[...grid.querySelectorAll('.hud-card[data-ca]')][Math.round(grid.scrollTop/Math.max(1,grid.clientHeight))]?.dataset.ca||'';
     grid.replaceChildren();rendered.clear();
     for(const token of feedBus){
       const card=buildCard(token);if(!card)continue;
@@ -1761,6 +1762,11 @@ const RenderEngine = (()=>{
       for(const module of detail.querySelectorAll('.hud-module')){
         if(closed.includes(module.querySelector('summary')?.textContent))module.open=false;
       }
+    }
+    const newIndex=feedBus.findIndex(token=>token.ca===lastActiveCA);
+    if(newIndex>=0){
+      grid.dataset.activeTokenCa=lastActiveCA;
+      requestAnimationFrame(()=>{if(grid.clientHeight>0)grid.scrollTop=newIndex*grid.clientHeight;});
     }
   }
   function flushRQ(){if(!S.rq.size)return;const batch=[...S.rq].slice(0,10);batch.forEach(ca=>{S.rq.delete(ca);const t=feedMap.get(ca);if(!t)return;let div=rendered.get(ca);if(!div||div.classList.contains('skeleton-card')){div=buildCard(t);}else{patchCard(div,t);}});if(S.needsSort){sortFeed();renderAll();S.needsSort=false;}S.dash={sb:0,buy:0,acc:0,watch:0,wait:0,av:0,sc:0,tot:S.serverResearchCounts?.unique_mints??feedBus.length,dbTotal:S.serverResearchCounts?.database_records??S.dash.dbTotal??null};feedBus.forEach(t=>{const d=t.decision;if(d===DECISION.STRONG_BUY)S.dash.sb++;else if(d===DECISION.BUY)S.dash.buy++;else if(d===DECISION.ACCUMULATE)S.dash.acc++;else if(d===DECISION.WATCH)S.dash.watch++;else if(d===DECISION.WAIT)S.dash.wait++;else if(d===DECISION.AVOID)S.dash.av++;else S.dash.sc++;});updateDashboard();if(S.rq.size)requestAnimationFrame(flushRQ);}
@@ -1887,10 +1893,26 @@ setTimeout(()=>{
 /* Fullscreen local scrolling: wheel anywhere on a non-interactive panel surface,
    touch inside the lists, and accessible keyboard or arrow controls. */
 (function(){
- const ids=['radarFeed','hunterRecentList'];
+ const ids=['radarFeed','hunterRecentList','aiHealthDash'];
+ const advanceToken=(list,direction)=>{
+  const cards=[...list.querySelectorAll('.hud-card[data-ca]')];
+  if(!cards.length||!list.clientHeight)return;
+  const index=Math.max(0,Math.min(cards.length-1,Math.round(list.scrollTop/list.clientHeight)));
+  const next=Math.max(0,Math.min(cards.length-1,index+direction));
+  if(next===index)return;
+  list.scrollTo({top:next*list.clientHeight,behavior:'smooth'});
+ };
+
  const update=id=>{
    const list=document.getElementById(id);if(!list)return;
    const max=Math.max(0,list.scrollHeight-list.clientHeight);
+   if(id==='radarFeed'){
+     const cards=list.querySelectorAll('.hud-card[data-ca]');
+     const index=cards.length?Math.max(0,Math.min(cards.length-1,Math.round(list.scrollTop/Math.max(1,list.clientHeight)))):0;
+     const counter=document.getElementById('hunterTokenPosition');
+     if(counter)counter.textContent=(cards.length?index+1:0)+' / '+cards.length;
+     list.dataset.activeTokenCa=cards[index]?.dataset.ca||'';
+   }
    document.querySelectorAll('[data-scroll-target="'+id+'"]').forEach(btn=>{
      btn.disabled=max<2||(Number(btn.dataset.scrollDirection)<0?list.scrollTop<=1:list.scrollTop>=max-1);
    });
@@ -1901,9 +1923,34 @@ setTimeout(()=>{
    list.addEventListener('keydown',e=>{
      if(e.target!==list)return; // preserve keyboard behavior for token action buttons
      const move={ArrowDown:60,ArrowUp:-60,PageDown:Math.max(180,list.clientHeight*.8),PageUp:-Math.max(180,list.clientHeight*.8)};
-     if(Object.prototype.hasOwnProperty.call(move,e.key)){e.preventDefault();list.scrollBy({top:move[e.key],behavior:'smooth'})}
+     if(Object.prototype.hasOwnProperty.call(move,e.key)){
+       e.preventDefault();
+       if(id==='radarFeed')advanceToken(list,Math.sign(move[e.key]));
+       else list.scrollBy({top:move[e.key],behavior:'smooth'});
+     }
      if(e.key==='Home'||e.key==='End'){e.preventDefault();list.scrollTo({top:e.key==='Home'?0:list.scrollHeight,behavior:'smooth'})}
    });
+   // A wheel gesture moves exactly one token, except while an expanded
+   // detail has remaining vertical content to read.
+   if(id==='radarFeed'){
+     let lastStep=0,wheelAccum=0;
+     list.addEventListener('wheel',e=>{
+       const detail=e.target.closest('.card-detail-section');
+       if(detail&&detail.scrollHeight>detail.clientHeight+2){
+         const roomDown=e.deltaY>0&&detail.scrollTop<detail.scrollHeight-detail.clientHeight-2;
+         const roomUp=e.deltaY<0&&detail.scrollTop>2;
+         if(roomDown||roomUp){wheelAccum=0;return}
+       }
+       if(!list.querySelector('.hud-card[data-ca]')||!e.deltaY)return;
+       e.preventDefault();
+       wheelAccum+=e.deltaY;
+       if(Math.abs(wheelAccum)<8)return;
+       const now=Date.now();
+       if(now-lastStep<440){wheelAccum=0;return}
+       advanceToken(list,Math.sign(wheelAccum));
+       wheelAccum=0;lastStep=now;
+     },{passive:false});
+   }
    const panel=list.closest('.hunter-panel');
    panel?.addEventListener('wheel',e=>{
      if(list.contains(e.target)||e.target.closest('button,a,select,input,textarea,summary,.hunter-advanced'))return;
@@ -1917,7 +1964,8 @@ setTimeout(()=>{
  }
  document.querySelectorAll('[data-scroll-target]').forEach(btn=>btn.addEventListener('click',()=>{
    const list=document.getElementById(btn.dataset.scrollTarget);if(!list)return;
-   list.scrollBy({top:Number(btn.dataset.scrollDirection)*Math.max(180,list.clientHeight*.78),behavior:'smooth'});
+   if(btn.dataset.scrollTarget==='radarFeed')advanceToken(list,Number(btn.dataset.scrollDirection));
+   else list.scrollBy({top:Number(btn.dataset.scrollDirection)*Math.max(180,list.clientHeight*.78),behavior:'smooth'});
    list.focus({preventScroll:true});
  }));
 })();
