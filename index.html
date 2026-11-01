@@ -615,6 +615,171 @@ body{margin:0}
 @media(max-width:767px){.hunter-scroll-hint{display:none}.hunter-scroll-controls button{width:34px;min-height:30px}.hunter-feed-notice,.hunter-history-notice{font-size:.58rem;padding:5px}}
 @media(max-height:690px){.hunter-scroll-controls button{min-height:25px;width:29px}.hunter-targets-panel .hunter-radar-zone{height:clamp(62px,11vh,90px)}}
 
+/* NEBULA HUNTER V2.3 — ICON SIZE / HIT-AREA AUDIT, 2026-11-01.
+   All refinements are presentation-only: preserve all status semantics,
+   CTA handlers, provider labels, chart figures and fullscreen list scroll. */
+:root{
+ --hunter-icon-xs:12px;
+ --hunter-icon-sm:18px;
+ --hunter-icon-md:22px;
+ --hunter-icon-lg:26px;
+ --hunter-tap:40px;
+}
+.hunter-banner .hunter-ship{
+ width:auto;max-width:29%;height:calc(100% + 14px);max-height:142px;
+ left:1%;top:50%;transform:translateY(-50%) rotate(-5deg);
+ object-fit:contain;object-position:center;
+}
+.hunter-banner .hunter-planet{
+ width:auto;max-width:27%;height:153%;
+ right:-2%;top:50%;transform:translateY(-50%);
+ object-fit:contain;object-position:center;
+}
+.sticky-nav .ep-mini{
+ min-height:36px!important;height:36px!important;
+ font-size:clamp(10px,.82vw,12px)!important;
+ padding:4px 5px;gap:5px;
+ letter-spacing:0;line-height:1.2;
+}
+.sticky-nav .ep-mini .indicator-dot{
+ width:8px;height:8px;flex:0 0 8px;
+ box-shadow:0 0 0 2px rgba(100,168,204,.14);
+}
+.sticky-nav .ep-mini > span:last-child{min-width:0;overflow-wrap:anywhere}
+.sticky-nav .hud-select{min-height:var(--hunter-tap)!important;font-size:.75rem!important}
+.sticky-nav .action-row button{
+ height:var(--hunter-tap)!important;min-height:var(--hunter-tap)!important;
+ font-size:clamp(10px,.77vw,13px)!important;line-height:1.2;
+ padding:3px 6px;white-space:normal;overflow-wrap:anywhere;
+}
+.hunter-kpi-icon{
+ width:var(--hunter-icon-lg);height:var(--hunter-icon-lg);
+ display:grid;place-items:center;flex:0 0 var(--hunter-icon-lg);
+ font-size:24px;line-height:1;white-space:nowrap;
+}
+.hunter-panel-icon{
+ width:var(--hunter-icon-lg);height:var(--hunter-icon-lg);
+ display:inline-grid;place-items:center;flex:0 0 var(--hunter-icon-lg);
+ font-size:22px;line-height:1;white-space:nowrap;
+}
+.hunter-kpi{overflow:hidden}
+.hunter-panel-heading{gap:8px;min-height:41px}
+.hunter-panel-heading h2{overflow-wrap:anywhere}
+.hunter-radar-center{width:16px;height:16px}
+.hunter-scroll-controls button{
+ width:40px!important;min-width:40px;min-height:40px!important;
+ font-size:20px;line-height:1;touch-action:manipulation;
+}
+.hunter-history-tabs button,.hunter-mobile-tabs button{
+ min-height:40px!important;font-size:clamp(10px,.75vw,12px);
+}
+.hunter-advanced>summary,.hud-module>summary{min-height:40px;display:flex;align-items:center}
+.hunter-advanced>summary{padding:10px 12px}
+.hud-module>summary{padding:9px 4px}
+.hud-module > summary:after{font-size:16px}
+.hunter-targets-panel .radar-grid>.hud-card{padding:12px}
+.hud-card > div:first-child{flex-wrap:wrap;row-gap:7px;column-gap:8px}
+.hud-card > div:first-child > div:first-child{
+ flex-wrap:wrap;row-gap:5px;column-gap:5px;min-width:0;
+}
+.hud-card .token-name{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.hud-card .score-ring-container{
+ width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;
+}
+.hud-card .score-ring-value{font-size:11px!important;line-height:1}
+.hud-card .score-ring-svg{width:100%;height:100%}
+.hud-card .rank-badge{font-size:11px;padding:2px 4px;line-height:1.25}
+.hud-card .confidence-badge,.hud-card .wallet-badge,
+.hud-card .ob-badge,.hud-card .fvg-badge,
+.hud-card .cache-badge,.hud-card .multiplier-badge-card{
+ display:inline-flex;align-items:center;
+ min-height:18px;padding:2px 5px;
+ font-size:10px;line-height:1.25;white-space:normal;
+}
+.hud-card .decision-tag{display:inline-flex;align-items:center;min-height:22px;font-size:10px;padding:3px 6px}
+.hud-card .sparkline{height:16px}
+.hud-card .sparkline-bar{min-width:3px}
+.hud-card .action-btn-text{
+ height:auto!important;min-height:40px!important;
+ padding:7px 5px;line-height:1.22;
+ font-size:clamp(10px,.72vw,12px)!important;
+ white-space:normal;overflow-wrap:anywhere;touch-action:manipulation;
+}
+.hud-card > div:nth-child(3){gap:6px!important;margin-top:8px!important}
+.hud-gauge .gauge-track{height:9px}
+.overlay-close,.export-btn,.archive-pager button{
+ min-width:42px;min-height:42px;
+ padding:9px 12px;font-size:12px;
+}
+.overlay-close{font-size:15px}
+.hunter-history-panel .archive-status{min-height:44px;padding:9px 10px}
+.hunter-history-panel .hunter-history-tabs button{font-size:11px}
+.hunter-live-badge{font-size:10px;line-height:1.4}
+/* Tablet: six providers per row and wide command buttons. */
+@media (min-width:768px) and (max-width:1199px){
+ .sticky-nav .ep-mini{min-height:38px!important;height:38px!important;font-size:11px!important}
+ .sticky-nav .action-row button{font-size:12px!important}
+}
+/* Phone: retain every indicator and badge, but use four provider columns on
+   narrow screens, avoiding unreadable 4px dots and clipped provider labels. */
+@media (max-width:767px){
+ :root{--hunter-tap:40px}
+ .sticky-nav .ep-mini{height:36px!important;min-height:36px!important;font-size:10px!important;padding:3px 4px}
+ .sticky-nav .ep-mini .indicator-dot{width:8px;height:8px;flex-basis:8px}
+ .sticky-nav .hud-select{min-height:38px!important;font-size:11px!important}
+ .sticky-nav .action-row button{
+  height:40px!important;min-height:40px!important;
+  font-size:clamp(10px,2.5vw,12px)!important;padding:3px 4px;
+ }
+ .hunter-banner .hunter-ship{max-width:27%;height:calc(100% + 8px);left:-3%}
+ .hunter-banner .hunter-planet{max-width:27%;height:135%;right:-3%}
+ .hunter-kpi-icon{
+  display:grid!important;width:18px;height:18px;flex:0 0 18px;
+  font-size:17px;line-height:1;
+ }
+ .hunter-kpi{min-height:70px;padding:5px 3px;gap:3px}
+ .hunter-kpi-inner{gap:2px}
+ .hunter-panel-icon{
+  width:22px;height:22px;flex:0 0 22px;font-size:19px;
+ }
+ .hunter-panel-heading{min-height:38px}
+ .hunter-scroll-controls button{min-height:40px!important;width:40px!important;min-width:40px}
+ .hunter-mobile-tabs button{min-height:40px!important;font-size:11px}
+ .hud-card .score-ring-container{width:42px;height:42px;flex-basis:42px}
+ .hud-card .rank-badge{font-size:10px}
+ .hud-card .confidence-badge,.hud-card .wallet-badge,
+ .hud-card .ob-badge,.hud-card .fvg-badge,
+ .hud-card .cache-badge,.hud-card .multiplier-badge-card{font-size:10px}
+ .hud-card > div:nth-child(3){
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:6px!important;
+ }
+ .hud-card .action-btn-text{height:auto!important;min-height:40px!important;font-size:11px!important;padding:7px 4px}
+ .hud-card .ob-badge,.hud-card .fvg-badge{display:inline-flex!important}
+ .hunter-advanced>summary,.hud-module>summary{min-height:40px}
+ .hunter-history-tabs button{min-height:40px!important;font-size:11px}
+}
+@media(max-width:420px){
+ .sticky-nav .endpoint-bar{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ .sticky-nav .ep-mini{font-size:10px!important}
+ .sticky-nav .ep-mini > span:last-child{white-space:normal;text-align:center}
+ .hud-card .decision-tag{font-size:10px}
+ .hunter-panel-heading .hunter-live-badge{font-size:9px}
+}
+@media(max-width:379px){
+ .hunter-kpi-icon{font-size:16px}
+ .hunter-kpi{min-height:65px}
+ .hunter-panel-icon{font-size:18px}
+}
+@media(max-height:640px){
+ .sticky-nav .action-row button{height:38px!important;min-height:38px!important}
+ .sticky-nav .hud-select{min-height:36px!important}
+ .hunter-scroll-controls button{min-height:38px!important}
+ .hunter-kpi{min-height:57px}
+ .hunter-kpi-icon{width:16px;height:16px;flex-basis:16px;font-size:15px}
+ .hunter-mobile-tabs button{min-height:36px!important}
+}
+
 @media(prefers-reduced-motion:reduce){.bg-scanline,.hero-card,.ep-mini{animation:none!important}.gauge-fill{transition:none}}
 
   </style>
