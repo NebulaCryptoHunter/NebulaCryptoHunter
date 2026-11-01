@@ -277,3 +277,36 @@ test('one-click SCAN preserves 429 and scanner failures without claiming success
  const wrangler=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
  assert.equal(wrangler.services.find(x=>x.binding==='SCANNER')?.service,'nebula-scanner');
 });
+
+
+test('desktop HUD extends usable width without changing mobile layout',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ assert.match(html,/NEBULA Desktop HUD v111/);
+ assert.match(html,/@media \(min-width:768px\)\{/);
+ assert.match(html,/\.app\{width:calc\(100% - 32px\);max-width:1480px/);
+ assert.match(html,/@media \(min-width:1024px\)\{/);
+ assert.match(html,/\.cockpit-dashboard\{display:grid;grid-template-columns:/);
+ assert.match(html,/@media \(min-width:1200px\)\{/);
+ assert.match(html,/\.radar-grid\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(html,/\.endpoint-bar\{grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
+ // Desktop rules follow existing mobile rules rather than replacing them.
+ assert.ok(html.indexOf('NEBULA Desktop HUD v111')>html.indexOf('@media(max-width:767px)'));
+ assert.match(html,/@media\(max-width:767px\)\{\.sticky-nav\{position:relative/);
+ assert.match(html,/id="scanBtn"[^>]*>SCAN<\/button>/);
+ assert.match(html,/id="syncBtn"[^>]*>SINKRON<\/button>/);
+ assert.match(html,/id="autoPumpToggleBtn"[^>]*>AUTO<\/button>/);
+});
+test('desktop token card headers and expanded telemetry are unclipped',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const desktop=html.slice(html.indexOf('NEBULA Desktop HUD v111'),html.indexOf('@media(prefers-reduced-motion:reduce)'));
+ assert.match(desktop,/\.hud-card\{padding:14px;min-width:0;overflow:visible\}/);
+ assert.match(desktop,/\.hud-card \.token-name\{[^}]*white-space:normal;overflow:visible;text-overflow:clip/);
+ assert.match(desktop,/\.radar-grid > \.hud-card:has\(> \.card-detail-section\[style\*="display: block"\]\)\{grid-column:1\/-1\}/);
+ assert.match(desktop,/\.hud-detail-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+ assert.match(desktop,/\.overlay-content\{[^}]*max-height:none;overflow:visible/);
+ assert.match(desktop,/\.action-row button\{flex:1 1 0/);
+ assert.match(html,/\.card-detail-section\{margin-top:8px;display:none;max-height:none;overflow:visible/);
+ assert.match(html,/const expanded=new Map\(\)/);
+ assert.match(html,/if\(det\.style\.display==='block'\)/);
+ for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+});
