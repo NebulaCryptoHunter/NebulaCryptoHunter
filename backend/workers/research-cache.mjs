@@ -1,7 +1,7 @@
 // Public D1 research cache, isolated from Admin/auth paths.
 // Cloudflare Cache API is colo-local. This cache never stores credentials or writes.
 // Refresh TTL is short; stale data is explicitly labelled, not mistaken for live data.
-const MAX_STALE_MS=12*60*60*1000;
+const MAX_STALE_MS=24*60*60*1000;
 const inflight=new Map();
 let quotaPauseUntil=0;
 export const d1DailyLimitError=error=>/daily row read limit|exceeded d1.*free tier|D1.*row.?read.?limit|code.?\D?7500|D1_QUOTA_EXCEEDED/i.test(String(error?.message||error||''));
@@ -44,7 +44,7 @@ export async function cachedResearch(request,producer,{freshMs=180000}={}){
    if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Error('INVALID_RESEARCH_PAYLOAD');
    const timestamp=Date.now();
    if(store)try{
-    const writable=new Response(JSON.stringify(payload),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=43200','X-NEBULA-Cache-Stored-At':new Date(timestamp).toISOString()}});
+    const writable=new Response(JSON.stringify(payload),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=86400','X-NEBULA-Cache-Stored-At':new Date(timestamp).toISOString()}});
     await store.put(key,writable);
    }catch(e){console.warn('research_cache_write_unavailable',e?.name)}
    return response(payload,'LIVE',timestamp);
