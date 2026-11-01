@@ -1,6 +1,6 @@
 {
   "name": "nebula-scanner",
-  "main": "workers/nebula-scanner/worker.mjs",
+  "main": "workers/nebula-scanner.mjs",
   "compatibility_date": "2026-10-26",
   "workers_dev": false,
   "triggers": {
