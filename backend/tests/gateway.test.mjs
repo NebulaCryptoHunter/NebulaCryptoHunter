@@ -350,5 +350,5 @@ test('gateway distinguishes provider cooldown from manual slot and does not reve
  assert.match(html,/PROVIDER_COOLDOWN:'DexScreener membatasi permintaan/);
  assert.match(html,/MANUAL_SCAN_COOLDOWN:'Scan manual sudah dipakai/);
  assert.match(html,/Perkiraan dapat dicoba lagi:/);
- assert.match(html,/timeZone:'Asia\\/Jakarta'/);
+ assert.ok(html.includes("timeZone:'Asia/Jakarta'"));
 });
