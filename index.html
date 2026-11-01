@@ -1455,6 +1455,64 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  .hunter-targets-panel .token-card-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 }
 
+/* V2.9: Eight distinct horizontal AI performance bars (all viewports). */
+.hunter-ai-panel .hunter-ai-main{display:flex;align-items:center;gap:8px!important;min-width:0;flex:0 0 auto}
+.hunter-model-validation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:center;flex:0 0 115px;min-width:0;border:1px solid #625877;border-radius:8px;background:#102139df;padding:8px;color:#cae0ef}
+.hunter-model-validation span{grid-column:1/-1;font:800 9px 'Orbitron',sans-serif}
+.hunter-model-validation strong{font:900 13px 'Share Tech Mono',monospace;color:#ffcf85}
+.hunter-validation-status-dot{width:9px;height:9px;border-radius:50%;background:#c19d50}
+.hunter-model-validation.is-validated{border-color:#35ed99}
+.hunter-model-validation.is-validated strong{color:#a8ffd0}
+.hunter-model-validation.is-validated .hunter-validation-status-dot{background:#3dffa0;box-shadow:0 0 8px #3dffa0}
+.hunter-ai-panel #aiHealthDash{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(4,minmax(0,1fr))!important;grid-auto-rows:minmax(0,1fr)!important;gap:4px!important;padding:1px!important;margin:0!important;flex:1 1 0!important;min-height:0!important;max-height:none!important;overflow:hidden!important;scrollbar-gutter:auto!important;align-content:stretch!important}
+.hunter-ai-panel #aiHealthDash .instrument-bar{display:flex!important;flex-direction:column!important;justify-content:center!important;gap:3px!important;min-width:0!important;min-height:0!important;padding:4px 8px!important;overflow:hidden!important;text-align:left!important;border-radius:6px;border:1px solid color-mix(in srgb,var(--instrument) 50%,#183145)!important;border-left:3px solid var(--instrument)!important;background:linear-gradient(100deg,color-mix(in srgb,var(--instrument) 12%,transparent),rgba(3,16,31,.72))!important}
+.instrument-bar-head{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0}
+.hunter-ai-panel .instrument-bar .lbl{font:800 11px/1.1 'Share Tech Mono',monospace!important;color:#eafaff!important;letter-spacing:.1px!important;overflow-wrap:anywhere}
+.instrument-bar-number{font:900 12px/1.1 'Orbitron',sans-serif;color:var(--instrument);flex:0 0 auto}
+.instrument-bar-track{display:block;width:100%;height:7px;min-height:7px;flex:0 0 7px;background:#061322;border:1px solid #284357;border-radius:10px;overflow:hidden}
+.instrument-bar-track span{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--instrument) 65%,#10334a),var(--instrument));box-shadow:0 0 9px var(--instrument);transition:width .4s}
+.instrument-bar.is-unknown .instrument-bar-track{background:repeating-linear-gradient(110deg,#27364c 0 6px,#101f31 6px 12px)}
+.instrument-bar.is-unknown .instrument-bar-number{color:#aebbd6}
+.instrument-bar-caption{font:600 9px/1.1 'Share Tech Mono',monospace;color:#9bb8cc!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hunter-login{gap:6px;transition:background .2s,border-color .2s}
+.hunter-login-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#617c95}
+.hunter-login.is-admin-on{background:rgba(6,76,51,.94)!important;color:#baffd9!important;border-color:#35edaa!important;box-shadow:0 0 13px #20cf8c55}
+.hunter-login.is-admin-on .hunter-login-dot{background:#42ff9d;box-shadow:0 0 9px #25ff90;animation:nebulaAdminPulse 2s ease-in-out infinite}
+.hunter-login.is-admin-pending{background:#4b3719!important;color:#ffe3a0!important;border-color:#ffcb63!important}
+.hunter-login.is-admin-pending .hunter-login-dot{background:#ffcd61}
+@keyframes nebulaAdminPulse{50%{opacity:.6}}
+.hunter-targets-panel .token-card-head{min-width:0;flex-wrap:nowrap!important;gap:7px!important}
+.token-dex-shortcut{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;gap:3px;min-height:38px;min-width:60px;padding:6px 8px;white-space:nowrap;border:1px solid #45e7bf;border-radius:6px;color:#b7ffea!important;background:linear-gradient(140deg,#0a5a5b,#09374d);font:900 11px 'Orbitron',sans-serif;text-decoration:none}
+.token-dex-shortcut:hover,.token-dex-shortcut:focus-visible{background:#147d79;outline:2px solid #3bdebd;outline-offset:2px}
+.token-dex-shortcut[aria-disabled="true"]{pointer-events:none;opacity:.5}
+@media(min-width:1200px){
+ .hunter-layout{grid-template-columns:minmax(240px,.75fr) minmax(560px,2.15fr) minmax(235px,.75fr)!important}
+ .hunter-targets-panel .radar-grid>.hud-card{gap:6px!important;padding:12px!important}
+ .hunter-targets-panel .hud-card .token-name{font-size:clamp(15px,1.3vw,21px)!important;line-height:1.25!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-body{min-height:0!important;overflow-y:auto!important}
+ .hunter-targets-panel .token-card-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+ .hunter-targets-panel .token-card-metric{padding:9px 11px!important}
+ .hunter-targets-panel .token-card-metric dt{font-size:12px!important}
+ .hunter-targets-panel .token-card-metric dd{font-size:14px!important}
+ .hunter-targets-panel .token-card-price{font-size:clamp(16px,1.4vw,24px)!important}
+ .hunter-targets-panel .token-card-provenance,.hunter-targets-panel .token-risk-chip{font-size:10px!important}
+ .hunter-targets-panel .token-card-actions{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+ .hunter-targets-panel .action-btn-text{font-size:10px!important;min-height:38px!important}
+}
+@media(max-width:1199px){.hunter-ai-panel .instrument-bar .lbl{font-size:11px!important}}
+@media(max-width:767px){
+ .hunter-model-validation{flex-basis:105px;padding:6px}
+ .hunter-ai-panel #aiHealthDash{gap:3px!important}
+ .hunter-ai-panel #aiHealthDash .instrument-bar{padding:3px 8px!important;gap:2px!important}
+ .instrument-bar-track{height:6px;min-height:6px;flex-basis:6px}
+ .hunter-targets-panel .token-dex-shortcut{min-width:47px;min-height:35px;padding:5px;font-size:9px}
+ .hunter-targets-panel .token-card-head{gap:4px!important}
+ .hunter-targets-panel .token-emblem{width:29px!important;flex-basis:29px!important}
+ .hunter-targets-panel .token-score-instrument{transform:scale(.85);transform-origin:center}
+}
+@media(max-width:359px){.hunter-targets-panel .token-score-instrument{display:none!important}}
+@media(prefers-reduced-motion:reduce){.instrument-bar-track span{transition:none!important}.hunter-login.is-admin-on .hunter-login-dot{animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -1469,7 +1527,7 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
         <div class="header-row-1">HUNT BEFORE THE HYPE. <span aria-hidden="true">//</span> BUILT BY HERU PRASETYO</div>
       </div>
       <span class="hunter-system-status" id="hunterSystemStatus" role="status">CONNECTING · RESEARCH</span>
-      <a class="hunter-login" id="hunterLoginLink" href="/account" title="Login atau kelola akun Admin NEBULA">LOGIN</a>
+      <a class="hunter-login" id="hunterLoginLink" href="/account" title="Login atau kelola akun Admin NEBULA" aria-live="polite"><span class="hunter-login-dot" aria-hidden="true"></span><span class="hunter-login-text">LOGIN</span></a>
     </header>
     <div class="endpoint-bar" id="endpointBar"></div>
     <div class="hud-controls">
@@ -1511,7 +1569,7 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
     <section class="hunter-panel hunter-ai-panel" aria-labelledby="hunterAiTitle">
       <header class="hunter-panel-heading"><span class="hunter-panel-icon" aria-hidden="true">◉</span><div><h2 id="hunterAiTitle">AI PERFORMANCE</h2><small>HUNTER ANALYSIS &amp; VERIFICATION</small></div></header>
       <div class="hunter-ai-main">
-        <div class="hunter-ai-gauge" aria-label="Status kalibrasi model, bukan skor buatan"><div class="hunter-ai-gauge-inner"><span class="hunter-ai-gauge-value" id="hunterCalibratedValue">—</span><span class="hunter-ai-gauge-label">MODEL<br>VALIDATION</span></div></div>
+        <div class="hunter-model-validation" aria-label="Status validasi model"><span>MODEL VALIDATION</span><strong id="hunterCalibratedValue">—</strong><i class="hunter-validation-status-dot" aria-hidden="true"></i></div>
         <dl class="hunter-ai-facts">
           <div class="hunter-ai-fact"><dt>EVALUASI</dt><dd id="hunterEvaluationValue">—</dd></div>
           <div class="hunter-ai-fact"><dt>WATCH</dt><dd id="hunterWatchValue">—</dd></div>
@@ -1826,32 +1884,30 @@ function researchIndicatorGroups(data=S.serverResearch){
  const providers=CONFIG.ENDPOINTS.map(name=>[name,labels[ep[name]||'pending'],(eph[name]?.rt?eph[name].rt+' ms · ':'')+'Status pemeriksaan terakhir, bukan indikator transaksi']);
  return [{name:'AI · MARKET DATA',rows:market},{name:'AI · PERFORMANCE',rows:performance},{name:'TRADING · ACTIVE FEED',rows:trading},{name:'DATABASE',rows:database},{name:'SYSTEM / VALIDATION',rows:system},{name:'12 API CONNECTIONS',rows:providers}];
 }
-function instrumentGauge(label,value,note,color='#43edec',caption=''){
- const known=typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100,pct=known?value:0;
- const display=known?Math.round(value)+'%':'—',angle=-120+pct*2.4;
- const shortCaption=known?String(caption||'').replace(/ TOKEN$| API$/,''):'';
- const ticks=Array.from({length:13},(_,i)=>'<line x1="36" y1="1" x2="36" y2="'+(i%3===0?'6':'4')+'" transform="rotate('+(-120+i*20)+' 36 31)"/>').join('');
- const needle=known?'<g class="dial-needle" transform="rotate('+angle+' 36 31)"><path d="M34.6 31 36 9 37.4 31Z"/><circle cx="36" cy="31" r="3"/></g>':'<circle class="dial-waiting" cx="36" cy="31" r="3"/>';
- return '<div class="ai-health-item instrument-gauge '+(known?'':'is-unknown')+'" title="'+escapeHTML(note)+'" aria-label="'+escapeHTML(label+': '+display+'. '+note)+'" role="img" style="--instrument:'+color+'">'
-   +'<div class="instrument-dial"><svg viewBox="0 0 72 64" aria-hidden="true"><path class="dial-rail" d="M 12 43 A 27 27 0 1 1 60 43" pathLength="100"/><g class="dial-scale">'+ticks+'</g><path class="dial-value" d="M 12 43 A 27 27 0 1 1 60 43" pathLength="100" stroke-dasharray="'+pct+' 100"/>'+needle+'</svg><strong class="val">'+display+'</strong></div>'
-   +'<div class="instrument-reading"><span class="lbl">'+escapeHTML(label)+'</span><span class="instrument-level" aria-hidden="true"><i style="width:'+pct+'%"></i></span><small class="instrument-caption"><i class="instrument-status-light" aria-hidden="true"></i>'+escapeHTML(shortCaption)+'</small></div></div>';
+function instrumentBar(label,value,note,color='#43edec',caption=''){
+ const known=typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100,pct=known?Math.max(0,Math.min(100,value)):0;
+ const display=known?Math.round(pct)+'%':'—',detail=known?String(caption||'').trim():String(caption||'BELUM TERUKUR').trim();
+ return '<div class="ai-health-item instrument-bar '+(known?'':'is-unknown')+'" title="'+escapeHTML(note)+'" role="meter" aria-label="'+escapeHTML(label+': '+display+'. '+detail+'. '+note)+'" aria-valuemin="0" aria-valuemax="100"'+(known?' aria-valuenow="'+Math.round(pct)+'"':'')+' style="--instrument:'+color+'">'
+ +'<div class="instrument-bar-head"><strong class="lbl">'+escapeHTML(label)+'</strong><strong class="instrument-bar-number">'+display+'</strong></div>'
+ +'<div class="instrument-bar-track" aria-hidden="true"><span style="width:'+pct+'%"></span></div>'
+ +'<small class="instrument-bar-caption">'+escapeHTML(detail)+'</small></div>';
 }
 function renderResearchIndicators(data=S.serverResearch){
  const dash=$('aiHealthDash');if(!dash)return;
  const items=Array.isArray(data?.items)?data.items:[],counts=data?.counts||{},finite=v=>typeof v==='number'&&Number.isFinite(v),num=v=>finite(v)?v.toLocaleString('id-ID'):'—',count=field=>items.filter(x=>finite(x[field])).length;
  const coverage=n=>data&&items.length?n/items.length*100:null;
  const providers=CONFIG.ENDPOINTS.filter(name=>ep[name]==='on').length,checked=CONFIG.ENDPOINTS.some(name=>ep[name]&&ep[name]!=='pending');
- const gauges=[
-  ['DATA POOL',coverage(count('liquidity_usd')),'Proporsi token yang memiliki nilai likuiditas. Bukan penilaian keamanan.','#43edec',data?count('liquidity_usd')+' / '+items.length+' TOKEN':'MENUNGGU'],
-  ['HARGA',coverage(count('price_usd')),'Proporsi token dengan observasi harga.','#83baff',data?count('price_usd')+' / '+items.length+' TOKEN':'MENUNGGU'],
-  ['DINILAI',coverage(count('score')),'Proporsi token yang sudah memiliki skor heuristik; bukan peluang keuntungan.','#b999ff',data?count('score')+' / '+items.length+' TOKEN':'MENUNGGU'],
-  ['API AKTIF',checked?providers/CONFIG.ENDPOINTS.length*100:null,'Jumlah koneksi dengan status pemeriksaan HEALTHY.','#64ffc4',checked?providers+' / '+CONFIG.ENDPOINTS.length+' API':'BELUM DIUJI'],
-  ['PRECISION',null,'Belum ada precision terverifikasi pada respons.','#43edec','BELUM TERUKUR'],
-  ['RECALL',null,'Belum ada recall terverifikasi pada respons.','#83baff','BELUM TERUKUR'],
-  ['F1 SCORE',null,'Belum ada F1 terverifikasi pada respons.','#b999ff','BELUM TERUKUR'],
-  ['WIN RATE',null,'Belum ada win rate terverifikasi pada respons.','#64ffc4','BELUM TERUKUR']
+ const bars=[
+  ['DATA POOL',coverage(count('liquidity_usd')),'Proporsi token yang memiliki nilai likuiditas. Bukan penilaian keamanan.','#00dcff',data?count('liquidity_usd')+' / '+items.length+' TOKEN':'MENUNGGU'],
+  ['HARGA',coverage(count('price_usd')),'Proporsi token dengan observasi harga.','#3c85ff',data?count('price_usd')+' / '+items.length+' TOKEN':'MENUNGGU'],
+  ['DINILAI',coverage(count('score')),'Proporsi token yang sudah memiliki skor heuristik; bukan peluang keuntungan.','#aa65ff',data?count('score')+' / '+items.length+' TOKEN':'MENUNGGU'],
+  ['API AKTIF',checked?providers/CONFIG.ENDPOINTS.length*100:null,'Jumlah koneksi dengan status pemeriksaan HEALTHY.','#00d994',checked?providers+' / '+CONFIG.ENDPOINTS.length+' API':'BELUM DIUJI'],
+  ['PRECISION',null,'Belum ada precision terverifikasi pada respons.','#ffbc35','BELUM TERUKUR'],
+  ['RECALL',null,'Belum ada recall terverifikasi pada respons.','#ff628e','BELUM TERUKUR'],
+  ['F1 SCORE',null,'Belum ada F1 terverifikasi pada respons.','#fa8959','BELUM TERUKUR'],
+  ['WIN RATE',null,'Belum ada win rate terverifikasi pada respons.','#b7ed53','BELUM TERUKUR']
  ];
- const top=dash.scrollTop;dash.innerHTML=gauges.map(args=>instrumentGauge(...args)).join('');dash.scrollTop=top;
+ dash.innerHTML=bars.map(args=>instrumentBar(...args)).join('');
  const set=(id,text)=>{const el=$(id);if(el)el.textContent=text};set('hunterActiveTargetCount',data?num(items.length):'—');set('hunterWatchValue',data?num(items.filter(x=>x.decision==='WATCH').length):'—');set('hunterEvaluationValue',num(counts.total_evaluations));
 }
 function showIndicatorCatalog(){
@@ -2012,26 +2068,25 @@ const Scanner = (()=>{
     RenderEngine.renderAll();RenderEngine.updateDashboard();
     const run=state.runs?.[0],now=Number(state.counts?.snapshots||0),delta=Math.max(0,now-was);
     const feedback=$('scanFeedback');
-    if(feedback){
+    if(feedback&&S.explicitSyncFeedback){
       const summary=delta?'+ '+delta+' snapshot baru sejak pembaruan sebelumnya.':'Belum ada snapshot baru sejak pembaruan sebelumnya.';
-      const runText=run?'Putaran #'+run.id+' '+run.status+(run.error?' ('+run.error+')':''):'Belum ada putaran server.';
-      showScanFeedback(summary+' '+runText+' Sinkronisasi hanya membaca data tersimpan. Scanner otomatis berjalan setiap 30 menit; pemindaian manual memerlukan akun Admin serta binding server yang aktif.');
+      showScanFeedback('SINKRON selesai · '+summary+' Data tetap mengikuti status server.');
     }
     addAILog('Sinkronisasi data: '+delta+' snapshot bertambah; '+(run?.status||'NO_RUN'),'info');
     return state;
   }
   function requestScan(){
-    if(S.scanStatus==='SCANNING')return;
+    if(S.scanStatus==='SCANNING'){S.explicitSyncFeedback=false;return;}
     S.scanStatus='SCANNING';const btn=$('syncBtn');
     if(btn){btn.disabled=true;btn.textContent='SYNC…';}
     performScan().catch(e=>{
       const feedback=$('scanFeedback');
-      showScanFeedback('Gagal menyegarkan data server: '+(e?.message||'Unknown error')+'. Tidak ada pemindaian manual dijalankan.');
+      if(S.explicitSyncFeedback)showScanFeedback('SINKRON gagal: '+(e?.message||'Unknown error')+'. Pemindaian manual tidak dijalankan.');
       addAILog('Server scan refresh failed: '+e.message,'warning');
     }).finally(()=>{
       S.scanStatus='READY';
       if(btn){btn.disabled=false;btn.textContent='SINKRON';}
-      S.nextScan=Date.now()+60000;
+      S.nextScan=Date.now()+60000;S.explicitSyncFeedback=false;
     });
   }
   let manualBusy=false;
@@ -2056,7 +2111,7 @@ const Scanner = (()=>{
       // This is a real server scan. Read back the persisted data after it has completed.
       await performScan();
       if(feedback){
-        showScanFeedback(result.status==='LIVE_ONLY'?'Feed API tetap aktif · '+result.selectedCount+' token · belum tersimpan karena kuota D1 habis.':'SCAN selesai · '+result.selectedCount+' token diperiksa · '+result.snapshotCount+' snapshot dihasilkan. Status '+result.status+'. '+(result.snapshotCount?'Data tersimpan di server dan disinkronkan.':'Tidak ada snapshot baru dari putaran ini.'));
+        showScanFeedback(result.status==='LIVE_ONLY'?'SCAN: snapshot tidak tersimpan akibat kuota D1. Feed API masih aktif · '+result.selectedCount+' token.':'SCAN selesai · '+result.selectedCount+' token diperiksa · '+result.snapshotCount+' snapshot dihasilkan. Status '+result.status+'. '+(result.snapshotCount?'Data tersimpan di server dan disinkronkan.':'Tidak ada snapshot baru dari putaran ini.'));
       }
       addAILog('Manual SCAN '+result.status+': '+result.snapshotCount+' snapshot; '+result.selectedCount+' mint','success');
     }catch(e){
@@ -2117,7 +2172,7 @@ const RenderEngine = (()=>{
       const icons={liquidity:'M3 12h4v8H3zm7-6h4v14h-4zm7-4h4v18h-4z',volume:'M2 15l5-7 5 4 5-9 5 3M2 21h20',change:'M3 17l6-6 4 3 8-10M15 4h6v6',score:'M12 2l8 4v7c0 4-8 9-8 9s-8-5-8-9V6zM8 12l3 3 5-6'};
       const metric=(label,value,kind)=>'<div class="token-card-metric metric-'+kind+'"><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+icons[kind]+'"/></svg>'+label+'</dt><dd>'+escapeHTML(value)+'</dd>'+(kind==='score'?'<span class="metric-score-track" aria-hidden="true"><i style="width:'+(known?Math.max(0,Math.min(100,t._finalAIScore)):0)+'%"></i></span>':'')+'</div>';
       const observed=t.observedAt?new Date(t.observedAt):null,time=observed&&!Number.isNaN(observed.getTime())?observed.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'})+' WIB':'—';
-      let innerHTML='<div class="token-card-head">'+tokenEmblem(t)+'<div class="token-card-identity"><div class="token-card-eyebrow"><span class="token-live-dot"></span> TARGET '+String(rank).padStart(2,'0')+' · SOLANA</div><span class="token-name">'+escapeHTML(getName(t))+'</span><span class="decision-tag decision-'+decClass+'">'+escapeHTML(d.replaceAll('_',' '))+'</span><span class="token-data-chip">'+(priceOnly?'PRICE FEED':'POOL DATA')+'</span></div><div class="token-score-instrument">'+createRing(known?t._finalAIScore:null)+'<span>AI SCORE</span></div></div>';
+      let innerHTML='<div class="token-card-head">'+tokenEmblem(t)+'<div class="token-card-identity"><div class="token-card-eyebrow"><span class="token-live-dot"></span> TARGET '+String(rank).padStart(2,'0')+' · SOLANA</div><span class="token-name">'+escapeHTML(getName(t))+'</span><span class="decision-tag decision-'+decClass+'">'+escapeHTML(d.replaceAll('_',' '))+'</span><span class="token-data-chip">'+(priceOnly?'PRICE FEED':'POOL DATA')+'</span></div><a class="token-dex-shortcut" href="'+escapeHTML(getTokenDexUrl(t)||'#')+'" target="_blank" rel="noopener noreferrer" data-dex-mint="'+escapeHTML(t.ca)+'" '+(getTokenDexUrl(t)?'':'aria-disabled="true" tabindex="-1"')+' aria-label="Lihat token '+escapeHTML(getName(t))+' di DexScreener">DEX <span aria-hidden="true">↗</span></a><div class="token-score-instrument">'+createRing(known?t._finalAIScore:null)+'<span>AI SCORE</span></div></div>';
       innerHTML+='<div class="token-market-hero"><div class="token-price-console"><span class="token-instrument-label">MARKET PRICE · USD</span><div class="token-card-price">'+escapeHTML(fmtPrice(t.price))+'</div><span class="token-price-venue">'+escapeHTML((t.source||'API').toUpperCase())+'</span></div>'+tokenPulse(t)+'</div>';
       innerHTML+='<div class="token-card-body" tabindex="0" role="region" aria-label="Data ringkas token"><dl class="token-card-metrics">'+metric('LIKUIDITAS',Number.isFinite(t.liq)?'$'+fmtNum(t.liq):'—','liquidity')+metric('VOLUME 24J',Number.isFinite(t.vol24h)?'$'+fmtNum(t.vol24h):'—','volume')+metric('Δ 24 JAM',Number.isFinite(t.change24h)?t.change24h.toFixed(2)+'%':'—','change')+metric('SKOR HEURISTIK',known?t._finalAIScore.toFixed(1)+' / 100':'—','score')+'</dl>';
       innerHTML+=tokenOrderFlow(t);
@@ -2391,7 +2446,7 @@ window.addEventListener('error',function(e){console.error('Global Error:',e.mess
 setTimeout(()=>{
   try{
     $('scanBtn').onclick=Scanner.requestManualScan;
-    $('syncBtn').onclick=Scanner.requestScan;
+    $('syncBtn').onclick=()=>{S.explicitSyncFeedback=true;Scanner.requestScan();};
     $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;const btn=$('autoPumpToggleBtn');btn.classList.toggle('active',S.isAuto);btn.setAttribute('aria-pressed',String(S.isAuto));addAILog('AUTO HUD '+(S.isAuto?'ON — refresh berkala':'OFF — refresh manual tetap tersedia'),'info');};
     $('historyBtn').onclick=()=>showHistoryPanel(0);
     $('archiveStatus').onclick=()=>showHistoryPanel(0);$('watchlistBtn').onclick=showWatchlistPanel;$('exportBtn').onclick=showExportPanel;$('auditBtn').onclick=showAuditPanel;
@@ -2578,7 +2633,7 @@ setTimeout(()=>{
        set('hunterActiveTargetCount',fmt(Array.isArray(latest.items)?latest.items.length:null));
        set('hunterWatchValue',fmt(Array.isArray(latest.items)?latest.items.filter(x=>x.decision==='WATCH').length:null));
        const calibrated=latest.modelCalibrated===true;
-       set('hunterCalibratedValue',calibrated?'READY':'—');
+       set('hunterCalibratedValue',calibrated?'READY':'PENDING');const validation=el('hunterCalibratedValue')?.closest('.hunter-model-validation');if(validation)validation.classList.toggle('is-validated',calibrated);
        set('hunterCalibrationStatus',calibrated?'CALIBRATED':'NOT CALIBRATED');
        const run=Array.isArray(latest.runs)?latest.runs[0]:null;
        set('hunterLastScan',run?('RUN '+String(run.status||'UNKNOWN')+' · '+toTime(run.started_at)):'BELUM ADA PUTARAN');
@@ -2618,32 +2673,55 @@ setTimeout(()=>{
      const badge=el('hunterRadarBadge'),system=el('hunterSystemStatus');
      let label='● DATA '+(latest?.dataStatus==='LIVE'?'BARU':'CACHE'),title='● RESEARCH FEED ONLINE',message='',kind='warning';
      if(quota){
-       label=latest?.dataStatus==='LIVE_ONLY'?'● FEED API AKTIF':latest?'● ARSIP D1':'● KUOTA D1 HABIS';
-       title=latest?.dataStatus==='LIVE_ONLY'?'● API AKTIF · D1 TERBATAS':'● DATABASE TERBATAS';
-       message=quota+(latest?.dataStatus==='LIVE_ONLY'?' Feed API tetap aktif. Data belum tersimpan; skor yang tersedia bersifat heuristik.':latest||history?' Menampilkan data tersimpan yang tersedia, bukan hasil live.':' Tidak ada snapshot lokal untuk ditampilkan.');
+       label=latest?.dataStatus==='LIVE_ONLY'?'● FEED API AKTIF':latest?'● ARSIP TERSIMPAN':'● DATA TERTUNDA';
+       title=latest?.dataStatus==='LIVE_ONLY'?'● API FEED AKTIF':'● RISET TERSIMPAN';
+       message='';
      }else if(!latest){
        label='● RADAR TERTUNDA';title='● RADAR BELUM TERHUBUNG';
        message='Radar belum dapat membaca API ('+String(errors[0]?.code||errors[0]?.message||'NETWORK_ERROR')+'). Data tersimpan tidak dihapus.';
      }else if(latest?.dataStatus==='LIVE_ONLY'){
        label='● FEED API AKTIF';title='● DATA API TERHUBUNG';
-       message='Feed API tetap aktif. Observasi belum tersimpan; skor yang tersedia bersifat heuristik dan belum terkalibrasi.';
+       message='';
      }else if(!history){
        label='● RADAR OK · HISTORY TERTUNDA';title='● RADAR AKTIF';
        message='Radar tersedia, tetapi history gagal dimuat ('+String(errors[1]?.code||errors[1]?.message||'NETWORK_ERROR')+').';
      }else if(stale){
        label='● DATA TERSIMPAN';title='● ARSIP · BUKAN LIVE';
-       message='Menampilkan cache terakhir; data terbaru belum terverifikasi.';kind='cached';
+       message='';kind='cached';
      }
      if(badge){badge.textContent=label;badge.className='hunter-live-badge'+(message?'':' online');badge.title=message||'Data riset tersedia'}
      if(system){system.textContent=title;system.className='hunter-system-status '+(message?'offline':'online');system.title=message||'Riset terhubung'}
      txt('hunterFeedNotice',message,kind);const notice=el('hunterFeedNotice');if(notice)notice.title=message;
-     txt('hunterHistoryNotice',!history?(quota||'History belum dapat diperbarui. Riwayat sebelumnya tetap tersedia jika ada.'):history.dataStatus==='STALE'?'Riwayat terakhir dari cache (bukan real-time).':'',history?'cached':'warning');
+     txt('hunterHistoryNotice',!history&&!quota?'History belum dapat diperbarui. Riwayat sebelumnya tetap tersedia jika ada.':'',history?'cached':'warning');
    }finally{busy=false}
  }
  el('hunterRecentRefresh')?.addEventListener('click',refresh);
  el('hunterOpenHistory')?.addEventListener('click',()=>el('historyBtn')?.click());
  refresh();
  window.setInterval(()=>{if(el('autoPumpToggleBtn')?.classList.contains('active'))void refresh()},180000);
+})();
+
+/* Admin badge reads the verified same-origin session; UI never authorizes operations. */
+(function(){
+ const indicator=document.getElementById('hunterLoginLink');if(!indicator)return;
+ let busy=false;
+ async function refreshAdminBadge(){
+  if(busy)return;busy=true;
+  try{
+   const r=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
+   const d=r.ok?await r.json():null,admin=r.ok&&d?.success===true&&d?.user?.role==='SUPER_ADMIN',ready=admin&&d.user.mustChangePassword!==true;
+   indicator.classList.toggle('is-admin-on',ready);indicator.classList.toggle('is-admin-pending',admin&&!ready);
+   indicator.querySelector('.hunter-login-text').textContent=admin?(ready?'ADMIN ON':'ADMIN SETUP'):'LOGIN';
+   indicator.title=admin?(ready?'Admin online · kelola akun':'Admin masuk · ganti password awal'):'Login Admin';
+   indicator.setAttribute('aria-label',indicator.title);
+  }catch{indicator.classList.remove('is-admin-on','is-admin-pending');indicator.querySelector('.hunter-login-text').textContent='LOGIN';indicator.title='Sesi belum terverifikasi';}
+  finally{busy=false}
+ }
+ refreshAdminBadge();
+ window.addEventListener('pageshow',refreshAdminBadge);
+ window.addEventListener('focus',refreshAdminBadge);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAdminBadge()});
+ setInterval(()=>{if(!document.hidden)refreshAdminBadge()},60000);
 })();
 </script>
 </body>

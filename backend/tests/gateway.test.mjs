@@ -78,13 +78,13 @@ test('legacy predictions and scanner candidates share a single history timeline 
 test('HUD separates real one-click SCAN from read-only SINKRON and unchanged AUTO',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/id="scanFeedback"/);
- assert.match(html,/Sinkronisasi hanya membaca data tersimpan/);
- assert.match(html,/Scanner otomatis berjalan setiap 30 menit/);
+  assert.match(html,/SINKRON selesai/);
+  assert.match(html,/Scheduler\.register\('autoScan'/);
  assert.match(html,/<button id="scanBtn"[^>]*>SCAN<\/button>/);
  assert.match(html,/<button id="syncBtn"[^>]*>SINKRON<\/button>/);
  assert.match(html,/<button id="autoPumpToggleBtn"[^>]*>AUTO<\/button>/);
  assert.match(html,/\$\('scanBtn'\)\.onclick=Scanner\.requestManualScan/);
- assert.match(html,/\$\('syncBtn'\)\.onclick=Scanner\.requestScan/);
+  assert.ok(html.includes("$('syncBtn').onclick=()=>{S.explicitSyncFeedback=true;Scanner.requestScan();}"));
  assert.match(html,/fetch\('\/api\/research\/scan-now'/);
  assert.match(html,/if\(!response\.ok\)/);
  assert.match(html,/await performScan\(\)/);
@@ -495,7 +495,7 @@ test('Hunter controls remain connected and AUTO controls read-only periodic refr
  for(const id of ids)assert.ok(html.includes('id="'+id+'"'),id+' is missing');
  for(const pattern of [
   "$('scanBtn').onclick=Scanner.requestManualScan",
-  "$('syncBtn').onclick=Scanner.requestScan",
+  "$('syncBtn').onclick=()=>{S.explicitSyncFeedback=true;Scanner.requestScan();}",
   "$('historyBtn').onclick=()=>showHistoryPanel(0)",
   "$('archiveStatus').onclick=()=>showHistoryPanel(0)",
   "$('watchlistBtn').onclick=showWatchlistPanel",
@@ -567,7 +567,8 @@ test('Hunter feed differentiates D1 quota, radar and history failures without hi
  assert.match(companion,/Promise\.allSettled\(/);
  assert.doesNotMatch(companion,/Promise\.all\(\[get\('\/api\/research\/latest'/);
  assert.match(companion,/D1_DAILY_READ_LIMIT/);
- assert.match(companion,/KUOTA D1 HABIS/);
+  assert.doesNotMatch(companion,/label=.*KUOTA D1 HABIS/);
+  assert.match(companion,/if\(quota\)\{/);
  assert.match(companion,/RADAR TERTUNDA/);
  assert.match(companion,/HISTORY TERTUNDA/);
  assert.match(companion,/sessionStorage\.getItem\(cachePrefix\+key\)/);

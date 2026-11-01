@@ -8,25 +8,27 @@ function helper(name,next){
  const source=html.slice(html.indexOf('function '+name+'('),html.indexOf('function '+next+'('));
  return new Function('escapeHTML','fmtNum',source+'; return '+name)(escapeHTML,String);
 }
-const gauge=helper('instrumentGauge','renderResearchIndicators');
+const bar=helper('instrumentBar','renderResearchIndicators');
 const pulse=helper('tokenPulse','tokenOrderFlow');
 const flow=helper('tokenOrderFlow','buildCard');
 
-test('instrument gauges preserve a measured zero and distinguish absent percentages',()=>{
- const zero=gauge('POOL',0,'Data source','cyan','0 / 12 TOKEN');
- assert.match(zero,/class="val">0%/);
- assert.match(zero,/stroke-dasharray="0 100"/);
+test('colored performance bars preserve measured zero and distinguish absent data',()=>{
+ const zero=bar('DATA POOL',0,'Data source','#00dcff','0 / 12 TOKEN');
+ assert.match(zero,/instrument-bar/);
+ assert.match(zero,/class="instrument-bar-number">0%/);
+ assert.match(zero,/width:0%/);
  assert.doesNotMatch(zero,/is-unknown/);
  for(const value of [null,undefined,NaN,Infinity,-1,101]){
-  const absent=gauge('PRECISION',value,'No validated measurement');
-  assert.match(absent,/is-unknown/);
-  assert.match(absent,/class="val">—/);
-  assert.doesNotMatch(absent,/class="val">0%/);
+  const missing=bar('PRECISION',value,'No validated measurement','#ffbc35','BELUM TERUKUR');
+  assert.match(missing,/is-unknown/);
+  assert.match(missing,/class="instrument-bar-number">—/);
+  assert.doesNotMatch(missing,/class="instrument-bar-number">0%/);
  }
 });
-test('instrument coverage shows the actual ratio and escapes captions',()=>{
- const output=gauge('API',8/12*100,'<source>','cyan','8 / 12 API');
- assert.match(output,/class="val">67%/);
+test('bar coverage reflects data and sanitizes descriptions',()=>{
+ const output=bar('API',8/12*100,'<source>','#00d994','8 / 12 API');
+ assert.match(output,/class="instrument-bar-number">67%/);
+ assert.match(output,/width:66\.666/);
  assert.match(output,/8 \/ 12/);
  assert.match(output,/&lt;source&gt;/);
 });
@@ -53,10 +55,9 @@ test('missing or empty order flow never becomes an illustrated 50 50 split',()=>
  }
 });
 
- test('gauge needles follow measured values; unavailable data has no false zero needle',()=>{
-  assert.match(gauge('TEST',0,'Measured'),/class="dial-needle" transform="rotate\(-120 36 31\)"/);
-  assert.match(gauge('TEST',50,'Measured'),/class="dial-needle" transform="rotate\(0 36 31\)"/);
-  assert.match(gauge('TEST',100,'Measured'),/class="dial-needle" transform="rotate\(120 36 31\)"/);
-  assert.doesNotMatch(gauge('TEST',null,'Unavailable'),/class="dial-needle"/);
-  assert.equal((gauge('TEST',50,'Measured').match(/<line x1=/g)||[]).length,13);
- });
+test('bar widths correctly show measured endpoints and no false unknown fills',()=>{
+ assert.match(bar('TEST',0,'Measured'),/width:0%/);
+ assert.match(bar('TEST',50,'Measured'),/width:50%/);
+ assert.match(bar('TEST',100,'Measured'),/width:100%/);
+ assert.match(bar('TEST',null,'Unavailable'),/is-unknown/);
+});

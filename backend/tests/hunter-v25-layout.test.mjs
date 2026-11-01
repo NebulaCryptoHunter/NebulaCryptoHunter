@@ -34,14 +34,16 @@ test('login is an actual accessible navigation to existing /account, all buttons
  for(const id of ['scanBtn','syncBtn','autoPumpToggleBtn','historyBtn','watchlistBtn','exportBtn','auditBtn','debugBtn','modeSelect','riskProfile','hunterTabAi','hunterTabRadar','hunterTabHistory','overlayClose'])
    ok('id="'+id+'"');
 });
-test('AI validation animation is decorative only and respects reduced motion',()=>{
- assert.match(css,/@keyframes hunterValidationOrbit\{to\{transform:rotate\(360deg\)\}\}/);
- assert.match(css,/\.hunter-ai-gauge:before\{[\s\S]*?animation:hunterValidationOrbit 9s linear infinite/);
- assert.match(css,/\.hunter-ai-gauge:after\{[\s\S]*?animation:hunterValidationOrbit 18s linear infinite reverse/);
- assert.match(css,/@media\(prefers-reduced-motion:reduce\)\{[\s\S]*?\.hunter-ai-gauge:before,\.hunter-ai-gauge:after\{animation:none!important\}/);
+test('AI model validation uses a compact status instead of a radial gauge',()=>{
+ ok('class="hunter-model-validation"');
  ok('id="hunterCalibratedValue"');
- ok("calibrated?'READY':'—'");
+ ok("calibrated?'READY':'PENDING'");
  ok("calibrated?'CALIBRATED':'NOT CALIBRATED'");
+ ok("function instrumentBar(");
+ assert.doesNotMatch(html,/function instrumentGauge\(/);
+ assert.match(css,/\.hunter-model-validation\{/);
+ assert.match(css,/\.hunter-model-validation\.is-validated/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });
 test('AI instruments fit without scroll; details and text opacity preserved',()=>{
  ok('id="aiHealthDash" class="ai-health-grid hunter-scrollable" tabindex="0"');
