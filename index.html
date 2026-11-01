@@ -1464,7 +1464,7 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
 .hunter-model-validation.is-validated{border-color:#35ed99}
 .hunter-model-validation.is-validated strong{color:#a8ffd0}
 .hunter-model-validation.is-validated .hunter-validation-status-dot{background:#3dffa0;box-shadow:0 0 8px #3dffa0}
-.hunter-ai-panel #aiHealthDash{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:repeat(8,minmax(0,1fr))!important;grid-auto-rows:minmax(0,1fr)!important;gap:4px!important;padding:1px!important;margin:0!important;flex:1 1 0!important;min-height:0!important;max-height:none!important;overflow:hidden!important;scrollbar-gutter:auto!important;align-content:stretch!important}
+.hunter-ai-panel #aiHealthDash{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(4,minmax(0,1fr))!important;grid-auto-rows:minmax(0,1fr)!important;gap:4px!important;padding:1px!important;margin:0!important;flex:1 1 0!important;min-height:0!important;max-height:none!important;overflow:hidden!important;scrollbar-gutter:auto!important;align-content:stretch!important}
 .hunter-ai-panel #aiHealthDash .instrument-bar{display:flex!important;flex-direction:column!important;justify-content:center!important;gap:3px!important;min-width:0!important;min-height:0!important;padding:4px 8px!important;overflow:hidden!important;text-align:left!important;border-radius:6px;border:1px solid color-mix(in srgb,var(--instrument) 50%,#183145)!important;border-left:3px solid var(--instrument)!important;background:linear-gradient(100deg,color-mix(in srgb,var(--instrument) 12%,transparent),rgba(3,16,31,.72))!important}
 .instrument-bar-head{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0}
 .hunter-ai-panel .instrument-bar .lbl{font:800 11px/1.1 'Share Tech Mono',monospace!important;color:#eafaff!important;letter-spacing:.1px!important;overflow-wrap:anywhere}
@@ -2070,8 +2070,7 @@ const Scanner = (()=>{
     const feedback=$('scanFeedback');
     if(feedback&&S.explicitSyncFeedback){
       const summary=delta?'+ '+delta+' snapshot baru sejak pembaruan sebelumnya.':'Belum ada snapshot baru sejak pembaruan sebelumnya.';
-      const runText=run?'Putaran #'+run.id+' '+run.status+(run.error?' ('+run.error+')':''):'Belum ada putaran server.';
-      showScanFeedback(summary+' '+runText+' Sinkronisasi hanya membaca data tersimpan. Scanner otomatis berjalan setiap 30 menit; pemindaian manual memerlukan akun Admin serta binding server yang aktif.');
+      showScanFeedback('SINKRON selesai · '+summary+' Data tetap mengikuti status server.');
     }
     addAILog('Sinkronisasi data: '+delta+' snapshot bertambah; '+(run?.status||'NO_RUN'),'info');
     return state;
