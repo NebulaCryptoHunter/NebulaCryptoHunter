@@ -1,5 +1,5 @@
 // Dedicated manual scan UI. Only displayed when /api/auth/me confirms SUPER_ADMIN.
-export const manualScanPanel = \`
+export const manualScanPanel = `
 <section id="nebulaManualScan" aria-label="Pemindaian manual Admin" style="margin:6px 0;color:#b9e6ee;font:11px 'Share Tech Mono',monospace">
 <style>
 #nebulaManualScan details{background:#061725;border:1px solid #145777;border-radius:7px;padding:8px 10px}
@@ -52,4 +52,4 @@ form.addEventListener('submit',async e=>{
 });
 init();
 })();
-</script>\`;
+</script>`;
