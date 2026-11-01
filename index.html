@@ -1847,7 +1847,7 @@ const RenderEngine = (()=>{
       section.id='token-detail-section-'+index;
       const option=document.createElement('option');option.value=section.id;option.textContent=section.querySelector('summary').textContent;jump.appendChild(option);
     });
-    if(!dialog.open)dialog.showModal();$('tokenDetailClose').focus();
+    if(!dialog.open)dialog.showModal();body.scrollTop=0;$('tokenDetailClose').focus({preventScroll:true});requestAnimationFrame(()=>{body.scrollTop=0});
   }
   $('tokenDetailJump').addEventListener('change',e=>{const section=document.getElementById(e.target.value);if(section){section.open=true;section.scrollIntoView({block:'start',behavior:'smooth'});$('tokenDetailBody').focus({preventScroll:true})}});
   $('tokenDetailClose').addEventListener('click',()=>$('tokenDetailDialog').close());
