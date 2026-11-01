@@ -208,3 +208,17 @@ test('manual scanner has separate secret from automatic INTERNAL_TOKEN',()=>{
  assert.equal(config.services.find(x=>x.binding==='SCANNER')?.service,'nebula-scanner');
  assert.doesNotMatch(JSON.stringify(config),/private-manual-token|MANUAL_SCAN_TOKEN/);
 });
+
+
+test('manual scanner secret accepted only for restricted pipeline, never cron trigger',async()=>{
+ const {default:worker}=await import('../workers/nebula-scanner.mjs');
+ const origin='https://scanner.internal';
+ const env={MANUAL_SCAN_TOKEN:'separate-manual-test',INTERNAL_TOKEN:'cron-internal-test',AI_ENGINE:{}};
+ const url=origin+'/pipeline?mint=not-a-mint';
+ const unauthorized=await worker.fetch(new Request(url),env);
+ assert.equal(unauthorized.status,401);
+ const manual=await worker.fetch(new Request(url,{headers:{Authorization:'Bearer separate-manual-test'}}),env);
+ assert.equal(manual.status,400); // Authorized, but invalid mint rejected before provider call.
+ const cron=await worker.fetch(new Request(origin+'/run',{method:'POST',headers:{Authorization:'Bearer separate-manual-test'}}),env);
+ assert.equal(cron.status,401); // Cannot trigger scheduled scanner with manual credential.
+});
