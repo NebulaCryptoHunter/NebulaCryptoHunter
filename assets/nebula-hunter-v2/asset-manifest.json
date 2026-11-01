@@ -1,41 +1,45 @@
 {
   "project": "NEBULA Crypto Hunter",
-  "version": "HUD Assets V2",
+  "version": "HUD Assets V3 — HD WebP",
   "tagline": "HUNT BEFORE THE HYPE.",
-  "productionIntegrated": false,
+  "productionIntegrated": true,
   "repoFolder": "assets/nebula-hunter-v2",
   "assets": [
     {
       "id": "nebula_bg",
-      "path": "01_background_nebula.svg",
+      "path": "01_background_nebula_hd.webp",
       "role": "background",
-      "width": 1920,
-      "height": 1080,
-      "transparency": false
+      "width": 1672,
+      "height": 941,
+      "transparency": false,
+      "format": "image/webp"
     },
     {
       "id": "hunter_ship",
-      "path": "02_spaceship_hunter.svg",
+      "path": "02_spaceship_hunter_hd.webp",
       "role": "foreground decoration upper-left",
-      "width": 1200,
-      "height": 700,
-      "transparency": true
+      "width": 1536,
+      "height": 1024,
+      "transparency": true,
+      "format": "image/webp"
     },
     {
       "id": "hologram_planet",
-      "path": "03_planet_hologram.svg",
+      "path": "03_planet_hologram_hd.webp",
       "role": "decoration upper-right",
-      "width": 1000,
-      "height": 1000,
-      "transparency": true
+      "width": 1254,
+      "height": 1254,
+      "transparency": true,
+      "format": "image/webp"
     },
     {
       "id": "cockpit_frame",
-      "path": "04_cockpit_console.svg",
+      "path": "04_cockpit_console_hd.webp",
       "role": "foreground bottom frame",
-      "width": 1920,
-      "height": 620,
-      "transparency": true
+      "width": 2172,
+      "height": 724,
+      "transparency": true,
+      "format": "image/webp"
     }
   ]
 }
