@@ -1,8 +1,9 @@
 import {researchPanel} from './research-panel.mjs';
+import {manualScanPanel} from './manual-scan-panel.mjs';
 // Compatibility transform for the retained Workers asset bundle; idempotent.
 export function transformFrontend(html){
- if(html.includes('id="nebulaResearchDock"'))return html;
- if(html.includes('<!-- RESEARCH_PANEL -->'))return html.replace('<!-- RESEARCH_PANEL -->',researchPanel);
+ if(html.includes('id="nebulaResearchDock"'))return html.includes('id="nebulaManualScan"')?html:html.replace('</body>',manualScanPanel+'</body>');
+ if(html.includes('<!-- RESEARCH_PANEL -->'))return html.replace('<!-- RESEARCH_PANEL -->',researchPanel+manualScanPanel);
  if(html.includes('NEBULA_SECURE_FRONTEND_V1'))return html;
  html=html.replace(/apiKey:'[^']*'/g,"apiKey:''");
  html=html.replaceAll('https://nebula-api.nebula-crypto-proxy.workers.dev','');
