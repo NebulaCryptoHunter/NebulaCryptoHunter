@@ -5,7 +5,7 @@ const MAX_STALE_MS=24*60*60*1000;
 const inflight=new Map();
 let quotaPauseUntil=0;
 export const d1DailyLimitError=error=>/daily row read limit|exceeded d1.*free tier|D1.*row.?read.?limit|code.?\D?7500|D1_QUOTA_EXCEEDED/i.test(String(error?.message||error||''));
-const resetUTC=now=>new Date(Math.ceil((now+1)/86400000)*86400000).toISOString();
+export const resetUTC=now=>new Date(Math.ceil((now+1)/86400000)*86400000).toISOString();
 const backoff=(error,now)=>{
  if(d1DailyLimitError(error))quotaPauseUntil=Math.max(quotaPauseUntil,Date.parse(resetUTC(now)));
 };
