@@ -446,8 +446,8 @@ test('cinematic Hunter V2 mirrors approved mockup without replacing live researc
  assert.ok(html.indexOf('id="cockpitDashboard"')<html.indexOf('<!-- RESEARCH_PANEL -->'));
  const marker=html.indexOf('/* Hunter V2 UI companion: read-only');
  const companion=html.slice(marker);
- assert.match(companion,/get\('\/api\/research\/latest'\)/);
- assert.match(companion,/get\('\/api\/research\/history\?limit=10&offset=0'\)/);
+ assert.match(companion,/get\('\/api\/research\/latest','latest'\)/);
+ assert.match(companion,/get\('\/api\/research\/history\?limit=10&offset=0','history'\)/);
  assert.match(companion,/c\.database_records/);
  assert.match(companion,/c\.total_records/);
  assert.match(companion,/c\.unique_mints/);
@@ -560,9 +560,50 @@ test('D1 read-quota audit: frontend does not multiply expensive query polling',(
  assert.ok(!archive.includes('fetch('));
  assert.match(html,/Scheduler\.register\('autoScan',[^\n]*180000/);
  assert.match(html,/window\.setInterval\([^\n]*180000/);
- assert.match(html,/latest\.dataStatus==='STALE'\|\|history\.dataStatus==='STALE'/);
+ assert.match(html,/\[latest,history\]\.some\(d=>d\?\.dataStatus==='STALE'\)/);
  assert.match(gatewaySource,/cachedResearch\(new Request\(u.origin\+'\/api\/research\/latest'\)/);
  assert.match(gatewaySource,/cachedResearch\(new Request\(new URL\('\/api\/research\/history/);
  assert.match(gatewaySource,/invalidateResearchCache\(request.url\)/);
  assert.match(gatewaySource,/quotaResponse\(e\)/);
+});
+
+
+test('Hunter feed differentiates D1 quota, radar and history failures without hiding healthy data',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const start=html.indexOf('/* Hunter V2 UI companion: read-only');
+ const companion=html.slice(start);
+ assert.ok(start>0);
+ assert.match(companion,/Promise\.allSettled\(/);
+ assert.doesNotMatch(companion,/Promise\.all\(\[get\('\/api\/research\/latest'/);
+ assert.match(companion,/D1_DAILY_READ_LIMIT/);
+ assert.match(companion,/KUOTA D1 HABIS/);
+ assert.match(companion,/RADAR TERTUNDA/);
+ assert.match(companion,/HISTORY TERTUNDA/);
+ assert.match(companion,/sessionStorage\.getItem\(cachePrefix\+key\)/);
+ assert.match(companion,/dataStatus:'STALE'/);
+ assert.match(companion,/if\(history\)\{/);
+ assert.match(companion,/const top=list\.scrollTop/);
+ assert.match(companion,/list\.scrollTop=top/);
+ assert.ok(!companion.includes('● FEED UNAVAILABLE'));
+ assert.ok(html.includes('id="hunterFeedNotice"'));
+ assert.ok(html.includes('id="hunterHistoryNotice"'));
+ for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+});
+test('Hunter fullscreen scrolling exposes real independent and keyboard accessible lists',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ for(const id of ['radarFeed','hunterRecentList']){
+   assert.match(html,new RegExp('id="'+id+'"[^>]*tabindex="0"'));
+   assert.ok(html.includes('data-scroll-target="'+id+'" data-scroll-direction="-1"'));
+   assert.ok(html.includes('data-scroll-target="'+id+'" data-scroll-direction="1"'));
+ }
+ assert.match(html,/\.hunter-targets-panel \.radar-grid,\.hunter-history-panel \.hunter-history-list\{overflow-y:scroll!important\}/);
+ assert.match(html,/overscroll-behavior-y:contain/);
+ assert.match(html,/scrollbar-gutter:stable/);
+ assert.match(html,/list\.addEventListener\('keydown'/);
+ assert.match(html,/if\(e\.target!==list\)return/);
+ assert.match(html,/panel\?\.addEventListener\('wheel'/);
+ assert.match(html,/list\.scrollBy\(/);
+ assert.match(html,/list\.focus\(\{preventScroll:true\}\)/);
+ for(const id of ['scanBtn','syncBtn','autoPumpToggleBtn','historyBtn','watchlistBtn','exportBtn','auditBtn','debugBtn','hunterTabAi','hunterTabRadar','hunterTabHistory'])assert.ok(html.includes('id="'+id+'"'));
+ assert.match(html,/NEBULA HUNTER V2\.1 — fixed single-viewport command bridge/);
 });

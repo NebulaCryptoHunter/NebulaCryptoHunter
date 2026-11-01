@@ -595,6 +595,26 @@ body{margin:0}
  .hunter-cockpit-footer{flex-basis:42px;height:42px}
 }
 
+/* Hunter V2.2 — explicit scrollbars and reachable token/history controls */
+.hunter-scroll-controls{display:inline-flex;gap:5px;align-items:center;flex:0 0 auto}
+.hunter-scroll-controls button{width:32px;min-height:29px;background:rgba(7,48,73,.95);border:1px solid #32dffa;border-radius:6px;color:#a2faff;font-size:1rem;font-weight:900;cursor:pointer}
+.hunter-scroll-controls button:hover:not(:disabled){background:rgba(17,107,151,.85);box-shadow:0 0 13px #047cad}
+.hunter-scroll-controls button:disabled{opacity:.36;cursor:default}
+.hunter-scroll-controls button:focus-visible,.hunter-scrollable:focus-visible{outline:2px solid #bbffff;outline-offset:2px}
+.hunter-scroll-hint{font-size:.58rem;color:#a6cfe4;white-space:nowrap}
+.hunter-history-scroll-bar{display:flex;justify-content:flex-end;flex:0 0 auto;margin:-2px 4px 6px}
+.hunter-targets-panel .radar-grid,.hunter-history-panel .hunter-history-list,.hunter-ai-panel .ai-health-grid{scrollbar-width:auto!important;scrollbar-color:#33bfea rgba(6,28,47,.90)!important;scrollbar-gutter:stable;overscroll-behavior-y:contain;touch-action:pan-y}
+.hunter-targets-panel .radar-grid,.hunter-history-panel .hunter-history-list{overflow-y:scroll!important}
+.hunter-targets-panel .radar-grid::-webkit-scrollbar,.hunter-history-panel .hunter-history-list::-webkit-scrollbar,.hunter-ai-panel .ai-health-grid::-webkit-scrollbar{width:11px}
+.hunter-targets-panel .radar-grid::-webkit-scrollbar-thumb,.hunter-history-panel .hunter-history-list::-webkit-scrollbar-thumb,.hunter-ai-panel .ai-health-grid::-webkit-scrollbar-thumb{background:#2088b3;border-radius:10px;border:2px solid #061b32}
+.hunter-targets-panel .radar-grid::-webkit-scrollbar-track,.hunter-history-panel .hunter-history-list::-webkit-scrollbar-track{background:rgba(4,23,42,.93)}
+.hunter-feed-notice,.hunter-history-notice{flex:0 0 auto;background:rgba(74,45,10,.67);border:1px solid #a88c3e;border-radius:6px;color:#ffd996;font:700 .64rem/1.45 'Share Tech Mono',monospace;margin:0 0 7px;padding:7px;overflow-wrap:anywhere}
+.hunter-feed-notice[hidden],.hunter-history-notice[hidden]{display:none}
+.hunter-feed-notice[data-state="cached"],.hunter-history-notice[data-state="cached"]{color:#a3e9ff;background:rgba(6,40,65,.8);border-color:#2d7bad}
+.hunter-panel-heading .hunter-live-badge{white-space:normal;text-align:center;max-width:48%}
+@media(max-width:767px){.hunter-scroll-hint{display:none}.hunter-scroll-controls button{width:34px;min-height:30px}.hunter-feed-notice,.hunter-history-notice{font-size:.58rem;padding:5px}}
+@media(max-height:690px){.hunter-scroll-controls button{min-height:25px;width:29px}.hunter-targets-panel .hunter-radar-zone{height:clamp(62px,11vh,90px)}}
+
 @media(prefers-reduced-motion:reduce){.bg-scanline,.hero-card,.ep-mini{animation:none!important}.gauge-fill{transition:none}}
 
   </style>
@@ -675,8 +695,9 @@ body{margin:0}
         <div class="hunter-radar-scope" aria-hidden="true"><div class="hunter-radar-sweep"></div><span class="hunter-radar-center"></span></div>
         <div class="hunter-radar-status"><span class="title">HUNTER TARGETS</span><strong id="hunterActiveTargetCount">—</strong><span class="hunter-radar-key" id="hunterLastScan">WAITING FOR SCANNER DATA</span><p>Radar adalah visual navigasi; target aktual tampil di bawah berdasarkan data server.</p></div>
       </div>
-      <div class="hunter-targets-heading"><span>◈ ACTIVE TOKEN TARGETS</span><span>SCROLL FOR MORE ▾</span></div>
-      <div id="radarFeed" class="radar-grid"></div>
+      <div class="hunter-targets-heading"><span>◈ ACTIVE TOKEN TARGETS</span><span class="hunter-scroll-controls"><span class="hunter-scroll-hint">GULIR TOKEN</span><button type="button" data-scroll-target="radarFeed" data-scroll-direction="-1" aria-label="Gulir token ke atas">↑</button><button type="button" data-scroll-target="radarFeed" data-scroll-direction="1" aria-label="Gulir token ke bawah">↓</button></span></div>
+      <p id="hunterFeedNotice" class="hunter-feed-notice" role="status" aria-live="polite" hidden></p>
+      <div id="radarFeed" class="radar-grid hunter-scrollable" tabindex="0" role="region" aria-label="Daftar token dapat digulir vertikal"></div>
     </section>
     <aside class="hunter-panel hunter-history-panel" aria-labelledby="hunterHistoryTitle">
       <header class="hunter-panel-heading"><span class="hunter-panel-icon" aria-hidden="true">▱</span><div><h2 id="hunterHistoryTitle">DATABASE / HISTORY</h2><small>UNIFIED PREDICTIONS &amp; SCANNER</small></div></header>
@@ -684,7 +705,9 @@ body{margin:0}
         <span>◈ DATABASE NEBULA</span><strong id="archiveCount">Memuat…</strong><span id="archiveEvalCount">Evaluasi: —</span><span>HIST ▸</span>
       </button>
       <div class="hunter-history-tabs"><button id="hunterRecentRefresh" type="button">LATEST</button><button id="hunterOpenHistory" type="button">HISTORY</button></div>
-      <div id="hunterRecentList" class="hunter-history-list" role="list" aria-live="polite"><p class="hunter-history-empty">Memuat catatan dari nebula-db…</p></div>
+      <div class="hunter-history-scroll-bar"><span class="hunter-scroll-controls"><span class="hunter-scroll-hint">GULIR HISTORY</span><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="-1" aria-label="Gulir history ke atas">↑</button><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="1" aria-label="Gulir history ke bawah">↓</button></span></div>
+      <p id="hunterHistoryNotice" class="hunter-history-notice" role="status" aria-live="polite" hidden></p>
+      <div id="hunterRecentList" class="hunter-history-list hunter-scrollable" role="list" tabindex="0" aria-label="Riwayat dapat digulir vertikal" aria-live="polite"><p class="hunter-history-empty">Memuat catatan dari nebula-db…</p></div>
       <p class="hunter-history-note">Sumber data: nebula-db. HISTORIS dan SCANNER dibedakan; hasil belum berarti transaksi atau sinyal beli tervalidasi.</p>
     </aside>
   </main>
@@ -1426,6 +1449,44 @@ setTimeout(()=>{
 })();
 
 /* Hunter V2 UI companion: read-only, same-origin verified D1 data. No scanner side effects. */
+/* Fullscreen local scrolling: wheel anywhere on a non-interactive panel surface,
+   touch inside the lists, and accessible keyboard or arrow controls. */
+(function(){
+ const ids=['radarFeed','hunterRecentList'];
+ const update=id=>{
+   const list=document.getElementById(id);if(!list)return;
+   const max=Math.max(0,list.scrollHeight-list.clientHeight);
+   document.querySelectorAll('[data-scroll-target="'+id+'"]').forEach(btn=>{
+     btn.disabled=max<2||(Number(btn.dataset.scrollDirection)<0?list.scrollTop<=1:list.scrollTop>=max-1);
+   });
+ };
+ for(const id of ids){
+   const list=document.getElementById(id);if(!list)continue;
+   list.addEventListener('scroll',()=>update(id),{passive:true});
+   list.addEventListener('keydown',e=>{
+     if(e.target!==list)return; // preserve keyboard behavior for token action buttons
+     const move={ArrowDown:60,ArrowUp:-60,PageDown:Math.max(180,list.clientHeight*.8),PageUp:-Math.max(180,list.clientHeight*.8)};
+     if(Object.prototype.hasOwnProperty.call(move,e.key)){e.preventDefault();list.scrollBy({top:move[e.key],behavior:'smooth'})}
+     if(e.key==='Home'||e.key==='End'){e.preventDefault();list.scrollTo({top:e.key==='Home'?0:list.scrollHeight,behavior:'smooth'})}
+   });
+   const panel=list.closest('.hunter-panel');
+   panel?.addEventListener('wheel',e=>{
+     if(list.contains(e.target)||e.target.closest('button,a,select,input,textarea,summary,.hunter-advanced'))return;
+     if(list.scrollHeight<=list.clientHeight||!e.deltaY)return;
+     const before=list.scrollTop;list.scrollTop+=e.deltaY;
+     if(Math.abs(list.scrollTop-before)>.5)e.preventDefault();
+   },{passive:false});
+   if(typeof ResizeObserver==='function')new ResizeObserver(()=>update(id)).observe(list);
+   if(typeof MutationObserver==='function')new MutationObserver(()=>requestAnimationFrame(()=>update(id))).observe(list,{childList:true});
+   requestAnimationFrame(()=>update(id));
+ }
+ document.querySelectorAll('[data-scroll-target]').forEach(btn=>btn.addEventListener('click',()=>{
+   const list=document.getElementById(btn.dataset.scrollTarget);if(!list)return;
+   list.scrollBy({top:Number(btn.dataset.scrollDirection)*Math.max(180,list.clientHeight*.78),behavior:'smooth'});
+   list.focus({preventScroll:true});
+ }));
+})();
+
 // Responsive full-viewport panel switching; no page scrolling, no duplicate network calls.
  const chooseTab=tab=>{
    const target={ai:'hunter-ai-panel',radar:'hunter-targets-panel',history:'hunter-history-panel'}[tab];
@@ -1445,54 +1506,122 @@ setTimeout(()=>{
  const set=(id,value)=>{const e=el(id);if(e)e.textContent=String(value)};
  const safeNum=value=>typeof value==='number'&&Number.isFinite(value)?value:null;
  const toTime=value=>{const date=value?new Date(String(value).replace(' ','T')):null;return date&&!Number.isNaN(date.getTime())?date.toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Jakarta'}):'—'};
- const get=async(path)=>{const res=await fetch(path,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!res.ok)throw Error('HTTP '+res.status);return res.json()};
+ // Each public endpoint is independent; partial failures never blank healthy sections.
+ const cachePrefix='nebula_hunter_public_v2:';
+ const lastGood=key=>{
+   try{
+     const saved=JSON.parse(sessionStorage.getItem(cachePrefix+key)||'null');
+     if(!saved||!Number.isFinite(saved.time)||Date.now()-saved.time>86400000||saved.time>Date.now()+60000)return null;
+     if(!saved.value||typeof saved.value!=='object')return null;
+     return {...saved.value,dataStatus:'STALE',warning:'LOCAL_LAST_GOOD',cacheAt:new Date(saved.time).toISOString()};
+   }catch{return null}
+ };
+ const get=async(path,key)=>{
+   try{
+     const r=await fetch(path,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+     const payload=await r.json().catch(()=>null);
+     if(!r.ok){
+       const err=new Error(payload?.error||'HTTP_'+r.status);
+       err.code=payload?.error||'HTTP_'+r.status;
+       err.resetAt=payload?.resetAt||null;
+       throw err;
+     }
+     if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Error('INVALID_RESEARCH_RESPONSE');
+     if(payload.dataStatus!=='STALE')try{sessionStorage.setItem(cachePrefix+key,JSON.stringify({time:Date.now(),value:payload}))}catch{}
+     return payload;
+   }catch(err){
+     const old=lastGood(key);
+     if(old){old.warning=err.code||err.message||'CONNECTION_INTERRUPTED';old.resetAt=err.resetAt||null;return old}
+     throw err;
+   }
+ };
+ const txt=(id,message,state='warning')=>{
+   const e=el(id);if(!e)return;
+   e.textContent=message||'';e.hidden=!message;e.dataset.state=state;
+ };
+ const quotaReason=(errors,data)=>{
+   const failed=errors.find(x=>x?.code==='D1_DAILY_READ_LIMIT');
+   const fromCache=data.find(x=>x?.warning==='D1_DAILY_READ_LIMIT');
+   const source=failed||fromCache;
+   if(!source)return null;
+   const t=Date.parse(source.resetAt||'');
+   return 'Kuota baca Cloudflare D1 sedang habis.'+(Number.isFinite(t)?' Reset: '+new Date(t).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Jakarta'})+' WIB.':' Tunggu reset kuota.');
+ };
  let busy=false;
  async function refresh(){
    if(busy)return;busy=true;
    try{
-     const [latest,history]=await Promise.all([get('/api/research/latest'),get('/api/research/history?limit=10&offset=0')]);
-     const c=latest.counts||{};
-     set('hunterDatabaseValue',fmt(safeNum(c.database_records)));
-     set('hunterPredictionValue',fmt(safeNum(c.total_records)));
-     set('hunterUniqueValue',fmt(safeNum(c.unique_mints)));
-     set('hunterEvaluationValue',fmt(safeNum(c.total_evaluations)));
-     set('hunterActiveTargetCount',fmt(Array.isArray(latest.items)?latest.items.length:null));
-     set('hunterWatchValue',fmt(Array.isArray(latest.items)?latest.items.filter(x=>x.decision==='WATCH').length:null));
-     const calibrated=latest.modelCalibrated===true;
-     set('hunterCalibratedValue',calibrated?'READY':'—');
-     set('hunterCalibrationStatus',calibrated?'CALIBRATED':'NOT CALIBRATED');
-     const run=Array.isArray(latest.runs)?latest.runs[0]:null;
-     set('hunterLastScan',run?('RUN '+String(run.status||'UNKNOWN')+' · '+toTime(run.started_at)):'BELUM ADA PUTARAN');
-     const badge=el('hunterRadarBadge'),sys=el('hunterSystemStatus');
-     const stale=latest.dataStatus==='STALE'||history.dataStatus==='STALE';
-     if(badge){badge.textContent=stale?'● CACHED / STALE':'● DATA '+(latest.dataStatus==='LIVE'?'UPDATED':'CACHED');badge.className='hunter-live-badge'+(stale?'':' online')}
-     if(sys){sys.textContent=stale?'● DATABASE QUOTA / STALE':'● RESEARCH FEED ONLINE';sys.className='hunter-system-status '+(stale?'offline':'online')}
-     const list=el('hunterRecentList');
-     if(list){
-       list.replaceChildren();
-       const items=Array.isArray(history.items)?history.items:[];
-       if(!items.length){const p=document.createElement('p');p.className='hunter-history-empty';p.textContent='Belum ada catatan yang tersedia';list.append(p)}
-       for(const row of items){
-         const item=document.createElement('article');item.className='hunter-history-row';item.setAttribute('role','listitem');
-         const top=document.createElement('div');top.className='hunter-history-row-line';
-         const name=document.createElement('strong');name.className='hunter-history-symbol';name.textContent=String(row.symbol||row.mint?.slice(0,9)||'UNKNOWN').slice(0,33);
-         const decision=document.createElement('span');decision.className='hunter-history-status'+(row.decision==='WATCH'?'':' unknown');decision.textContent=String(row.decision||'UNVERIFIED').replaceAll('_',' ');
-         top.append(name,decision);
-         const foot=document.createElement('div');foot.className='hunter-history-meta';
-         const source=document.createElement('span');source.textContent=row.record_source==='LEGACY'?'HISTORIS':'SCANNER';
-         const timestamp=document.createElement('time');timestamp.textContent=toTime(row.observed_at);
-         foot.append(source,timestamp);
-         const sub=document.createElement('div');sub.className='hunter-history-meta';
-         const score=document.createElement('span');score.textContent='AI: '+(safeNum(row.ai_score)===null?'—':Number(row.ai_score).toFixed(1));
-         const evalText=document.createElement('span');evalText.textContent=String(row.evaluation_status||'PENDING').replaceAll('_',' ');
-         sub.append(score,evalText);item.append(top,foot,sub);list.append(item);
-       }
+     const [rLatest,rHistory]=await Promise.allSettled([
+       get('/api/research/latest','latest'),
+       get('/api/research/history?limit=10&offset=0','history')
+     ]);
+     const latest=rLatest.status==='fulfilled'?rLatest.value:null;
+     const history=rHistory.status==='fulfilled'?rHistory.value:null;
+     const errors=[rLatest.status==='rejected'?rLatest.reason:null,rHistory.status==='rejected'?rHistory.reason:null];
+     const quota=quotaReason(errors,[latest,history]);
+     const stale=[latest,history].some(d=>d?.dataStatus==='STALE');
+     if(latest){
+       const c=latest.counts||{};
+       set('hunterDatabaseValue',fmt(safeNum(c.database_records)));
+       set('hunterPredictionValue',fmt(safeNum(c.total_records)));
+       set('hunterUniqueValue',fmt(safeNum(c.unique_mints)));
+       set('hunterEvaluationValue',fmt(safeNum(c.total_evaluations)));
+       set('hunterActiveTargetCount',fmt(Array.isArray(latest.items)?latest.items.length:null));
+       set('hunterWatchValue',fmt(Array.isArray(latest.items)?latest.items.filter(x=>x.decision==='WATCH').length:null));
+       const calibrated=latest.modelCalibrated===true;
+       set('hunterCalibratedValue',calibrated?'READY':'—');
+       set('hunterCalibrationStatus',calibrated?'CALIBRATED':'NOT CALIBRATED');
+       const run=Array.isArray(latest.runs)?latest.runs[0]:null;
+       set('hunterLastScan',run?('RUN '+String(run.status||'UNKNOWN')+' · '+toTime(run.started_at)):'BELUM ADA PUTARAN');
      }
-   }catch(e){
-     const sys=el('hunterSystemStatus'),badge=el('hunterRadarBadge'),list=el('hunterRecentList');
-     if(sys){sys.textContent='● RESEARCH FEED UNAVAILABLE';sys.className='hunter-system-status offline'}
-     if(badge){badge.textContent='● FEED UNAVAILABLE';badge.className='hunter-live-badge'}
-     if(list&&!list.querySelector('.hunter-history-row'))list.textContent='Database belum dapat dimuat. Periksa koneksi atau tekan LATEST.';
+     if(history){
+       const list=el('hunterRecentList');
+       if(list){
+         const top=list.scrollTop;
+         const items=Array.isArray(history.items)?history.items:[];
+         list.replaceChildren();
+         if(!items.length){const p=document.createElement('p');p.className='hunter-history-empty';p.textContent='Belum ada baris pada respons riwayat';list.append(p)}
+         for(const row of items){
+           const item=document.createElement('article');item.className='hunter-history-row';item.setAttribute('role','listitem');
+           const first=document.createElement('div');first.className='hunter-history-row-line';
+           const name=document.createElement('strong');name.className='hunter-history-symbol';name.textContent=String(row.symbol||row.mint?.slice(0,9)||'UNKNOWN').slice(0,33);
+           const decision=document.createElement('span');decision.className='hunter-history-status'+(row.decision==='WATCH'?'':' unknown');decision.textContent=String(row.decision||'UNVERIFIED').replaceAll('_',' ');
+           first.append(name,decision);
+           const second=document.createElement('div');second.className='hunter-history-meta';
+           const source=document.createElement('span');source.textContent=row.record_source==='LEGACY'?'HISTORIS':'SCANNER';
+           const time=document.createElement('time');time.textContent=toTime(row.observed_at);
+           second.append(source,time);
+           const third=document.createElement('div');third.className='hunter-history-meta';
+           const score=document.createElement('span');score.textContent='AI: '+(safeNum(row.ai_score)===null?'—':Number(row.ai_score).toFixed(1));
+           const evaluation=document.createElement('span');evaluation.textContent=String(row.evaluation_status||'PENDING').replaceAll('_',' ');
+           third.append(score,evaluation);item.append(first,second,third);list.append(item);
+         }
+         list.scrollTop=top;
+       }
+     }else{
+       const list=el('hunterRecentList'),placeholder=list?.querySelector('.hunter-history-empty');
+       if(placeholder)placeholder.textContent='Riwayat belum terbaca; lihat alasan di atas.';
+     }
+     const badge=el('hunterRadarBadge'),system=el('hunterSystemStatus');
+     let label='● DATA '+(latest?.dataStatus==='LIVE'?'BARU':'CACHE'),title='● RESEARCH FEED ONLINE',message='',kind='warning';
+     if(quota){
+       label=latest?'● ARSIP D1':'● KUOTA D1 HABIS';
+       title='● DATABASE TERBATAS';
+       message=quota+(latest||history?' Menampilkan data tersimpan yang tersedia, bukan hasil live.':' Tidak ada snapshot lokal untuk ditampilkan.');
+     }else if(!latest){
+       label='● RADAR TERTUNDA';title='● RADAR BELUM TERHUBUNG';
+       message='Radar belum dapat membaca API ('+String(errors[0]?.code||errors[0]?.message||'NETWORK_ERROR')+'). Data tersimpan tidak dihapus.';
+     }else if(!history){
+       label='● RADAR OK · HISTORY TERTUNDA';title='● RADAR AKTIF';
+       message='Radar tersedia, tetapi history gagal dimuat ('+String(errors[1]?.code||errors[1]?.message||'NETWORK_ERROR')+').';
+     }else if(stale){
+       label='● DATA TERSIMPAN';title='● ARSIP · BUKAN LIVE';
+       message='Menampilkan cache terakhir; data terbaru belum terverifikasi.';kind='cached';
+     }
+     if(badge){badge.textContent=label;badge.className='hunter-live-badge'+(message?'':' online');badge.title=message||'Data riset tersedia'}
+     if(system){system.textContent=title;system.className='hunter-system-status '+(message?'offline':'online');system.title=message||'Riset terhubung'}
+     txt('hunterFeedNotice',message,kind);
+     txt('hunterHistoryNotice',!history?(quota||'History belum dapat diperbarui. Riwayat sebelumnya tetap tersedia jika ada.'):history.dataStatus==='STALE'?'Riwayat terakhir dari cache (bukan real-time).':'',history?'cached':'warning');
    }finally{busy=false}
  }
  el('hunterRecentRefresh')?.addEventListener('click',refresh);
