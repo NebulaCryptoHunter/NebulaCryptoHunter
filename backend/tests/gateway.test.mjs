@@ -69,7 +69,7 @@ test('legacy predictions and scanner candidates share a single history timeline 
  assert.doesNotMatch(html,/fetch\('\/api\/v1\/predictions\?limit=/);
  assert.match(html,/legacyArchiveCount=n/);
  assert.match(html,/function showHistoryPanel\(offset=0\)/);
- assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.total_records/);
+ assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.research_databases/);
  assert.match(html,/S\.dash\.tot=json\.counts\?\.unique_mints/);
  assert.match(html,/S\.serverResearchCounts=json\.counts/);
  assert.match(html,/row\.record_source==='LEGACY'/);
@@ -362,7 +362,24 @@ test('canonical D1 read layer tracks both sources without copying legacy rows',(
 test('unified source counts survive radar feed reconciliation',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/tot:S\.serverResearchCounts\?\.unique_mints\?\?feedBus\.length/);
- assert.match(html,/dbTotal:S\.serverResearchCounts\?\.total_records\?\?S\.dash\.dbTotal\?\?0/);
+ assert.match(html,/dbTotal:S\.serverResearchCounts\?\.research_databases\?\?S\.dash\.dbTotal\?\?null/);
  assert.doesNotMatch(html,/async function loadStats\(\)\{const json=await apiGet\('\/stats'\)/);
  assert.match(html,/\/api\/research\/history\?limit=/);
+});
+
+test('DB is one research database, PRED is all records, UNIQUE is distinct coin mints',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const api=fs.readFileSync('backend/workers/research-api.mjs','utf8');
+ assert.match(api,/1 AS research_databases/);
+ assert.match(api,/total_records/);
+ assert.match(api,/unique_mints/);
+ assert.match(html,/id:'dash-db',lbl:'DATABASE'/);
+ assert.match(html,/id:'dash-pred',lbl:'PREDICTION'/);
+ assert.match(html,/id:'dash-unique',lbl:'UNIQUE'/);
+ assert.doesNotMatch(html,/id:'dash-total',lbl:'TOT'/);
+ assert.match(html,/updatePanel\('dash-db',S\.dash\.dbTotal\?\?'—'/);
+ assert.match(html,/updatePanel\('dash-pred',S\.serverResearchCounts\?\.total_records/);
+ assert.match(html,/updatePanel\('dash-unique',S\.dash\.tot/);
+ assert.match(html,/research_databases\?\?S\.dash\.dbTotal/);
+ assert.match(html,/unique_mints\?\?feedBus\.length/);
 });
