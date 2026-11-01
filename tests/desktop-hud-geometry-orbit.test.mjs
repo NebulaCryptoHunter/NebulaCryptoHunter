@@ -28,6 +28,8 @@ test('Radar reserves viewport for token heading, market telemetry, scrolling met
  assert.match(correction,/\.radar-grid>\.hud-card>\.token-card-head\{[\s\S]*?flex:0 0 51px!important/);
  assert.match(correction,/\.radar-grid>\.hud-card>\.token-market-hero\{[\s\S]*?flex:0 0 62px!important/);
  assert.match(correction,/\.radar-grid>\.hud-card>\.token-card-body\{[\s\S]*?flex:1 1 0!important/);
+ assert.match(correction,/\.token-card-body \.token-card-metrics\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important/);
+ assert.match(correction,/\.radar-grid>\.hud-card \.score-ring-container\{[\s\S]*?width:44px!important/);
  assert.match(correction,/\.radar-grid>\.hud-card>\.token-card-footer\{[\s\S]*?grid-template-rows:31px 29px!important/);
  assert.match(correction,/\.token-card-footer \.token-card-actions\{[\s\S]*?repeat\(6,minmax\(0,1fr\)\)!important/);
  assert.match(html,/class="token-dex-shortcut"/);
