@@ -619,7 +619,7 @@ body{margin:0}
       <div class="action-row">
         <button id="scanBtn" class="scan-btn" type="button" title="Jalankan pemindaian server baru (khusus Admin setelah mengganti password awal)">SCAN</button>
         <button id="syncBtn" class="sync-btn" type="button" title="Sinkronkan hasil tersimpan dari database tanpa menjalankan scan">SINKRON</button>
-        <button id="autoPumpToggleBtn" class="auto-pump-btn active" title="Aktifkan/nonaktifkan sinkronisasi otomatis antarmuka, bukan jadwal cron server">AUTO</button>
+        <button id="autoPumpToggleBtn" class="auto-pump-btn active" type="button" aria-pressed="true" title="Aktifkan/nonaktifkan sinkronisasi otomatis antarmuka, bukan jadwal cron server">AUTO</button>
         <button id="historyBtn" style="background:rgba(255,215,0,.15);border:1.5px solid #ffd700;color:#ffd700">HIST</button>
         <button id="watchlistBtn" style="background:rgba(255,200,0,.15);border:1.5px solid #ffd700;color:#ffd700">WATCH</button>
         <button id="exportBtn" style="background:rgba(0,255,200,.15);border:1.5px solid #0ff;color:#0ff">EXP</button>
@@ -1412,11 +1412,12 @@ setTimeout(()=>{
   try{
     $('scanBtn').onclick=Scanner.requestManualScan;
     $('syncBtn').onclick=Scanner.requestScan;
-    $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;$('autoPumpToggleBtn').classList.toggle('active',S.isAuto);};
+    $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;const btn=$('autoPumpToggleBtn');btn.classList.toggle('active',S.isAuto);btn.setAttribute('aria-pressed',String(S.isAuto));addAILog('AUTO HUD '+(S.isAuto?'ON — refresh berkala':'OFF — refresh manual tetap tersedia'),'info');};
     $('historyBtn').onclick=()=>showHistoryPanel(0);
     $('archiveStatus').onclick=()=>showHistoryPanel(0);$('watchlistBtn').onclick=showWatchlistPanel;$('exportBtn').onclick=showExportPanel;$('auditBtn').onclick=showAuditPanel;
     $('debugBtn').onclick=()=>{const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let html='<div><b>V109.2</b></div>';html+='<div>Tokens:'+feedBus.length+' | Market:'+S.market.regime+' | Season:'+S.market.season+'</div>';html+='<div>Rotating Offset:'+S.rotatingOffset+' | Smart Memory: ACTIVE</div>';html+='<div>Outcomes:'+S.outcomes.length+' | Cal:'+S.learning.shortCalibrationCount+'</div>';if(health){html+='<div>F1:'+health.f1+'% | Prec:'+health.precision+'% | Rec:'+health.recall+'%</div>';html+='<div>FP:'+health.fp+' | FN:'+health.fn+' | Win:'+health.winRate+'% | ROI:'+health.avgROI+'%</div>';}html+='<div>RAM:'+mem.ramMB+'MB | Dev DB:'+S.learning.developerDB.size+'</div>';html+='<div>API: '+CONFIG.API.baseURL+'</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';};
     $('overlayClose').onclick=()=>{$('overlayPanel').style.display='none';};
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('overlayPanel').style.display==='block'){$('overlayPanel').style.display='none';$('historyBtn')?.focus();}});
     document.addEventListener('click',function(e){
       const btn=e.target.closest('[data-action]');if(!btn)return;e.stopPropagation();
       const a=btn.dataset.action,ca=btn.dataset.ca;
@@ -1504,7 +1505,7 @@ setTimeout(()=>{
  el('hunterRecentRefresh')?.addEventListener('click',refresh);
  el('hunterOpenHistory')?.addEventListener('click',()=>el('historyBtn')?.click());
  refresh();
- window.setInterval(refresh,60000);
+ window.setInterval(()=>{if(el('autoPumpToggleBtn')?.classList.contains('active'))void refresh()},60000);
 })();
 </script>
 </body>
