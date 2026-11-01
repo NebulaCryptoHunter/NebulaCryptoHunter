@@ -409,7 +409,7 @@ test('DATABASE sums core research records; PREDICTION and UNIQUE retain their di
 test('hero header uses signal-first NEBULA signature, without changing app identity',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/<div class="header-row-2">NEBULA CRYPTO HUNTER<\/div>/);
- assert.match(html,/SIGNAL OVER NOISE <span aria-hidden="true">\/\/</span> BUILT BY HERU PRASETYO/);
+ assert.ok(html.includes('SIGNAL OVER NOISE <span aria-hidden="true">//</span> BUILT BY HERU PRASETYO'));
  assert.doesNotMatch(html,/Sistem Riset Kripto • Engineered by Heru Prasetyo/);
  assert.match(html,/id="scanBtn"/);
  assert.match(html,/id="syncBtn"/);
