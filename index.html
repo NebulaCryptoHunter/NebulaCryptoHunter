@@ -2077,17 +2077,17 @@ const Scanner = (()=>{
     return state;
   }
   function requestScan(){
-    if(S.scanStatus==='SCANNING')return;
+    if(S.scanStatus==='SCANNING'){S.explicitSyncFeedback=false;return;}
     S.scanStatus='SCANNING';const btn=$('syncBtn');
     if(btn){btn.disabled=true;btn.textContent='SYNC…';}
     performScan().catch(e=>{
       const feedback=$('scanFeedback');
-      showScanFeedback('Gagal menyegarkan data server: '+(e?.message||'Unknown error')+'. Tidak ada pemindaian manual dijalankan.');
+      if(S.explicitSyncFeedback)showScanFeedback('SINKRON gagal: '+(e?.message||'Unknown error')+'. Pemindaian manual tidak dijalankan.');
       addAILog('Server scan refresh failed: '+e.message,'warning');
     }).finally(()=>{
       S.scanStatus='READY';
       if(btn){btn.disabled=false;btn.textContent='SINKRON';}
-      S.nextScan=Date.now()+60000;
+      S.nextScan=Date.now()+60000;S.explicitSyncFeedback=false;
     });
   }
   let manualBusy=false;
@@ -2447,7 +2447,7 @@ window.addEventListener('error',function(e){console.error('Global Error:',e.mess
 setTimeout(()=>{
   try{
     $('scanBtn').onclick=Scanner.requestManualScan;
-    $('syncBtn').onclick=Scanner.requestScan;
+    $('syncBtn').onclick=()=>{S.explicitSyncFeedback=true;Scanner.requestScan();};
     $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;const btn=$('autoPumpToggleBtn');btn.classList.toggle('active',S.isAuto);btn.setAttribute('aria-pressed',String(S.isAuto));addAILog('AUTO HUD '+(S.isAuto?'ON — refresh berkala':'OFF — refresh manual tetap tersedia'),'info');};
     $('historyBtn').onclick=()=>showHistoryPanel(0);
     $('archiveStatus').onclick=()=>showHistoryPanel(0);$('watchlistBtn').onclick=showWatchlistPanel;$('exportBtn').onclick=showExportPanel;$('auditBtn').onclick=showAuditPanel;
@@ -2700,6 +2700,29 @@ setTimeout(()=>{
  el('hunterOpenHistory')?.addEventListener('click',()=>el('historyBtn')?.click());
  refresh();
  window.setInterval(()=>{if(el('autoPumpToggleBtn')?.classList.contains('active'))void refresh()},180000);
+})();
+
+/* Admin badge reads the verified same-origin session; UI never authorizes operations. */
+(function(){
+ const indicator=document.getElementById('hunterLoginLink');if(!indicator)return;
+ let busy=false;
+ async function refreshAdminBadge(){
+  if(busy)return;busy=true;
+  try{
+   const r=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
+   const d=r.ok?await r.json():null,admin=r.ok&&d?.success===true&&d?.user?.role==='SUPER_ADMIN',ready=admin&&d.user.mustChangePassword!==true;
+   indicator.classList.toggle('is-admin-on',ready);indicator.classList.toggle('is-admin-pending',admin&&!ready);
+   indicator.querySelector('.hunter-login-text').textContent=admin?(ready?'ADMIN ON':'ADMIN SETUP'):'LOGIN';
+   indicator.title=admin?(ready?'Admin online · kelola akun':'Admin masuk · ganti password awal'):'Login Admin';
+   indicator.setAttribute('aria-label',indicator.title);
+  }catch{indicator.classList.remove('is-admin-on','is-admin-pending');indicator.querySelector('.hunter-login-text').textContent='LOGIN';indicator.title='Sesi belum terverifikasi';}
+  finally{busy=false}
+ }
+ refreshAdminBadge();
+ window.addEventListener('pageshow',refreshAdminBadge);
+ window.addEventListener('focus',refreshAdminBadge);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAdminBadge()});
+ setInterval(()=>{if(!document.hidden)refreshAdminBadge()},60000);
 })();
 </script>
 </body>
