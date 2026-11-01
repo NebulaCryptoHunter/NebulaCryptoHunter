@@ -41,7 +41,7 @@ test('all 8 command buttons and secondary controls meet touch hit area targets',
  includes(css,'.overlay-close,.export-btn,.archive-pager button');
  includes(css,'min-width:42px;min-height:42px');
  assert.match(css,/\.hud-card \.action-btn-text\{[\s\S]*?min-height:40px!important/);
- assert.match(css,/@media\(max-width:767px\)/);
+ assert.match(css,/@media\s*\(max-width:767px\)/);
  includes(css,'grid-template-columns:repeat(3,minmax(0,1fr))!important');
 });
 test('score/rank/gauge and all sensor badges remain visible, with consistent icon scale',()=>{
