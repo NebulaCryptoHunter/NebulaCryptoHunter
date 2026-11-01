@@ -64,7 +64,7 @@ async function availablePool(env){
   all.push(...(rows.results||[]).map(r=>r.mint));
  }catch{} // Table absent on isolated staging DB.
  try{
-  const rows=await env.STAGE_DB.prepare("SELECT token_ca AS mint FROM predictions ORDER BY id DESC LIMIT 150").all();
+  const rows=await env.STAGE_DB.prepare("SELECT token_ca AS mint FROM predictions ORDER BY created_at DESC,id DESC LIMIT 150").all();
   all.push(...(rows.results||[]).map(r=>r.mint));
  }catch{}
  return tokenMints(all);
