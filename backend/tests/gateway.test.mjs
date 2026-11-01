@@ -446,8 +446,8 @@ test('cinematic Hunter V2 mirrors approved mockup without replacing live researc
  assert.ok(html.indexOf('id="cockpitDashboard"')<html.indexOf('<!-- RESEARCH_PANEL -->'));
  const marker=html.indexOf('/* Hunter V2 UI companion: read-only');
  const companion=html.slice(marker);
- assert.match(companion,/get\('\/api\/research\/latest'\)/);
- assert.match(companion,/get\('\/api\/research\/history\?limit=10&offset=0'\)/);
+ assert.match(companion,/get\('\/api\/research\/latest','latest'\)/);
+ assert.match(companion,/get\('\/api\/research\/history\?limit=10&offset=0','history'\)/);
  assert.match(companion,/c\.database_records/);
  assert.match(companion,/c\.total_records/);
  assert.match(companion,/c\.unique_mints/);
@@ -560,7 +560,7 @@ test('D1 read-quota audit: frontend does not multiply expensive query polling',(
  assert.ok(!archive.includes('fetch('));
  assert.match(html,/Scheduler\.register\('autoScan',[^\n]*180000/);
  assert.match(html,/window\.setInterval\([^\n]*180000/);
- assert.match(html,/latest\.dataStatus==='STALE'\|\|history\.dataStatus==='STALE'/);
+ assert.match(html,/\[latest,history\]\.some\(d=>d\?\.dataStatus==='STALE'\)/);
  assert.match(gatewaySource,/cachedResearch\(new Request\(u.origin\+'\/api\/research\/latest'\)/);
  assert.match(gatewaySource,/cachedResearch\(new Request\(new URL\('\/api\/research\/history/);
  assert.match(gatewaySource,/invalidateResearchCache\(request.url\)/);
