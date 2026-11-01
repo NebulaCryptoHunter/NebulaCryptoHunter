@@ -1,9 +1,10 @@
 // Cache aggregate scans separately: exact totals need not rescan legacy tables every HUD refresh.
 async function aggregateCache(key,produce){
- const url='https://nebula.internal/canonical-d1-aggregate-v1/'+key;
+ const url='https://nebula.internal/canonical-d1-aggregate-v2/'+key;
  try{const r=await globalThis.caches?.default?.match(url);if(r){const saved=await r.json();if(Array.isArray(saved.results))return saved}}catch{}
+ // Six-hour aggregate TTL reduces table-count scans across globally distributed POPs; countsAsOf remains explicit.
  const result={...await produce(),countsAsOf:new Date().toISOString()};
- try{await globalThis.caches?.default?.put(url,Response.json(result,{headers:{'Cache-Control':'public,max-age=3600'}}))}catch{}
+ try{await globalThis.caches?.default?.put(url,Response.json(result,{headers:{'Cache-Control':'public,max-age=21600'}}))}catch{}
  return result;
 }
 export async function researchData(db){
