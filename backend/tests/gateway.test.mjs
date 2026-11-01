@@ -358,3 +358,11 @@ test('canonical D1 read layer tracks both sources without copying legacy rows',(
  assert.match(gw,/\/api\/research\/history/);
  assert.match(gw,/unifiedHistory\(env.RESEARCH_DB/);
 });
+
+test('unified source counts survive radar feed reconciliation',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ assert.match(html,/tot:S\.serverResearchCounts\?\.unique_mints\?\?feedBus\.length/);
+ assert.match(html,/dbTotal:S\.serverResearchCounts\?\.total_records\?\?S\.dash\.dbTotal\?\?0/);
+ assert.doesNotMatch(html,/async function loadStats\(\)\{const json=await apiGet\('\/stats'\)/);
+ assert.match(html,/\/api\/research\/history\?limit=/);
+});
