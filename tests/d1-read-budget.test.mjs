@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,existsSync} from 'node:fs';
 import {researchData} from '../backend/workers/research-api.mjs';
 
 test('D1 latest research uses bounded recent rows and preserves newest unique Solana pairs',async()=>{
@@ -51,4 +51,13 @@ test('only evaluation Worker invokes research evaluator on 30 minute scheduled t
  assert.doesNotMatch(scanner,/evaluateResearch\(env\.STAGE_DB\)/);
  assert.match(scanner,/await runScheduledScan\(event,env\)/);
  assert.match(evalWorker,/evaluateResearch\(env\.RESEARCH_DB\)/);
+});
+
+test('scanner Wrangler resolves its main relative to backend and preserves required secret names',()=>{
+ const config=JSON.parse(readFileSync(new URL('../backend/wrangler.scanner.jsonc',import.meta.url),'utf8'));
+ assert.equal(config.name,'nebula-scanner');
+ assert.ok(existsSync(new URL('../backend/'+config.main,import.meta.url)));
+ assert.deepEqual(config.secrets.required,['INTERNAL_TOKEN','MANUAL_SCAN_TOKEN']);
+ assert.equal(config.d1_databases[0].database_name,'nebula-db');
+ assert.deepEqual(config.triggers.crons,['*/30 * * * *']);
 });
