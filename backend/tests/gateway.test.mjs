@@ -420,9 +420,11 @@ test('hero header uses Hunter NEBULA signature, without changing app identity',(
 test('cinematic Hunter V2 mirrors approved mockup without replacing live research data',()=>{
  const html=fs.readFileSync('index.html','utf8');
  const assets='/assets/nebula-hunter-v2/';
- for(const name of ['01_background_nebula.svg','02_spaceship_hunter.svg','03_planet_hologram.svg','04_cockpit_console.svg']){
-   const file=fs.readFileSync('.'+assets+name,'utf8');
-   assert.ok(file.startsWith('<svg '),'Expected the approved GitHub SVG: '+name);
+ for(const name of ['01_background_nebula_hd.webp','02_spaceship_hunter_hd.webp','03_planet_hologram_hd.webp','04_cockpit_console_hd.webp']){
+   const file=fs.readFileSync('.'+assets+name);
+   assert.ok(file.length>100_000,'HD asset unexpectedly small: '+name);
+   assert.equal(file.toString('ascii',0,4),'RIFF','Not a real WebP file: '+name);
+   assert.equal(file.toString('ascii',8,12),'WEBP','Not WebP data: '+name);
    assert.ok(html.includes('assets/nebula-hunter-v2/'+name),'HUD should reference '+name);
  }
  assert.match(html,/NEBULA HUNTER V2 — Cinematic tactical bridge/);
@@ -535,4 +537,15 @@ test('Hunter indicators and independent panel scrolling remain intact',()=>{
  const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
  assert.equal(scripts.length,1);
  for(const m of scripts)new vm.Script(m[1]);
+});
+
+test('HD WebP layers replace SVG without losing original controls or static responsive layout',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ assert.ok(!html.includes('assets/nebula-hunter-v2/01_background_nebula.svg'));
+ for(const name of ['01_background_nebula_hd.webp','02_spaceship_hunter_hd.webp','03_planet_hologram_hd.webp','04_cockpit_console_hd.webp'])assert.ok(html.includes('assets/nebula-hunter-v2/'+name));
+ assert.ok(html.includes('NEBULA HUNTER V2.1 — fixed single-viewport command bridge'));
+ for(const id of ['scanBtn','syncBtn','autoPumpToggleBtn','historyBtn','watchlistBtn','exportBtn','auditBtn','debugBtn','hunterTabAi','hunterTabRadar','hunterTabHistory','hunterDatabaseValue','hunterPredictionValue','hunterUniqueValue','radarFeed','hunterRecentList'])assert.ok(html.includes('id="'+id+'"'),id+' missing');
+ assert.ok(html.includes('data-hunter-tab="history"'));
+ assert.ok(html.includes('class="hunter-cockpit-footer"'));
+ assert.ok(html.includes('HUNT BEFORE THE HYPE.'));
 });
