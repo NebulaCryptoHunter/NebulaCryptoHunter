@@ -32,7 +32,7 @@ async function init(){
  try{
   const [session,health]=await Promise.all([fetch('/api/auth/me',{cache:'no-store'}),fetch('/health',{cache:'no-store'})]);
   const user=await session.json(),state=await health.json();
-  if(!session.ok||user.user?.role!=='SUPER_ADMIN'){status.textContent='Masuk sebagai Admin pada halaman Akun NEBULA untuk memindai. SINKRON tetap tersedia untuk semua pengguna.';return;}
+  if(!session.ok||user.user?.role!=='SUPER_ADMIN'||user.user?.mustChangePassword){status.textContent='Masuk sebagai Admin pada halaman Akun NEBULA untuk memindai. SINKRON tetap tersedia untuk semua pengguna.';return;}
   if(!health.ok||!state.manualScanAvailable){status.textContent='Akun Admin aktif, tetapi scanner manual belum siap. Scanner otomatis tetap berjalan.';return;}
   form.hidden=false;status.textContent='Admin terverifikasi. Scan manual dapat membaca maksimal 5 mint dan menyimpan observasi ke server.';
  }catch{status.textContent='Tidak dapat memverifikasi akun atau layanan. Coba muat ulang halaman.';}
