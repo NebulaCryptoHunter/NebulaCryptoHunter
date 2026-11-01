@@ -367,7 +367,7 @@ test('unified source counts survive radar feed reconciliation',()=>{
  assert.match(html,/\/api\/research\/history\?limit=/);
 });
 
-test('DB is one research database, PRED is all records, UNIQUE is distinct coin mints',()=>{
+test('DATABASE counts research rows, PREDICTION counts decisions, UNIQUE counts mints',()=>{
  const html=fs.readFileSync('index.html','utf8');
  const api=fs.readFileSync('backend/workers/research-api.mjs','utf8');
  assert.match(api,/AS database_records/);
