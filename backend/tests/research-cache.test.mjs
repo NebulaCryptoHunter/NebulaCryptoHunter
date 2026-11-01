@@ -86,3 +86,10 @@ test('concurrent cache requests share one D1 producer per isolate',async()=>{
   assert.ok(responses.every(x=>x.ok));
  }finally{if(old===undefined)delete globalThis.caches;else globalThis.caches=old}
 });
+
+test('D1 limit marker produces an explicit retry response, not a fabricated success',async()=>{
+ assert.equal(d1DailyLimitError(Error('D1_DAILY_READ_LIMIT')),true);
+ const response=quotaResponse(Error('D1_DAILY_READ_LIMIT'));
+ assert.equal(response.status,503);
+ assert.equal((await response.json()).error,'D1_DAILY_READ_LIMIT');
+});
