@@ -38,7 +38,7 @@ export default {async fetch(request,env){
   return json({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null});
  }
  if(path==='/api/research/scan'&&method==='POST'){
-  const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN')return json({error:'ADMIN_REQUIRED'},401);
+  const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN'||Number(user.must_change_password)===1)return json({error:Number(user?.must_change_password)===1?'PASSWORD_CHANGE_REQUIRED':'ADMIN_REQUIRED'},401);
   if(!env.SCANNER||!env.MANUAL_SCAN_TOKEN)return json({error:'SCANNER_NOT_CONFIGURED'},503);
   const b=await request.json();if(!Array.isArray(b?.mints)||b.mints.length<1||b.mints.length>5||!b.mints.every(mintOK))return json({error:'INVALID_MINTS'},400);
   // Only the authenticated Admin can invoke the private Worker service. Never expose tokens or raw provider payload.
@@ -60,7 +60,7 @@ export default {async fetch(request,env){
  if(isProxy){
   if(!['GET','POST'].includes(method))return json({error:'METHOD_NOT_ALLOWED'},405);
   if(method==='POST'&&path!=='/helius/rpc'){
-   const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN')return json({error:'ADMIN_REQUIRED'},401);
+   const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN'||Number(user.must_change_password)===1)return json({error:Number(user?.must_change_password)===1?'PASSWORD_CHANGE_REQUIRED':'ADMIN_REQUIRED'},401);
   }
   if(method==='GET'&&path.startsWith('/api/v1/')&&!publicReads.has(path)&&!/^\/api\/v1\/(providers|holders)\//.test(path))return json({error:'NOT_FOUND'},404);
   const headers=new Headers(request.headers);headers.delete('Cookie');headers.delete('Authorization');headers.delete('X-API-Key');headers.delete('Origin');
