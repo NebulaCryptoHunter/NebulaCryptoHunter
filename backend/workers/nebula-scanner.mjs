@@ -28,37 +28,135 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
  return results.sort((a,b)=>(b.momentum.volumeLiquidityRatio??-1)-(a.momentum.volumeLiquidityRatio??-1));
 }
 async function diagnostic(env,stage,status,detail){try{await env.STAGE_DB.prepare("INSERT INTO scanner_diagnostics (observed_at,stage,status,detail) VALUES (?,?,?,?)").bind(new Date().toISOString(),stage,status,String(detail).slice(0,300)).run()}catch(e){console.error("diagnostic_write_failed",String(e))}}
-export async function runScheduledScan(event,env){
- await env.STAGE_DB.prepare("UPDATE scanner_runs SET status='FAILED',completed_at=?,error='RUN_TIMEOUT_RECOVERED' WHERE status='RUNNING' AND started_at<?").bind(new Date().toISOString(),new Date(Date.now()-15*60*1000).toISOString()).run();
- const key='cron:'+Math.floor(event.scheduledTime/1800000),now=new Date().toISOString();
- const inserted=await env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_runs(schedule_key,started_at,status) VALUES (?,?,'RUNNING')").bind(key,now).run();
- if(!inserted.meta.changes)return;
- const runId=inserted.meta.last_row_id,results=[];let status='COMPLETED',error=null,selected=[];
- try{
-  const state=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key='discovery_cooldown_until'").first();
-  let profiles=[];
-  if(Number(state?.value)>Date.now()){status='RATE_LIMITED';error='Provider cooldown active';}
-  else {
-   const response=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(8000)});
-   if(!response.ok){if(response.status===429){status='RATE_LIMITED';await env.STAGE_DB.prepare("INSERT INTO scanner_state(key,value) VALUES ('discovery_cooldown_until',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(Date.now()+1800000)).run();error='Discovery HTTP 429';}else throw Error('Discovery HTTP '+response.status);}
-   else profiles=await response.json();if(!Array.isArray(profiles))throw Error('Invalid discovery response');
-  }
-  {
-   const discovered=[...new Set(profiles.filter(p=>p.chainId==='solana'&&mintOk(p.tokenAddress)).map(p=>p.tokenAddress))];
-   const {results:tracked}=await env.STAGE_DB.prepare("SELECT mint,MAX(observed_at) last_seen FROM scanner_snapshots GROUP BY mint ORDER BY last_seen ASC LIMIT 2").all();
-   selected=[...new Set([...discovered.slice(0,3),...tracked.map(p=>p.mint),...discovered.slice(3)])].filter(mintOk).slice(0,5);
-   for(const mint of selected){
-    const r=await worker.fetch(new Request('https://scanner.internal/pipeline?persist=1&mint='+mint,{headers:{Authorization:'Bearer '+env.INTERNAL_TOKEN}}),env);
-    const d=await r.json();results.push({mint,status:r.status,snapshots:d.persisted?d.items?.length||0:0,error:d.error||null});
-    if(r.status===429){status='RATE_LIMITED';await setCooldown(env);break;}
-    if(!r.ok)status='PARTIAL';
-   }
-   if(status==='COMPLETED'&&(!selected.length||results.every(x=>x.status===200&&x.snapshots===0)))status='EMPTY';
-  }
- }catch(e){if(status!=='RATE_LIMITED')status='FAILED';error=String(e.message).slice(0,200);}
- await env.STAGE_DB.prepare("UPDATE scanner_runs SET completed_at=?,status=?,selected_count=?,snapshot_count=?,results_json=?,error=? WHERE id=?").bind(new Date().toISOString(),status,selected.length,results.reduce((n,x)=>n+x.snapshots,0),JSON.stringify(results),error,runId).run();
- await diagnostic(env,'scheduled',status,'Round '+runId+'; '+results.length+' tokens processed');
+
+const BATCH_MAX_MINTS=12;
+const DISCOVERY_INTERVAL_MS=6*60*60*1000;
+const BACKOFF_BASE_MS=60*60*1000;
+const MAX_BACKOFF_MS=12*60*60*1000;
+async function getState(env,key){
+ const r=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key=?").bind(key).first();
+ return r?.value??null;
 }
+async function putState(env,key,value){
+ await env.STAGE_DB.prepare("INSERT INTO scanner_state(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key,String(value)).run();
+}
+function tokenMints(values){return [...new Set(values.filter(mintOk))];}
+async function providerBackoff(env,kind,response){
+ const key=kind==='discovery'?'discovery_backoff_level':'provider_backoff_level';
+ const untilKey=kind==='discovery'?'discovery_cooldown_until':'cooldown_until';
+ const level=Math.min(5,(Number(await getState(env,key))||0)+1);
+ const seconds=response?.headers?.get?.('retry-after');
+ const retry=seconds&&/^\d+$/.test(seconds)?Number(seconds)*1000:0;
+ const delay=Math.min(MAX_BACKOFF_MS,Math.max(BACKOFF_BASE_MS*Math.pow(2,level-1),retry));
+ await putState(env,key,level);
+ await putState(env,untilKey,Date.now()+delay);
+ return delay;
+}
+async function availablePool(env){
+ const all=[];
+ // New discovery is supplemented with historical known mints and the user's watchlist.
+ try{
+  const rows=await env.STAGE_DB.prepare("SELECT mint FROM scanner_snapshots GROUP BY mint ORDER BY MAX(observed_at) ASC LIMIT 150").all();
+  all.push(...(rows.results||[]).map(r=>r.mint));
+ }catch{}
+ try{
+  const rows=await env.STAGE_DB.prepare("SELECT token_ca AS mint FROM watchlist ORDER BY updated_at DESC LIMIT 30").all();
+  all.push(...(rows.results||[]).map(r=>r.mint));
+ }catch{} // Table absent on isolated staging DB.
+ try{
+  const rows=await env.STAGE_DB.prepare("SELECT token_ca AS mint FROM predictions ORDER BY id DESC LIMIT 150").all();
+  all.push(...(rows.results||[]).map(r=>r.mint));
+ }catch{}
+ return tokenMints(all);
+}
+export async function runScheduledScan(event,env){
+ if(!env.STAGE_DB||!env.INTERNAL_TOKEN||!env.AI_ENGINE)throw Error("SCANNER_BINDING_MISSING");
+ const now=Date.now(),startISO=new Date(now).toISOString();
+ await env.STAGE_DB.prepare("UPDATE scanner_runs SET status='FAILED',completed_at=?,error='RUN_TIMEOUT_RECOVERED' WHERE status='RUNNING' AND started_at<?").bind(startISO,new Date(now-15*60*1000).toISOString()).run();
+ const scheduledTime=Number(event?.scheduledTime)||now;
+ const scheduleKey='cron:'+Math.floor(scheduledTime/1800000);
+ const created=await env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_runs(schedule_key,started_at,status) VALUES (?,?,'RUNNING')").bind(scheduleKey,startISO).run();
+ if(!created.meta?.changes)return {status:'SKIPPED_DUPLICATE',scheduleKey};
+ const runId=created.meta.last_row_id;
+ let status='COMPLETED',error=null,selected=[],snapshotCount=0,results=[],profilesWarning=null;
+ try{
+  if(Number(await getState(env,'cooldown_until'))>now){
+   status='RATE_LIMITED';error='Provider backoff active; no HTTP requests sent';
+  }else{
+   let cached=[];
+   try{cached=JSON.parse(await getState(env,'discovery_cached_mints')||'[]')}catch{}
+   if(!Array.isArray(cached))cached=[];
+   const discoveryDue=Number(await getState(env,'discovery_next_at'))<=now;
+   if(discoveryDue&&Number(await getState(env,'discovery_cooldown_until'))<=now){
+    // Once per six hours, not once per 30-minute run.
+    await putState(env,'discovery_next_at',now+DISCOVERY_INTERVAL_MS);
+    try{
+     const response=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(8000)});
+     if(response.status===429){
+      await providerBackoff(env,'discovery',response);
+      profilesWarning='Discovery HTTP 429; falling back to cached/tracked mints';
+     }else if(!response.ok){profilesWarning='Discovery HTTP '+response.status;}
+     else {
+      const profiles=await response.json();
+      if(!Array.isArray(profiles))throw Error('Invalid discovery payload');
+      cached=tokenMints(profiles.filter(p=>p.chainId==='solana').map(p=>p.tokenAddress)).slice(0,80);
+      await putState(env,'discovery_cached_mints',JSON.stringify(cached));
+      await putState(env,'discovery_backoff_level','0');
+      await putState(env,'discovery_cooldown_until','0');
+     }
+    }catch(e){profilesWarning='Discovery unavailable: '+String(e.message).slice(0,100);}
+   }
+   const known=await availablePool(env);
+   const pool=tokenMints([...cached,...known]);
+   if(!pool.length){status='EMPTY';error='No valid mints discovered or tracked';}
+   else{
+    const cursor=Math.max(0,Number(await getState(env,'rotation_index'))||0)%pool.length;
+    selected=Array.from({length:Math.min(BATCH_MAX_MINTS,pool.length)},(_,i)=>pool[(cursor+i)%pool.length]);
+    // At most ONE DexScreener price request per run for up to 12 mints.
+    const response=await fetch('https://api.dexscreener.com/tokens/v1/solana/'+selected.map(encodeURIComponent).join(','),{signal:AbortSignal.timeout(10000)});
+    if(response.status===429){status='RATE_LIMITED';const delay=await providerBackoff(env,'pairs',response);error='Batch pricing HTTP 429; backoff '+Math.round(delay/60000)+' min';}
+    else if(!response.ok){status='FAILED';error='Batch pricing HTTP '+response.status;}
+    else{
+     const data=await response.json();
+     if(!Array.isArray(data))throw Error('Invalid batch pricing response');
+     const items=scanPairs(data.filter(p=>selected.includes(p?.baseToken?.address)));
+     const grouped=new Map();
+     for(const item of items){
+      const bucket=grouped.get(item.base.mint)||[];
+      if(bucket.length<3)bucket.push(item);
+      grouped.set(item.base.mint,bucket);
+     }
+     const chosen=[...grouped.values()].flat().slice(0,100);
+     if(chosen.length){
+      const scored=await env.AI_ENGINE.fetch('https://nebula-ai-engine.internal/score',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+env.INTERNAL_TOKEN},body:JSON.stringify({items:chosen})});
+      if(!scored.ok)throw Error('AI Engine HTTP '+scored.status);
+      const body=await scored.json();
+      if(!Array.isArray(body.results)||body.results.length!==chosen.length)throw Error('AI Engine response length mismatch');
+      const statements=[];
+      for(let i=0;i<chosen.length;i++){
+       const c=chosen[i],v=body.results[i];
+       if(v?.mint!==c.base.mint||v?.pairAddress!==c.pairAddress)throw Error('AI score identity mismatch');
+       statements.push(env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_snapshots(mint,pair_address,observed_at,liquidity_usd,volume_24h,change_24h,payload_json) VALUES (?,?,?,?,?,?,?)").bind(c.base.mint,c.pairAddress,c.observedAt,c.liquidityUsd,c.volume24h,c.change24h,JSON.stringify(c)));
+       statements.push(env.STAGE_DB.prepare("INSERT OR IGNORE INTO engine_scores(mint,pair_address,observed_at,model,decision,score,payload_json) VALUES (?,?,?,?,?,?,?)").bind(v.mint,v.pairAddress,c.observedAt,v.model,v.decision,v.score,JSON.stringify({...v,observedAt:c.observedAt,source:c.source})));
+      }
+      await env.STAGE_DB.batch(statements);
+      snapshotCount=chosen.length;
+     }
+     results=selected.map(mint=>({mint,status:200,snapshots:grouped.get(mint)?.length||0}));
+     await putState(env,'rotation_index',(cursor+selected.length)%pool.length);
+     await putState(env,'provider_backoff_level','0');
+     await putState(env,'cooldown_until','0');
+     status=snapshotCount?'COMPLETED':'EMPTY';
+     if(profilesWarning)error=profilesWarning;
+    }
+   }
+  }
+ }catch(e){status='FAILED';error=String(e?.message||e).slice(0,220);}
+ await env.STAGE_DB.prepare('UPDATE scanner_runs SET completed_at=?,status=?,selected_count=?,snapshot_count=?,results_json=?,error=? WHERE id=?').bind(new Date().toISOString(),status,selected.length,snapshotCount,JSON.stringify(results),error,runId).run();
+ await diagnostic(env,'scheduled',status,'Batch '+runId+'; '+selected.length+' mints; '+snapshotCount+' snapshots; '+String(error||'').slice(0,100));
+ return {status,selectedCount:selected.length,snapshotCount,error};
+}
+
 async function setCooldown(env){await env.STAGE_DB.prepare("INSERT INTO scanner_state(key,value) VALUES ('cooldown_until',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(Date.now()+30*60*1000)).run();}
 const worker={async scheduled(event,env,ctx){
  ctx.waitUntil((async()=>{await runScheduledScan(event,env);await evaluateResearch(env.STAGE_DB)})());
