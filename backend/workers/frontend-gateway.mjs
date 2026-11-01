@@ -58,7 +58,7 @@ export default {async fetch(request,env){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   const limit=Number.parseInt(u.searchParams.get('limit')||'25',10);
   const offset=Number.parseInt(u.searchParams.get('offset')||'0',10);
-  return await cachedResearch(new Request(new URL('/api/research/history?limit='+Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25))+'&offset='+Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0)),u.origin)),()=>unifiedHistory(env.RESEARCH_DB,{limit,offset}),{freshMs:600000});
+  return await cachedResearch(new Request(new URL('/api/research/history?limit='+Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25))+'&offset='+Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0)),u.origin)),()=>unifiedHistory(env.RESEARCH_DB,{limit,offset}),{freshMs:1800000});
  }
  if(path==='/api/research/scan-now'&&method==='POST'){
   // One-click primary SCAN: private Worker-to-Worker call, never accept mint/pair payload from the browser.
