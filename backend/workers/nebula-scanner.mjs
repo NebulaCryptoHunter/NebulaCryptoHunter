@@ -1,7 +1,6 @@
 import {selectScanMints} from './scanner-selection.mjs';
 import {marketPairs,discoverMints,marketFeed} from './market-sources.mjs';
 import {d1DailyLimitError,resetUTC} from './research-cache.mjs';
-import {evaluateResearch} from './research-evaluation.mjs';
 // NEBULA scanner: deterministic token identity and pool-specific discovery.
 // Research-only: staging D1 snapshots and scores; no trading.
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
@@ -139,7 +138,7 @@ export async function runScheduledScan(event,env){
 
 export async function liveOnlyScan(){const feed=await marketFeed();return {success:feed.items.length>0,status:'LIVE_ONLY',selectedCount:feed.items.length,snapshotCount:0,persisted:false,warning:'D1_DAILY_READ_LIMIT',resetAt:resetUTC(Date.now()),items:feed.items,providerAttempts:feed.providerAttempts};}
 const worker={async scheduled(event,env,ctx){
- ctx.waitUntil((async()=>{try{await runScheduledScan(event,env);await evaluateResearch(env.STAGE_DB)}catch(e){if(!d1DailyLimitError(e))throw e;const live=await liveOnlyScan();console.warn('scanner_live_only',JSON.stringify({status:live.status,items:live.items.length,persisted:false,resetAt:live.resetAt}));}})());
+ ctx.waitUntil((async()=>{try{await runScheduledScan(event,env)}catch(e){if(!d1DailyLimitError(e))throw e;const live=await liveOnlyScan();console.warn('scanner_live_only',JSON.stringify({status:live.status,items:live.items.length,persisted:false,resetAt:live.resetAt}));}})());
 },async fetch(request,env){
  const u=new URL(request.url);
  if(u.pathname==='/run'&&request.method==='POST'){
