@@ -1735,7 +1735,7 @@ const feedMap=new Map(); let feedBus=[];
 const escapeHTML=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const getName=t=>t.identity?.name||t.name||t.ca?.slice(0,6)||'???';
 function getTokenDexUrl(token){const ca=token?.ca;if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca||''))return null;return 'https://dexscreener.com/solana/'+ca;}
-function openDexLink(token){const url=getTokenDexUrl(token);if(!url){showScanFeedback('Alamat mint Solana tidak valid. Tautan DEX tidak dibuka.');return;}const opened=window.open(url,'_blank','noopener,noreferrer');if(!opened&&window.matchMedia('(display-mode: standalone)').matches)window.location.assign(url);}
+function openDexLink(token){const url=getTokenDexUrl(token);if(!url){showScanFeedback('Alamat mint Solana tidak valid. Tautan DEX tidak dibuka.');return;}const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener noreferrer';document.body.append(link);link.click();link.remove();}
 
 function sortFeed(){
   feedBus.sort((a,b)=>{
