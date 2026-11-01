@@ -37,7 +37,7 @@ export default {async fetch(request,env){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   let archived=null,fallbackReason='D1_DAILY_READ_LIMIT';
   try{
-   const response=await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:180000});
+   const response=await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:600000});
    archived=await response.clone().json();
    const newest=Math.max(0,...(archived.items||[]).map(x=>Date.parse(x.observed_at)||0));
    const observationsOld=newest>0&&Date.now()-newest>60*60*1000;
