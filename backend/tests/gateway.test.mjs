@@ -69,7 +69,7 @@ test('legacy predictions and scanner candidates share a single history timeline 
  assert.doesNotMatch(html,/fetch\('\/api\/v1\/predictions\?limit=/);
  assert.match(html,/legacyArchiveCount=n/);
  assert.match(html,/function showHistoryPanel\(offset=0\)/);
- assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.research_databases/);
+ assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.database_records/);
  assert.match(html,/S\.dash\.tot=json\.counts\?\.unique_mints/);
  assert.match(html,/S\.serverResearchCounts=json\.counts/);
  assert.match(html,/row\.record_source==='LEGACY'/);
@@ -362,15 +362,15 @@ test('canonical D1 read layer tracks both sources without copying legacy rows',(
 test('unified source counts survive radar feed reconciliation',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/tot:S\.serverResearchCounts\?\.unique_mints\?\?feedBus\.length/);
- assert.match(html,/dbTotal:S\.serverResearchCounts\?\.research_databases\?\?S\.dash\.dbTotal\?\?null/);
+ assert.match(html,/dbTotal:S\.serverResearchCounts\?\.database_records\?\?S\.dash\.dbTotal\?\?null/);
  assert.doesNotMatch(html,/async function loadStats\(\)\{const json=await apiGet\('\/stats'\)/);
  assert.match(html,/\/api\/research\/history\?limit=/);
 });
 
-test('DB is one research database, PRED is all records, UNIQUE is distinct coin mints',()=>{
+test('DATABASE counts research rows, PREDICTION counts decisions, UNIQUE counts mints',()=>{
  const html=fs.readFileSync('index.html','utf8');
  const api=fs.readFileSync('backend/workers/research-api.mjs','utf8');
- assert.match(api,/1 AS research_databases/);
+ assert.match(api,/AS database_records/);
  assert.match(api,/total_records/);
  assert.match(api,/unique_mints/);
  assert.match(html,/id:'dash-db',lbl:'DATABASE'/);
@@ -380,6 +380,28 @@ test('DB is one research database, PRED is all records, UNIQUE is distinct coin 
  assert.match(html,/updatePanel\('dash-db',S\.dash\.dbTotal\?\?'—'/);
  assert.match(html,/updatePanel\('dash-pred',S\.serverResearchCounts\?\.total_records/);
  assert.match(html,/updatePanel\('dash-unique',S\.dash\.tot/);
- assert.match(html,/research_databases\?\?S\.dash\.dbTotal/);
+ assert.match(html,/database_records\?\?S\.dash\.dbTotal/);
  assert.match(html,/unique_mints\?\?feedBus\.length/);
+});
+
+test('DATABASE sums core research records; PREDICTION and UNIQUE retain their distinct definitions',()=>{
+ const research=fs.readFileSync('backend/workers/research-api.mjs','utf8');
+ const html=fs.readFileSync('index.html','utf8');
+ const expected=[
+  'predictions','prediction_candidates','scanner_snapshots','engine_scores',
+  'evaluations','candidate_evaluations','scanner_runs'
+ ];
+ const query=research.match(/\`SELECT \(SELECT COUNT\(\*\) FROM scanner_snapshots\)[^\`]*\`/);
+ assert.ok(query,'Research counts query exists');
+ const segment=query[0].split(' AS database_records')[0].split(' total_records,')[1];
+ assert.ok(segment,'DB formula is distinct from PREDICTION');
+ for(const table of expected) assert.ok(segment.includes('FROM '+table+')'),table+' missing from DATABASE count');
+ assert.doesNotMatch(segment,/research_databases/);
+ assert.match(research,/\) total_records,/);
+ assert.match(research,/\) unique_mints/);
+ assert.match(html,/lbl:'DATABASE'/);
+ assert.match(html,/lbl:'PREDICTION'/);
+ assert.match(html,/lbl:'UNIQUE'/);
+ assert.match(html,/total_records\?\?S\.predictionHistory\.length/);
+ assert.match(html,/database_records\?\?S\.dash\.dbTotal/);
 });
