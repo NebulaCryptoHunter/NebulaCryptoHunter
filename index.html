@@ -1464,6 +1464,7 @@ setTimeout(()=>{
    const list=document.getElementById(id);if(!list)continue;
    list.addEventListener('scroll',()=>update(id),{passive:true});
    list.addEventListener('keydown',e=>{
+     if(e.target!==list)return; // preserve keyboard behavior for token action buttons
      const move={ArrowDown:60,ArrowUp:-60,PageDown:Math.max(180,list.clientHeight*.8),PageUp:-Math.max(180,list.clientHeight*.8)};
      if(Object.prototype.hasOwnProperty.call(move,e.key)){e.preventDefault();list.scrollBy({top:move[e.key],behavior:'smooth'})}
      if(e.key==='Home'||e.key==='End'){e.preventDefault();list.scrollTo({top:e.key==='Home'?0:list.scrollHeight,behavior:'smooth'})}
