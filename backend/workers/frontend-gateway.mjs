@@ -49,7 +49,11 @@ export default {async fetch(request,env){
    const status=['COMPLETED','EMPTY','RATE_LIMITED','FAILED','SKIPPED_DUPLICATE'].includes(data?.status)?data.status:'UNKNOWN';
    const selectedCount=Number.isSafeInteger(data?.selectedCount)&&data.selectedCount>=0?data.selectedCount:0;
    const snapshotCount=Number.isSafeInteger(data?.snapshotCount)&&data.snapshotCount>=0?data.snapshotCount:0;
-   if(response.status===429)return json({success:false,error:status==='SKIPPED_DUPLICATE'?'UPSTREAM_RATE_LIMITED':'UPSTREAM_RATE_LIMITED',status,selectedCount,snapshotCount},429);
+   if(response.status===429){
+    const error=['PROVIDER_COOLDOWN','MANUAL_SCAN_COOLDOWN'].includes(data?.error)?data.error:(status==='SKIPPED_DUPLICATE'?'MANUAL_SCAN_COOLDOWN':'PROVIDER_COOLDOWN');
+    const time=typeof data?.retryAt==='string'?Date.parse(data.retryAt):NaN;
+    return json({success:false,error,status,selectedCount,snapshotCount,retryAt:Number.isFinite(time)&&time>Date.now()?new Date(time).toISOString():null},429);
+   }
    if(!response.ok||data?.success!==true)return json({success:false,error:'SCANNER_FAILED',status,selectedCount,snapshotCount},502);
    return json({success:true,status,selectedCount,snapshotCount});
   }catch{return json({success:false,error:'SCANNER_UNAVAILABLE'},502);}

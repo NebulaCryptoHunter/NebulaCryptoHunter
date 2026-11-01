@@ -170,10 +170,26 @@ const worker={async scheduled(event,env,ctx){
   if(!internalAuthorized&&!manualAuthorized)return reply({error:'UNAUTHORIZED'},401);
   if(!env.STAGE_DB||!env.AI_ENGINE||!env.INTERNAL_TOKEN)return reply({error:'SCANNER_BINDING_MISSING'},503);
   try{
-   const result=await runScheduledScan({scheduledTime:Date.now(),kind:manualAuthorized&&!internalAuthorized?'manual':'cron'},env);
-   if(result.status==='SKIPPED_DUPLICATE')return reply({success:false,...result},429);
-   if(result.status==='RATE_LIMITED')return reply({success:false,...result},429);
-   if(result.status==='FAILED')return reply({success:false,...result},502);
+   const isManual=manualAuthorized&&!internalAuthorized;
+   // Do not consume a 15-minute manual-scan slot while provider cooldown is in effect.
+   if(isManual){
+    const state=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
+    const until=Number(state?.value);
+    if(Number.isFinite(until)&&until>Date.now())
+     return reply({success:false,error:'PROVIDER_COOLDOWN',status:'RATE_LIMITED',retryAt:new Date(until).toISOString(),selectedCount:0,snapshotCount:0},429);
+   }
+   const result=await runScheduledScan({scheduledTime:Date.now(),kind:isManual?'manual':'cron'},env);
+   if(result.status==='SKIPPED_DUPLICATE'){
+    const retryAt=isManual?new Date((Math.floor(Date.now()/900000)+1)*900000).toISOString():null;
+    return reply({success:false,error:isManual?'MANUAL_SCAN_COOLDOWN':'SCANNER_DUPLICATE',...result,retryAt},429);
+   }
+   if(result.status==='RATE_LIMITED'){
+    const state=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
+    const until=Number(state?.value);
+    const retryAt=Number.isFinite(until)&&until>Date.now()?new Date(until).toISOString():null;
+    return reply({success:false,error:'PROVIDER_COOLDOWN',...result,retryAt},429);
+   }
+   if(result.status==='FAILED')return reply({success:false,error:'SCANNER_FAILED',...result},502);
    return reply({success:true,...result});
   }catch{return reply({success:false,error:'SCANNER_UNAVAILABLE'},503);}
  }

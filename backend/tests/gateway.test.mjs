@@ -310,3 +310,45 @@ test('desktop token card headers and expanded telemetry are unclipped',()=>{
  assert.match(html,/if\(det\.style\.display==='block'\)/);
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
 });
+
+
+test('provider cooldown preflight never consumes manual 15-minute slot',async()=>{
+ const {default:worker}=await import('../workers/nebula-scanner.mjs');
+ const future=Date.now()+12*60000;
+ const sqls=[];
+ const STAGE_DB={prepare(sql){sqls.push(sql);return {async first(){return {value:String(future)}},bind(){return this},async run(){throw Error('must not write during cooldown')}}}};
+ const env={MANUAL_SCAN_TOKEN:'manual-only-secret',INTERNAL_TOKEN:'cron-only-secret',STAGE_DB,AI_ENGINE:{}};
+ const res=await worker.fetch(new Request('https://scanner.internal/run',{method:'POST',headers:{Authorization:'Bearer manual-only-secret'}}),env);
+ assert.equal(res.status,429);
+ const body=await res.json();
+ assert.equal(body.error,'PROVIDER_COOLDOWN');
+ assert.equal(body.status,'RATE_LIMITED');
+ assert.equal(body.selectedCount,0);
+ assert.equal(body.snapshotCount,0);
+ assert.equal(Date.parse(body.retryAt),future);
+ assert.equal(sqls.length,1);
+ assert.match(sqls[0],/SELECT value FROM scanner_state WHERE key='cooldown_until'/);
+ assert.ok(!sqls.some(sql=>sql.includes('INSERT OR IGNORE INTO scanner_runs')));
+});
+test('gateway distinguishes provider cooldown from manual slot and does not reveal secret',async()=>{
+ const AUTH_DB={prepare(){return {bind(){return this},async first(){return {id:'admin',role:'SUPER_ADMIN',must_change_password:0}}}}};
+ const retryAt=new Date(Date.now()+10*60000).toISOString();
+ for(const code of ['PROVIDER_COOLDOWN','MANUAL_SCAN_COOLDOWN']){
+  const response=Response.json({success:false,error:code,status:code==='PROVIDER_COOLDOWN'?'RATE_LIMITED':'SKIPPED_DUPLICATE',retryAt},{status:429});
+  const call=await gateway.fetch(post('/api/research/scan-now',{},{Cookie:'__Host-nebula_session='+'a'.repeat(64)}),{
+    AUTH_DB,MANUAL_SCAN_TOKEN:'private-gateway-test',
+    SCANNER:{fetch:async()=>response}
+  });
+  assert.equal(call.status,429);
+  const data=await call.json();
+  assert.equal(data.error,code);
+  assert.equal(data.retryAt,retryAt);
+  assert.equal(data.success,false);
+  assert.doesNotMatch(JSON.stringify(data),/private-gateway-test/);
+ }
+ const html=fs.readFileSync('index.html','utf8');
+ assert.match(html,/PROVIDER_COOLDOWN:'DexScreener membatasi permintaan/);
+ assert.match(html,/MANUAL_SCAN_COOLDOWN:'Scan manual sudah dipakai/);
+ assert.match(html,/Perkiraan dapat dicoba lagi:/);
+ assert.ok(html.includes("timeZone:'Asia/Jakarta'"));
+});
