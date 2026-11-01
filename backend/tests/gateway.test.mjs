@@ -495,3 +495,44 @@ test('tablet and phone use three accessible tabs rather than vertically scrollin
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
  assert.equal((html.match(/<script\b/g)||[]).length,1);
 });
+
+test('Hunter controls remain connected and AUTO controls read-only periodic refresh',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const ids=['scanBtn','syncBtn','autoPumpToggleBtn','historyBtn','watchlistBtn','exportBtn','auditBtn','debugBtn','hunterRecentRefresh','hunterOpenHistory','hunterTabAi','hunterTabRadar','hunterTabHistory','overlayClose'];
+ for(const id of ids)assert.ok(html.includes('id="'+id+'"'),id+' is missing');
+ for(const pattern of [
+  "$('scanBtn').onclick=Scanner.requestManualScan",
+  "$('syncBtn').onclick=Scanner.requestScan",
+  "$('historyBtn').onclick=()=>showHistoryPanel(0)",
+  "$('archiveStatus').onclick=()=>showHistoryPanel(0)",
+  "$('watchlistBtn').onclick=showWatchlistPanel",
+  "$('exportBtn').onclick=showExportPanel",
+  "$('auditBtn').onclick=showAuditPanel",
+  "$('debugBtn').onclick=()=>",
+  "$('overlayClose').onclick=()=>",
+  "el('hunterRecentRefresh')?.addEventListener('click',refresh)",
+  "el('hunterOpenHistory')?.addEventListener('click',()=>el('historyBtn')?.click())",
+ ])assert.ok(html.includes(pattern),'Missing click handler: '+pattern);
+ assert.ok(html.includes("window.setInterval(()=>{if(el('autoPumpToggleBtn')?.classList.contains('active'))void refresh()},60000)"));
+ assert.ok(html.includes("btn.setAttribute('aria-pressed',String(S.isAuto))"));
+ assert.ok(html.includes('aria-pressed="true"'));
+ assert.ok(html.includes("e.key==='Escape'&&$('overlayPanel').style.display==='block'"));
+ for(const action of ['watch','copyca','phantom','pump','dex','buy'])assert.ok(html.includes("a==='"+action+"'"),'Missing token action '+action);
+ for(const name of ['exportCSV','exportJSON','exportAIReport','showHistoryPanel','showWatchlistPanel','showAuditPanel','renderDetail'])assert.ok(html.includes('function '+name+'('),'Missing function '+name);
+});
+test('Hunter indicators and independent panel scrolling remain intact',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ for(const id of ['modeSelect','riskProfile','endpointBar','aiHealthDash','unifiedDash','cockpitDashboard','radarFeed','aiConsole','overlayPanel','overlayContent','overlayClose','heroPanel','archiveStatus','scanFeedback','nebulaServerDetails'])
+  if(id!=='nebulaServerDetails')assert.ok(html.includes('id="'+id+'"'),'Missing original subsystem '+id);
+ for(const panel of ['TRADING','PERFORMANCE','DATABASE'])assert.ok(html.includes("label:'"+panel+"'"),'Missing advanced metrics group '+panel);
+ for(const label of ['DATABASE','PREDICTION','UNIQUE'])assert.ok(html.includes("lbl:'"+label+"'"),'Missing metric '+label);
+ const css=html.slice(html.indexOf('/* NEBULA HUNTER V2.1 — fixed single-viewport'));
+ assert.match(css,/\.hunter-targets-panel \.radar-grid\{[^}]*overflow-y:auto!important/);
+ assert.match(css,/\.hunter-history-panel \.hunter-history-list\{[^}]*overflow-y:auto!important/);
+ assert.match(html,/\.overlay\s*\{[^}]*overflow-y:auto/);
+ assert.match(css,/\.hunter-advanced\[open\]\{position:fixed/);
+ for(const tab of ['ai','radar','history'])assert.ok(html.includes('data-hunter-tab="'+tab+'"'));
+ const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
+ assert.equal(scripts.length,1);
+ for(const m of scripts)new vm.Script(m[1]);
+});
