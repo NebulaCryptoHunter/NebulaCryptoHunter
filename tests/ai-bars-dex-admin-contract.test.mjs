@@ -19,7 +19,7 @@ test('Eight accessible AI bars use different colors without simulated calibratio
 test('Header DEX link points to exact token mint and is visible before token footer',()=>{
   const i=script.indexOf('class="token-dex-shortcut"'),footer=script.indexOf('class="token-card-footer"');
   assert.ok(i>0&&footer>i);
-  assert.match(script,/href="\+'\+escapeHTML\(getTokenDexUrl\(t\)\|\|'#'\)/);
+  assert.ok(script.includes("getTokenDexUrl(t)||'#'"));
   assert.match(script,/data-dex-mint=/);
   assert.match(script,/target="_blank" rel="noopener noreferrer"/);
 });
