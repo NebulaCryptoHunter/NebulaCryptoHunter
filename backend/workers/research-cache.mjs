@@ -4,7 +4,7 @@
 const MAX_STALE_MS=24*60*60*1000;
 const inflight=new Map();
 let quotaPauseUntil=0;
-export const d1DailyLimitError=error=>/daily row read limit|exceeded d1.*free tier|D1.*row.?read.?limit|code.?\D?7500|D1_QUOTA_EXCEEDED/i.test(String(error?.message||error||''));
+export const d1DailyLimitError=error=>/daily row read limit|exceeded d1.*free tier|D1.*row.?read.?limit|code.?\D?7500|D1_QUOTA_EXCEEDED|D1_DAILY_READ_LIMIT/i.test(String(error?.message||error||''));
 export const resetUTC=now=>new Date(Math.ceil((now+1)/86400000)*86400000).toISOString();
 const backoff=(error,now)=>{
  if(d1DailyLimitError(error))quotaPauseUntil=Math.max(quotaPauseUntil,Date.parse(resetUTC(now)));
@@ -36,7 +36,7 @@ export async function cachedResearch(request,producer,{freshMs=180000}={}){
  const store=findCache(),now=Date.now(),existing=await saved(store,key);
  const age=existing?now-existing.timestamp:Infinity;
  if(existing&&age<freshMs)return response(existing.payload,'CACHED',existing.timestamp);
- if(existing&&quotaPauseUntil>now)return response(existing.payload,'STALE',existing.timestamp,'D1_DAILY_READ_LIMIT');
+ if(quotaPauseUntil>now){if(existing)return response(existing.payload,'STALE',existing.timestamp,'D1_DAILY_READ_LIMIT');throw Error('D1_DAILY_READ_LIMIT')}
  if(inflight.has(key.url))return inflight.get(key.url);
  const work=(async()=>{
   try{
