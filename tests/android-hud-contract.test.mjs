@@ -17,7 +17,7 @@ test('Android tabs hide inactive AI and radar panels', () => {
 });
 
 test('Android token actions preserve the exact Solana mint and report copy errors', () => {
-  assert.match(html, /return 'https:\/\/dexscreener\.com\/solana\/\+'\s*\+\s*ca/);
+  assert.match(html, /return 'https:\/\/dexscreener\.com\/solana\/'\s*\+\s*ca/);
   assert.match(html, /async function copyToClipboard\(value\)/);
   assert.match(html, /showScanFeedback\('Alamat token gagal disalin:/);
   for (const action of ['watch', 'copyca', 'phantom', 'pump', 'dex', 'buy']) assert.ok(html.includes("data-action=\""+action+"\""));
