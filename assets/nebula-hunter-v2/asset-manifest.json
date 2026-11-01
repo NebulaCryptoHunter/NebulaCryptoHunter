@@ -1,0 +1,41 @@
+{
+  "project": "NEBULA Crypto Hunter",
+  "version": "HUD Assets V2",
+  "tagline": "HUNT BEFORE THE HYPE.",
+  "productionIntegrated": false,
+  "repoFolder": "assets/nebula-hunter-v2",
+  "assets": [
+    {
+      "id": "nebula_bg",
+      "path": "01_background_nebula.svg",
+      "role": "background",
+      "width": 1920,
+      "height": 1080,
+      "transparency": false
+    },
+    {
+      "id": "hunter_ship",
+      "path": "02_spaceship_hunter.svg",
+      "role": "foreground decoration upper-left",
+      "width": 1200,
+      "height": 700,
+      "transparency": true
+    },
+    {
+      "id": "hologram_planet",
+      "path": "03_planet_hologram.svg",
+      "role": "decoration upper-right",
+      "width": 1000,
+      "height": 1000,
+      "transparency": true
+    },
+    {
+      "id": "cockpit_frame",
+      "path": "04_cockpit_console.svg",
+      "role": "foreground bottom frame",
+      "width": 1920,
+      "height": 620,
+      "transparency": true
+    }
+  ]
+}
