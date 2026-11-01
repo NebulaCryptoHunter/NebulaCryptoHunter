@@ -34,7 +34,8 @@
     .action-row { display:flex; flex-wrap:wrap; gap:2px; width:100%; }
     .action-row button { height:24px; padding:0 4px; font-size:0.5rem; font-weight:900; text-transform:uppercase; border-radius:4px; cursor:pointer; flex:1 0 auto; min-width:30px; transition:.2s; letter-spacing:0.5px; white-space:nowrap; }
     .action-row button:active { transform:scale(.94); }
-    .scan-btn { background:rgba(0,255,100,.2); border:1.5px solid #0f0; color:#0f0; }
+    .scan-btn { background:linear-gradient(135deg,rgba(0,255,125,.31),rgba(0,165,200,.16)); border:1.5px solid #0f6; color:#baffcf; box-shadow:0 0 9px rgba(0,255,120,.23); font-weight:900; }
+    .sync-btn { background:rgba(0,200,255,.10); border:1.5px solid rgba(0,255,255,.65); color:#a3f9ff; }
     .auto-pump-btn { background:rgba(150,0,220,.2); border:1.5px solid #b0f; color:#b0f; }
     .auto-pump-btn.active { background:linear-gradient(135deg,#b0f,#f0f); color:#fff; box-shadow:0 0 10px #b0f; }
     .hero-panel { background:rgba(0,8,25,.95); border:1.5px solid rgba(255,215,0,.5); border-radius:8px; padding:6px; margin-bottom:4px; box-shadow:0 0 25px rgba(255,215,0,.3); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -221,7 +222,8 @@ body{background:radial-gradient(ellipse at 50% -20%,#143659 0,transparent 58%),l
       <select class="hud-select" id="modeSelect"><option value="auto" selected>AUTO</option><option value="sniper">SNIPER</option><option value="hunter">HUNTER</option></select>
       <select class="hud-select" id="riskProfile"><option value="safe">SAFE</option><option value="balanced" selected>BALANCED</option><option value="degen">DEGEN</option></select>
       <div class="action-row">
-        <button id="scanBtn" class="scan-btn" title="Perbarui hasil scanner terjadwal dari database; bukan menjalankan scan baru">SINKRON</button>
+        <button id="scanBtn" class="scan-btn" type="button" title="Jalankan pemindaian server baru (khusus Admin setelah mengganti password awal)">SCAN</button>
+        <button id="syncBtn" class="sync-btn" type="button" title="Sinkronkan hasil tersimpan dari database tanpa menjalankan scan">SINKRON</button>
         <button id="autoPumpToggleBtn" class="auto-pump-btn active" title="Aktifkan/nonaktifkan sinkronisasi otomatis antarmuka, bukan jadwal cron server">AUTO</button>
         <button id="historyBtn" style="background:rgba(255,215,0,.15);border:1.5px solid #ffd700;color:#ffd700">HIST</button>
         <button id="watchlistBtn" style="background:rgba(255,200,0,.15);border:1.5px solid #ffd700;color:#ffd700">WATCH</button>
@@ -636,7 +638,7 @@ const Scanner = (()=>{
   }
   function requestScan(){
     if(S.scanStatus==='SCANNING')return;
-    S.scanStatus='SCANNING';const btn=$('scanBtn');
+    S.scanStatus='SCANNING';const btn=$('syncBtn');
     if(btn){btn.disabled=true;btn.textContent='SYNC…';}
     performScan().catch(e=>{
       const feedback=$('scanFeedback');
@@ -648,7 +650,39 @@ const Scanner = (()=>{
       S.nextScan=Date.now()+60000;
     });
   }
-  return{pushToFeed,connectWS,performScan,requestScan,flushWsBuffer};
+  let manualBusy=false;
+  async function requestManualScan(){
+    if(manualBusy)return;
+    manualBusy=true;
+    const btn=$('scanBtn'),feedback=$('scanFeedback');
+    if(btn){btn.disabled=true;btn.textContent='SCAN…';}
+    if(feedback){feedback.hidden=false;feedback.textContent='SCAN: meminta pemindaian baru dari scanner server…';}
+    try{
+      const response=await fetch('/api/research/scan-now',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(45000)});
+      const result=await response.json();
+      if(!response.ok){
+        const messages={ADMIN_REQUIRED:'Masuk sebagai Admin melalui /account terlebih dahulu.',PASSWORD_CHANGE_REQUIRED:'Ganti password awal di /account sebelum menggunakan SCAN.',UPSTREAM_RATE_LIMITED:'Provider sedang cooldown atau kuota scan manual 15 menit sudah terpakai.',SCANNER_BUSY:'Scanner sedang menjalankan putaran lain.',SCANNER_NOT_CONFIGURED:'Binding scanner manual belum tersedia.'};
+        const message=messages[result.error]||('Pemindaian belum berhasil: '+(result.error||'HTTP '+response.status));
+        if(feedback)feedback.textContent='SCAN: '+message+' Tidak ada hasil baru yang diklaim.';
+        addAILog('Manual SCAN: '+(result.error||response.status),'warning');
+        return;
+      }
+      // This is a real server scan. Read back the persisted data after it has completed.
+      await performScan();
+      if(feedback){
+        feedback.hidden=false;
+        feedback.textContent='SCAN selesai · '+result.selectedCount+' token diperiksa · '+result.snapshotCount+' snapshot dihasilkan. Status '+result.status+'. '+(result.snapshotCount?'Data tersimpan di server dan disinkronkan.':'Tidak ada snapshot baru dari putaran ini.');
+      }
+      addAILog('Manual SCAN '+result.status+': '+result.snapshotCount+' snapshot; '+result.selectedCount+' mint','success');
+    }catch(e){
+      if(feedback){feedback.hidden=false;feedback.textContent='SCAN: server tidak merespons atau koneksi terputus. Hasil pemindaian tidak dapat dipastikan; gunakan SINKRON untuk memeriksa data.';}
+      addAILog('Manual SCAN network: '+(e?.name||'Unknown'),'warning');
+    }finally{
+      manualBusy=false;
+      if(btn){btn.disabled=false;btn.textContent='SCAN';}
+    }
+  }
+  return{pushToFeed,connectWS,performScan,requestScan,requestManualScan,flushWsBuffer};
 })();
 
 const RenderEngine = (()=>{
@@ -920,7 +954,8 @@ function startup(){
 window.addEventListener('error',function(e){console.error('Global Error:',e.message);});
 setTimeout(()=>{
   try{
-    $('scanBtn').onclick=Scanner.requestScan;
+    $('scanBtn').onclick=Scanner.requestManualScan;
+    $('syncBtn').onclick=Scanner.requestScan;
     $('autoPumpToggleBtn').onclick=()=>{S.isAuto=!S.isAuto;$('autoPumpToggleBtn').classList.toggle('active',S.isAuto);};
     $('historyBtn').onclick=()=>showHistoryPanel(0);
     $('archiveStatus').onclick=()=>showHistoryPanel(0);$('watchlistBtn').onclick=showWatchlistPanel;$('exportBtn').onclick=showExportPanel;$('auditBtn').onclick=showAuditPanel;

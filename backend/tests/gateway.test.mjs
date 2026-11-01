@@ -66,16 +66,23 @@ test('historical archive stays separate and visible beside scanner snapshots',()
  assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.snapshots/);
  assert.match(html,/S\.serverResearchCounts=json\.counts/);
 });
-test('SCAN reports read-only synchronization truthfully and cannot claim a new scan',()=>{
+test('HUD separates real one-click SCAN from read-only SINKRON and unchanged AUTO',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/id="scanFeedback"/);
  assert.match(html,/Sinkronisasi hanya membaca data tersimpan/);
  assert.match(html,/Scanner otomatis berjalan setiap 30 menit/);
- assert.match(html,/<button id="scanBtn"[^>]*>SINKRON<\/button>/);
+ assert.match(html,/<button id="scanBtn"[^>]*>SCAN<\/button>/);
+ assert.match(html,/<button id="syncBtn"[^>]*>SINKRON<\/button>/);
+ assert.match(html,/<button id="autoPumpToggleBtn"[^>]*>AUTO<\/button>/);
+ assert.match(html,/\$\('scanBtn'\)\.onclick=Scanner\.requestManualScan/);
+ assert.match(html,/\$\('syncBtn'\)\.onclick=Scanner\.requestScan/);
+ assert.match(html,/fetch\('\/api\/research\/scan-now'/);
+ assert.match(html,/if\(!response\.ok\)/);
+ assert.match(html,/await performScan\(\)/);
+ assert.match(html,/btn\.textContent='SINKRON'/);
+ assert.match(html,/btn\.textContent='SCAN'/);
  assert.doesNotMatch(html,/Admin sementara NONAKTIF/);
- assert.match(html,/btn.textContent='SINKRON'/);
  assert.match(html,/performScan\(\)\.catch\(e=>/);
- assert.match(html,/\.finally\(\(\)=>/);
  assert.match(html,/return json;\n\}/);
 });
 test('frontend historical archive GET forwards over existing API service binding',async()=>{
@@ -210,15 +217,63 @@ test('manual scanner has separate secret from automatic INTERNAL_TOKEN',()=>{
 });
 
 
-test('manual scanner secret accepted only for restricted pipeline, never cron trigger',async()=>{
+test('manual scanner secret permits bounded batch scan but not cron schedule keys',async()=>{
  const {default:worker}=await import('../workers/nebula-scanner.mjs');
  const origin='https://scanner.internal';
- const env={MANUAL_SCAN_TOKEN:'separate-manual-test',INTERNAL_TOKEN:'cron-internal-test',AI_ENGINE:{}};
+ const log=[];
+ const STAGE_DB={prepare(sql){return{bind(...args){log.push({sql,args});return this},async run(){return{meta:{changes:0}}},async first(){return null}}}};
+ const env={MANUAL_SCAN_TOKEN:'separate-manual-test',INTERNAL_TOKEN:'cron-internal-test',AI_ENGINE:{},STAGE_DB};
  const url=origin+'/pipeline?mint=not-a-mint';
  const unauthorized=await worker.fetch(new Request(url),env);
  assert.equal(unauthorized.status,401);
  const manual=await worker.fetch(new Request(url,{headers:{Authorization:'Bearer separate-manual-test'}}),env);
- assert.equal(manual.status,400); // Authorized, but invalid mint rejected before provider call.
- const cron=await worker.fetch(new Request(origin+'/run',{method:'POST',headers:{Authorization:'Bearer separate-manual-test'}}),env);
- assert.equal(cron.status,401); // Cannot trigger scheduled scanner with manual credential.
+ assert.equal(manual.status,400); // Authorized for pipeline; invalid mint rejected before provider call.
+ const run=await worker.fetch(new Request(origin+'/run',{method:'POST',headers:{Authorization:'Bearer separate-manual-test'}}),env);
+ assert.equal(run.status,429); // Duplicated manual interval returned, not a new scan.
+ assert.equal((await run.json()).status,'SKIPPED_DUPLICATE');
+ assert.ok(log.some(x=>x.sql.includes('INSERT OR IGNORE INTO scanner_runs')&&String(x.args[0]).startsWith('manual:')));
+});
+
+
+test('one-click SCAN endpoint rejects guests, unrotated Admin and disabled mode',async()=>{
+ const mk=(user)=>({prepare(){return{bind(){return this},async first(){return user}}}});
+ const mintPath='/api/research/scan-now';
+ const env={ADMIN_MODE:'enabled',AUTH_DB:mk(null),SCANNER:{fetch:async()=>{throw Error('should not be called')}},MANUAL_SCAN_TOKEN:'secret'};
+ assert.equal((await gateway.fetch(post(mintPath,{}),env)).status,401);
+ env.AUTH_DB=mk({id:'admin',role:'SUPER_ADMIN',must_change_password:1});
+ const blocked=await gateway.fetch(post(mintPath,{},{Cookie:'__Host-nebula_session='+'a'.repeat(64)}),env);
+ assert.equal(blocked.status,401);
+ assert.equal((await blocked.json()).error,'PASSWORD_CHANGE_REQUIRED');
+ env.ADMIN_MODE='disabled';
+ const paused=await gateway.fetch(post(mintPath,{},{Cookie:'__Host-nebula_session='+'a'.repeat(64)}),env);
+ assert.equal(paused.status,503);
+ assert.equal((await paused.json()).error,'MANUAL_SCAN_PAUSED_ADMIN_DISABLED');
+ env.ADMIN_MODE='enabled';
+ assert.equal((await gateway.fetch(post(mintPath,{}, {Origin:'https://other.test'}),env)).status,403);
+});
+test('one-click SCAN executes private scanner, returns truthful snapshot count and hides credential',async()=>{
+ const seen=[];
+ const AUTH_DB={prepare(){return{bind(){return this},async first(){return {id:'admin',role:'SUPER_ADMIN',must_change_password:0}}}}};
+ const SCANNER={fetch:async(req,opts)=>{seen.push({req,opts});return Response.json({success:true,status:'COMPLETED',selectedCount:12,snapshotCount:3})}};
+ const result=await gateway.fetch(post('/api/research/scan-now',{},{Cookie:'__Host-nebula_session='+'a'.repeat(64)}),{AUTH_DB,SCANNER,MANUAL_SCAN_TOKEN:'private-secret'});
+ assert.equal(result.status,200);
+ assert.deepEqual(await result.json(),{success:true,status:'COMPLETED',selectedCount:12,snapshotCount:3});
+ assert.equal(seen.length,1);
+ assert.equal(new URL(seen[0].req).pathname,'/run');
+ assert.equal(seen[0].opts.method,'POST');
+ assert.equal(seen[0].opts.headers.Authorization,'Bearer private-secret');
+ assert.doesNotMatch(JSON.stringify(seen[0].req),/private-secret/);
+});
+test('one-click SCAN preserves 429 and scanner failures without claiming success',async()=>{
+ const AUTH_DB={prepare(){return{bind(){return this},async first(){return {id:'admin',role:'SUPER_ADMIN',must_change_password:0}}}}};
+ for(const [upstream,expected] of [[Response.json({success:false,status:'SKIPPED_DUPLICATE'},{status:429}),429],[Response.json({success:false,status:'FAILED'},{status:502}),502]]){
+  const result=await gateway.fetch(post('/api/research/scan-now',{},{Cookie:'__Host-nebula_session='+'a'.repeat(64)}),{AUTH_DB,MANUAL_SCAN_TOKEN:'private-secret',SCANNER:{fetch:async()=>upstream}});
+  assert.equal(result.status,expected);
+  assert.equal((await result.json()).success,false);
+ }
+ const scanner=fs.readFileSync('backend/workers/nebula-scanner.mjs','utf8');
+ assert.match(scanner,/kind==='manual'\?'manual:'/);
+ assert.match(scanner,/result.status==='SKIPPED_DUPLICATE'/);
+ const wrangler=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
+ assert.equal(wrangler.services.find(x=>x.binding==='SCANNER')?.service,'nebula-scanner');
 });
