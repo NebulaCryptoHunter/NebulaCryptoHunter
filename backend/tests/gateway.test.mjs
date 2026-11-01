@@ -465,3 +465,33 @@ test('Hunter V2 keeps accessible responsive controls and prevents decorating art
  assert.match(html,/hunterOpenHistory'\)\?\.addEventListener\('click',\(\)=>el\('historyBtn'\)\?\.click\(\)\)/);
  assert.ok(!html.includes('WATCH is a guaranteed trade'));
 });
+
+
+test('Hunter single-screen desktop keeps scrolling inside token and history containers',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const css=html.slice(html.indexOf('/* NEBULA HUNTER V2.1 — fixed single-viewport'));
+ assert.match(css,/html,body\{width:100%;height:100%;height:100dvh;overflow:hidden!important/);
+ assert.match(css,/\.app\{[\s\S]*?height:100dvh;min-height:0;[\s\S]*?overflow:hidden!important/);
+ assert.match(css,/\.hunter-layout\{flex:1 1 0;min-height:0;max-height:none;height:auto;overflow:hidden!important/);
+ assert.match(css,/\.hunter-targets-panel \.radar-grid\{[^}]*overflow-y:auto!important/);
+ assert.match(css,/\.hunter-history-panel \.hunter-history-list\{[^}]*overflow-y:auto!important/);
+ assert.match(css,/\.hunter-ai-panel \.ai-health-grid\{[^}]*overflow-y:auto!important/);
+ assert.match(css,/\.hunter-cockpit-footer\{[^}]*flex:0 0 clamp/);
+ assert.match(css,/\.app > \.nebula-server-dock\{position:fixed/);
+ assert.match(css,/\.app > #scanFeedback:not\(\[hidden\]\)\{position:fixed/);
+});
+test('tablet and phone use three accessible tabs rather than vertically scrolling all panels',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const css=html.slice(html.indexOf('/* NEBULA HUNTER V2.1 — fixed single-viewport'));
+ for(const tab of ['hunterTabAi','hunterTabRadar','hunterTabHistory'])assert.ok(html.includes('id="'+tab+'"'));
+ assert.match(css,/@media \(max-width:1199px\)/);
+ assert.match(css,/\.hunter-layout > \.hunter-panel\{display:none!important/);
+ assert.match(css,/\.hunter-layout > \.hunter-panel\.hunter-tab-active\{display:flex!important/);
+ assert.match(html,/chooseTab\('radar'\)/);
+ assert.match(html,/button\.setAttribute\('aria-selected'/);
+ assert.match(html,/button\.addEventListener\('click',\(\)=>chooseTab\(button\.dataset\.hunterTab\)\)/);
+ assert.match(css,/@media \(max-height:640px\) and \(max-width:767px\)/);
+ assert.match(css,/@media \(max-height:730px\) and \(min-width:1200px\)/);
+ for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+ assert.equal((html.match(/<script\b/g)||[]).length,1);
+});
