@@ -66,7 +66,7 @@ export async function marketFeed(env={}){
  for(const c of scanPairs(m.pairs)){
   if(seen.has(c.base.mint)||!positive(c.priceUsd))continue;seen.add(c.base.mint);
   const score=scoreCandidate(c);
-  items.push({mint:c.base.mint,symbol:c.base.symbol,pair_address:c.pairAddress,observed_at:c.observedAt,price_usd:c.priceUsd,liquidity_usd:c.liquidityUsd,volume_24h:c.volume24h,change_24h:c.change24h,source:c.source,...score,risk_verified:false,evaluation_status:'NOT_PERSISTED'});
+  items.push({mint:c.base.mint,symbol:c.base.symbol,pair_address:c.pairAddress,observed_at:c.observedAt,price_usd:c.priceUsd,liquidity_usd:c.liquidityUsd,volume_24h:c.volume24h,change_24h:c.change24h,source:c.source,timeframes:c.timeframes,...score,risk_verified:false,evaluation_status:'NOT_PERSISTED'});
  }
  const quotes=items.length?{items:[],attempts:[]}:await freeQuotes(discovery.mints,env);
  items.push(...quotes.items);
