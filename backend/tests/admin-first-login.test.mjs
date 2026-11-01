@@ -65,3 +65,15 @@ test('first-login UI includes new-password confirmation and password-change endp
  assert.match(migration,/ADD COLUMN must_change_password/);
  assert.match(migration,/ADD COLUMN temporary_password_expires_at/);
 });
+
+test('local first-admin script supports secure forced-change credentials without committing a password',()=>{
+ const code=fs.readFileSync('backend/scripts/provision-first-admin.mjs','utf8');
+ assert.match(code,/NEBULA_ADMIN_USERNAME/);
+ assert.match(code,/NEBULA_TEMPORARY_FIRST_LOGIN/);
+ assert.match(code,/temporary\?8:12/);
+ assert.match(code,/temporary_password_expires_at/);
+ assert.match(code,/temporary\?Math\.floor\(Date\.now\(\)\/1000\)\+86400:null/);
+ assert.match(code,/NEBULA_ADMIN_SQL_FILE/);
+ assert.match(code,/mode:0o600/);
+ assert.doesNotMatch(code,/admin123/);
+});
