@@ -221,7 +221,7 @@ test('manual scanner secret permits bounded batch scan but not cron schedule key
  const {default:worker}=await import('../workers/nebula-scanner.mjs');
  const origin='https://scanner.internal';
  const log=[];
- const STAGE_DB={prepare(sql){return{bind(...args){log.push({sql,args});return this},async run(){return{meta:{changes:0}}}}}};
+ const STAGE_DB={prepare(sql){return{bind(...args){log.push({sql,args});return this},async run(){return{meta:{changes:0}}},async first(){return null}}}};
  const env={MANUAL_SCAN_TOKEN:'separate-manual-test',INTERNAL_TOKEN:'cron-internal-test',AI_ENGINE:{},STAGE_DB};
  const url=origin+'/pipeline?mint=not-a-mint';
  const unauthorized=await worker.fetch(new Request(url),env);
@@ -266,9 +266,8 @@ test('one-click SCAN executes private scanner, returns truthful snapshot count a
 });
 test('one-click SCAN preserves 429 and scanner failures without claiming success',async()=>{
  const AUTH_DB={prepare(){return{bind(){return this},async first(){return {id:'admin',role:'SUPER_ADMIN',must_change_password:0}}}}};
- const request=post('/api/research/scan-now',{},{Cookie:'__Host-nebula_session='+'a'.repeat(64)});
  for(const [upstream,expected] of [[Response.json({success:false,status:'SKIPPED_DUPLICATE'},{status:429}),429],[Response.json({success:false,status:'FAILED'},{status:502}),502]]){
-  const result=await gateway.fetch(request,{AUTH_DB,MANUAL_SCAN_TOKEN:'private-secret',SCANNER:{fetch:async()=>upstream}});
+  const result=await gateway.fetch(post('/api/research/scan-now',{},{Cookie:'__Host-nebula_session='+'a'.repeat(64)}),{AUTH_DB,MANUAL_SCAN_TOKEN:'private-secret',SCANNER:{fetch:async()=>upstream}});
   assert.equal(result.status,expected);
   assert.equal((await result.json()).success,false);
  }
