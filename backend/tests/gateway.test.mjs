@@ -415,3 +415,53 @@ test('hero header uses Hunter NEBULA signature, without changing app identity',(
  assert.match(html,/id="scanBtn"/);
  assert.match(html,/id="syncBtn"/);
 });
+
+
+test('cinematic Hunter V2 mirrors approved mockup without replacing live research data',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const assets='/assets/nebula-hunter-v2/';
+ for(const name of ['01_background_nebula.svg','02_spaceship_hunter.svg','03_planet_hologram.svg','04_cockpit_console.svg']){
+   const file=fs.readFileSync('.'+assets+name,'utf8');
+   assert.ok(file.startsWith('<svg '),'Expected the approved GitHub SVG: '+name);
+   assert.ok(html.includes('assets/nebula-hunter-v2/'+name),'HUD should reference '+name);
+ }
+ assert.match(html,/NEBULA HUNTER V2 — Cinematic tactical bridge/);
+ assert.match(html,/id="hunterAiTitle">AI PERFORMANCE/);
+ assert.match(html,/id="hunterRadarTitle">TACTICAL TOKEN RADAR/);
+ assert.match(html,/id="hunterHistoryTitle">DATABASE \/ HISTORY/);
+ assert.match(html,/id="hunterDatabaseValue"/);
+ assert.match(html,/id="hunterPredictionValue"/);
+ assert.match(html,/id="hunterUniqueValue"/);
+ assert.match(html,/class="hunter-cockpit-footer"/);
+ assert.match(html,/id="radarFeed"/);
+ assert.match(html,/id="cockpitDashboard"/);
+ assert.match(html,/id="aiHealthDash"/);
+ assert.match(html,/id="aiConsole"/);
+ assert.match(html,/id="scanBtn"/);
+ assert.match(html,/id="syncBtn"/);
+ assert.match(html,/id="autoPumpToggleBtn"/);
+ assert.match(html,/HUNT BEFORE THE HYPE/);
+ assert.ok(html.indexOf('id="cockpitDashboard"')<html.indexOf('<!-- RESEARCH_PANEL -->'));
+ const marker=html.indexOf('/* Hunter V2 UI companion: read-only');
+ const companion=html.slice(marker);
+ assert.match(companion,/get\('\/api\/research\/latest'\)/);
+ assert.match(companion,/get\('\/api\/research\/history\?limit=10&offset=0'\)/);
+ assert.match(companion,/c\.database_records/);
+ assert.match(companion,/c\.total_records/);
+ assert.match(companion,/c\.unique_mints/);
+ assert.match(companion,/modelCalibrated===true/);
+ assert.doesNotMatch(companion,/\/api\/research\/scan-now|method:'POST'|Math\.random\(\)/);
+ for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+});
+test('Hunter V2 keeps accessible responsive controls and prevents decorating artwork from intercepting clicks',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ assert.match(html,/@media\(max-width:767px\)/);
+ assert.match(html,/\.hunter-layout\{display:flex;flex-direction:column/);
+ assert.match(html,/\.hunter-cockpit-footer\{[^}]*pointer-events:none/);
+ assert.match(html,/\.hunter-banner \.hunter-ship,\.hunter-banner \.hunter-planet\{[^}]*pointer-events:none/);
+ assert.match(html,/prefers-reduced-motion:reduce\)\{\.hunter-radar-sweep\{animation:none!important/);
+ assert.match(html,/id="hunterRecentRefresh"/);
+ assert.match(html,/id="hunterOpenHistory"/);
+ assert.match(html,/hunterOpenHistory'\)\?\.addEventListener\('click',\(\)=>el\('historyBtn'\)\?\.click\(\)\)/);
+ assert.ok(!html.includes('WATCH is a guaranteed trade'));
+});
