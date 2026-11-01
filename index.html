@@ -207,6 +207,80 @@ body{background:radial-gradient(ellipse at 50% -20%,#143659 0,transparent 58%),l
 .hud-module-subtext{margin:6px 0;color:#9bbed3;font-size:.61rem;line-height:1.5;overflow-wrap:anywhere}
 @media(max-width:767px){.sticky-nav{position:relative;top:auto}.card-detail-section{touch-action:pan-y}.hud-detail-grid{grid-template-columns:1fr}.hud-card{overflow:visible}}
 
+/* NEBULA Desktop HUD v111 — responsive desktop presentation; mobile and scanner logic unchanged */
+@media (min-width:768px){
+  .app{width:calc(100% - 32px);max-width:1480px;margin:0 auto;padding:0 8px}
+  .sticky-nav{position:relative;top:auto;padding:10px 16px 12px}
+  .header-row-2{font-size:clamp(1.06rem,1.65vw,1.55rem)}
+  .header-row-1{font-size:.69rem;margin-bottom:5px}
+  .endpoint-bar{gap:6px;margin:5px 0 8px}
+  .ep-mini{height:32px;font-size:clamp(9px,.82vw,12px);padding:4px;overflow-wrap:anywhere}
+  .hud-controls{gap:8px}
+  .hud-select{min-width:0;min-height:38px!important;font-size:.73rem!important}
+  .action-row{gap:7px}
+  .action-row button{height:38px;padding:0 8px;font-size:.7rem;min-width:0}
+  .unified-dash{padding:10px 8px;gap:7px}
+  .unified-item{min-width:0;padding:5px;font-size:.64rem}
+  .unified-item .val{font-size:1rem;overflow-wrap:anywhere}
+  .unified-item .lbl{font-size:.56rem}
+  .ai-health-grid{padding:10px;gap:8px}
+  .ai-health-item{min-width:0;font-size:.62rem}
+  .ai-health-item .val{font-size:.9rem}
+  .ai-console{max-height:155px;min-height:65px;overflow-y:auto;font-size:.67rem;padding:10px}
+  .cockpit-dashboard{padding:12px;gap:8px}
+  .dash-group{gap:7px}
+  .dash-group-label{font-size:.67rem}
+  .dash-panel{min-height:62px;padding:5px}
+  .dash-panel .val{font-size:clamp(1rem,1.55vw,1.42rem)}
+  .dash-panel .lbl{font-size:.59rem}
+  .radar-grid{gap:14px;padding-bottom:48px}
+  .hud-card{padding:14px;min-width:0;overflow:visible}
+  .hud-card > div:first-child{flex-wrap:wrap;column-gap:10px;row-gap:6px}
+  .hud-card > div:first-child > div:first-child{flex-wrap:wrap;row-gap:5px;column-gap:5px}
+  .hud-card > div:first-child > div:last-child{flex-shrink:0;white-space:nowrap}
+  .hud-card .token-name{flex:1 1 150px;min-width:0;font-size:.96rem;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+  .hud-card > div:nth-child(2){overflow-wrap:anywhere;font-size:.64rem!important;line-height:1.5}
+  .hud-card > div:nth-child(3){display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px!important;margin-top:9px!important;padding-top:9px!important}
+  .hud-card .action-btn-text{min-width:0;width:100%;height:auto;min-height:36px;padding:5px 3px;white-space:normal;line-height:1.2;font-size:.64rem;overflow-wrap:anywhere}
+  .card-detail-section,.hud-module,.hud-module-body{min-width:0;max-width:100%;overflow:visible}
+  .hud-detail-grid{gap:10px}
+  .hud-detail-grid .detail-section{min-width:0;overflow-wrap:anywhere}
+  .hud-gauge .gauge-value{overflow-wrap:anywhere}
+  .archive-status{padding:12px 16px;font-size:.74rem}
+  .scan-feedback{font-size:.73rem}
+  .overlay{padding:20px 24px;font-size:.72rem;overflow-y:auto}
+  .overlay-content{width:min(100%,1000px);margin:30px auto 50px;padding:24px;max-height:none;overflow:visible;border:1px solid rgba(85,246,255,.22);border-radius:12px;background:linear-gradient(180deg,rgba(7,23,43,.97),rgba(3,12,27,.99));box-shadow:0 12px 38px rgba(0,0,0,.55);overflow-wrap:anywhere}
+  .overlay-close{position:sticky;top:8px;float:right;padding:8px 12px;z-index:1}
+}
+@media (min-width:1024px){
+  .cockpit-dashboard{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,.7fr);grid-template-rows:auto auto;gap:6px 12px;align-items:stretch}
+  .cockpit-dashboard > .dash-group-label:nth-child(1){grid-column:1;grid-row:1}
+  .cockpit-dashboard > .dash-group:nth-child(2){grid-column:1;grid-row:2}
+  .cockpit-dashboard > .dash-group-label:nth-child(3){grid-column:2;grid-row:1}
+  .cockpit-dashboard > .dash-group:nth-child(4){grid-column:2;grid-row:2}
+  .cockpit-dashboard > .dash-group-label:nth-child(5){grid-column:3;grid-row:1}
+  .cockpit-dashboard > .dash-group:nth-child(6){grid-column:3;grid-row:2}
+  .dash-group{grid-template-columns:repeat(7,minmax(0,1fr))}
+  .cockpit-dashboard > .dash-group:nth-child(4){grid-template-columns:repeat(6,minmax(0,1fr))}
+  .cockpit-dashboard > .dash-group:nth-child(6){grid-template-columns:repeat(3,minmax(0,1fr))}
+  .dash-panel{min-width:0}
+}
+@media (min-width:1200px){
+  .endpoint-bar{grid-template-columns:repeat(12,minmax(0,1fr))}
+  .hud-controls{display:grid;grid-template-columns:minmax(160px,1fr) minmax(160px,1fr) minmax(0,4fr);align-items:center}
+  .action-row{width:100%;margin-top:0;flex-wrap:nowrap}
+  .action-row button{flex:1 1 0;padding:0 4px}
+  .radar-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  .radar-grid > .hud-card{min-width:0}
+  .radar-grid > .hud-card:has(> .card-detail-section[style*="display: block"]){grid-column:1/-1}
+  .radar-grid > .hud-card:has(> .card-detail-section[style*="display: block"]) .hud-detail-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:1500px){
+  .header-row-2{letter-spacing:3px}
+  .hud-card .token-name{font-size:1.08rem}
+  .dash-panel{min-height:68px}
+}
+
 @media(prefers-reduced-motion:reduce){.bg-scanline,.hero-card,.ep-mini{animation:none!important}.gauge-fill{transition:none}}
 
   </style>
