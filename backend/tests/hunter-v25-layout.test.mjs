@@ -18,7 +18,7 @@ test('one real token card fills the radar pane and scroll-snap advances one at a
  ok("if(id==='radarFeed')advanceToken(list,Math.sign(move[e.key]))");
  ok("if(btn.dataset.scrollTarget==='radarFeed')advanceToken(list,Number(btn.dataset.scrollDirection))");
  ok("list.addEventListener('wheel',e=>");
- ok("const detail=e.target.closest('.card-detail-section')");
+ ok("const detail=e.target.closest('.token-card-body')");
  ok("if(roomDown||roomUp){wheelAccum=0;return}");
  ok("wheelAccum=0;lastStep=now;");
  ok('id="hunterTokenPosition"');

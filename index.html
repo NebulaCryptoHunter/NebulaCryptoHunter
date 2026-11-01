@@ -1141,6 +1141,48 @@ body{margin:0}
 .token-card-price small,.token-card-metric dt,.indicator-full-row strong{font-size:.58rem}
 .indicator-group h3{font:700 .66rem 'Share Tech Mono',monospace}
 .token-dialog .hud-module summary{font-family:'Share Tech Mono',monospace}
+
+/* Content must remain reachable on short displays and browser zoom. */
+html,body{height:auto!important;min-height:100dvh;overflow-y:auto!important;overscroll-behavior-y:auto}
+.app{height:auto!important;min-height:100dvh;overflow:visible!important}
+.hunter-layout{flex:1 0 530px!important;min-height:530px!important}
+.hunter-targets-panel .radar-grid>.hud-card{overflow:hidden!important;gap:6px!important;padding:10px!important}
+.hunter-targets-panel .token-card-head{flex-wrap:nowrap!important}
+.hunter-targets-panel .radar-grid>.hud-card>.token-card-body{display:block!important;flex:1 1 auto!important;min-height:0;margin:0!important;padding:0!important;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;scrollbar-color:#36bcdf #071729}
+.token-card-body .token-card-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.token-card-body .token-card-metric{padding:7px 9px}
+.token-card-body .token-card-provenance{padding:7px 0 3px}
+.token-card-address{color:#9ccbdc;overflow-wrap:anywhere;padding:4px 0;border-top:1px solid #21465b}
+.hunter-targets-panel .token-card-footer{flex:0 0 auto!important;display:grid;gap:6px;padding-top:6px;border-top:1px solid #21465b;background:#06172a}
+.token-card-footer .token-card-actions{grid-template-columns:repeat(6,minmax(0,1fr))}
+.token-card-footer .token-open-details{margin:0;min-height:38px;padding:6px 10px}
+@container token-panel (min-width:500px){.token-card-body .token-card-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.token-card-body .token-card-metric{padding:5px 7px}}
+#tokenDetailDialog{width:min(1180px,calc(100vw - 24px));height:min(820px,calc(100dvh - 24px));max-height:calc(100dvh - 24px)}
+#tokenDetailDialog .token-dialog-head{padding:10px 14px;align-items:center;gap:10px;flex-wrap:wrap}
+#tokenDetailDialog .token-dialog-body{flex:1 1 0;padding:10px 14px;overflow-x:hidden}
+#tokenDetailDialog .token-dialog-foot{padding:8px 14px;flex-wrap:wrap}
+.token-detail-jump{display:grid;gap:4px;color:#b4d9e8;min-width:170px}
+.token-detail-jump select{max-width:245px;min-height:34px;background:#082a40;border:1px solid #3a8198;border-radius:5px;color:#bbf7ff;padding:5px;font:inherit}
+#tokenDetailDialog .hud-detail-grid{gap:8px!important}
+#tokenDetailDialog .hud-module{margin:0!important;padding:0!important;scroll-margin-top:8px}
+#tokenDetailDialog .hud-module:first-child{grid-column:1/-1}
+#tokenDetailDialog .hud-module:first-child .hud-module-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}
+#tokenDetailDialog .hud-module:first-child .hud-gauge:nth-child(n+7){grid-column:1/-1}
+#tokenDetailDialog .hud-module summary{padding:7px 10px!important;min-height:34px;margin:0!important}
+#tokenDetailDialog .hud-module-body{padding:5px 10px!important}
+#tokenDetailDialog .hud-gauge{display:grid!important;grid-template-columns:minmax(85px,.8fr) minmax(0,1.2fr);gap:8px;align-items:center;padding:5px 0!important;margin:0;min-height:24px}
+#tokenDetailDialog .hud-gauge:has(.gauge-track){grid-template-columns:minmax(80px,.8fr) minmax(0,1fr) 40px}
+#tokenDetailDialog .gauge-label,#tokenDetailDialog .gauge-value{width:auto!important;max-width:none!important;min-width:0}
+#tokenDetailDialog .gauge-track{width:auto;min-width:0;margin:0}
+#tokenDetailDialog .hud-not-verified{padding:8px 10px;margin-top:8px}
+@media(max-width:767px){
+ .hunter-layout{flex-basis:560px!important;min-height:560px!important}
+ .token-card-footer .token-card-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #tokenDetailDialog{width:calc(100vw - 12px);height:calc(100dvh - 12px);max-height:calc(100dvh - 12px)}
+ .token-detail-jump{order:3;width:100%}.token-detail-jump select{max-width:none;width:100%}
+ #tokenDetailDialog .hud-module:first-child .hud-module-body{grid-template-columns:minmax(0,1fr)}
+}
+
 </style>
 </head>
 <body>
@@ -1249,7 +1291,7 @@ body{margin:0}
 <div class="overlay" id="overlayPanel"><button class="overlay-close" id="overlayClose">X</button><div class="overlay-content" id="overlayContent"></div></div>
 <dialog id="indicatorDialog" class="token-dialog" aria-labelledby="indicatorDialogTitle"><header class="token-dialog-head"><div class="token-dialog-heading"><small>NEBULA · COMPLETE TELEMETRY</small><h2 id="indicatorDialogTitle">Semua indikator</h2><p>Indikator lama dan baru tetap tersedia. — berarti belum ada data terverifikasi.</p></div><button type="button" id="indicatorDialogClose" class="token-dialog-close" autofocus aria-label="Tutup semua indikator">Tutup ×</button></header><div class="token-dialog-body" tabindex="0" role="region" aria-label="Seluruh indikator NEBULA"><div id="indicatorCatalog" class="indicator-catalog"></div></div><footer class="token-dialog-foot"><input id="indicatorSearch" class="indicator-search" type="search" placeholder="Cari indikator, mis. precision, BUY, RPC…" aria-label="Cari indikator"><span>ESC untuk menutup</span></footer></dialog>
 <dialog id="tokenDetailDialog" class="token-dialog" aria-labelledby="tokenDetailTitle" aria-describedby="tokenDetailSubtitle">
-<header class="token-dialog-head"><div class="token-dialog-heading"><small>NEBULA · DETAIL TOKEN</small><h2 id="tokenDetailTitle">Detail token</h2><p id="tokenDetailSubtitle"></p></div><button type="button" id="tokenDetailClose" class="token-dialog-close" autofocus aria-label="Tutup detail token">Tutup ×</button></header>
+<header class="token-dialog-head"><div class="token-dialog-heading"><small>NEBULA · DETAIL TOKEN</small><h2 id="tokenDetailTitle">Detail token</h2><p id="tokenDetailSubtitle"></p></div><label class="token-detail-jump">LOMPAT KE INDIKATOR<select id="tokenDetailJump" aria-label="Lompat ke indikator token"></select></label><button type="button" id="tokenDetailClose" class="token-dialog-close" autofocus aria-label="Tutup detail token">Tutup ×</button></header>
 <div id="tokenDetailBody" class="token-dialog-body" tabindex="0" role="region" aria-label="Isi detail token, gulir untuk melihat seluruh indikator"></div>
 <footer class="token-dialog-foot"><span>ESC untuk menutup · Data yang belum tersedia ditampilkan —</span><button type="button" id="tokenDetailCopy" data-action="copyca">Salin alamat token</button></footer>
 </dialog>
@@ -1758,16 +1800,20 @@ const RenderEngine = (()=>{
       const observed=t.observedAt?new Date(t.observedAt):null,time=observed&&!Number.isNaN(observed.getTime())?observed.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'})+' WIB':'Waktu belum tersedia';
       let innerHTML='<div class="token-card-head"><div class="token-card-identity"><div class="token-card-eyebrow">TOKEN '+rank+' · '+(priceOnly?'HARGA SAJA':'DATA POOL')+'</div><span class="token-name">'+escapeHTML(getName(t))+'</span><span class="decision-tag decision-'+decClass+'">'+escapeHTML(d.replaceAll('_',' '))+'</span></div>'+createRing(known?t._finalAIScore:null)+'</div>';
       innerHTML+='<div class="token-card-price">'+escapeHTML(fmtPrice(t.price))+'<small>USD</small></div>';
-      innerHTML+='<dl class="token-card-metrics">'+metric('LIKUIDITAS',Number.isFinite(t.liq)?'$'+fmtNum(t.liq):'Belum tersedia')+metric('VOLUME 24 JAM',Number.isFinite(t.vol24h)?'$'+fmtNum(t.vol24h):'Belum tersedia')+metric('PERUBAHAN 24 JAM',Number.isFinite(t.change24h)?t.change24h.toFixed(2)+'%':'—')+metric('SKOR HEURISTIK',known?t._finalAIScore.toFixed(1)+' / 100':'Belum dinilai')+'</dl>';
+      innerHTML+='<div class="token-card-body" tabindex="0" role="region" aria-label="Data ringkas token"><dl class="token-card-metrics">'+metric('LIKUIDITAS',Number.isFinite(t.liq)?'$'+fmtNum(t.liq):'Belum tersedia')+metric('VOLUME 24 JAM',Number.isFinite(t.vol24h)?'$'+fmtNum(t.vol24h):'Belum tersedia')+metric('PERUBAHAN 24 JAM',Number.isFinite(t.change24h)?t.change24h.toFixed(2)+'%':'—')+metric('SKOR HEURISTIK',known?t._finalAIScore.toFixed(1)+' / 100':'Belum dinilai')
+        +metric('PERUBAHAN 5 MENIT',Number.isFinite(t.timeframes?.m5?.changePct)?t.timeframes.m5.changePct.toFixed(2)+'%':'—')
+        +metric('PERUBAHAN 1 JAM',Number.isFinite(t.timeframes?.h1?.changePct)?t.timeframes.h1.changePct.toFixed(2)+'%':'—')
+        +metric('BUY 1 JAM',Number.isFinite(t.timeframes?.h1?.buys)?fmtNum(t.timeframes.h1.buys):'—')
+        +metric('SELL 1 JAM',Number.isFinite(t.timeframes?.h1?.sells)?fmtNum(t.timeframes.h1.sells):'—')+'</dl>';
       innerHTML+='<div class="token-card-provenance">'+escapeHTML((t.source||'SUMBER API').toUpperCase())+' · '+escapeHTML(time)+' · '+(t.dataStatus==='STALE'?'Data cache':t.persisted===false?'Belum tersimpan':'Observasi server')+'</div>';
-      innerHTML+='<div class="token-card-actions">'+
+      innerHTML+='<div class="token-card-address">CA · '+escapeHTML(t.ca)+'</div></div><div class="token-card-footer"><div class="token-card-actions">'+
         '<button class="action-btn-text" data-action="watch" data-ca="'+t.ca+'">WATCH</button>'+
         '<button class="action-btn-text" data-action="copyca" data-ca="'+t.ca+'">SALIN CA</button>'+
         '<button class="action-btn-text" data-action="phantom" data-ca="'+t.ca+'">PHANTOM</button>'+
         '<button class="action-btn-text" data-action="pump" data-ca="'+t.ca+'">PUMP</button>'+
         '<button class="action-btn-text" data-action="dex" data-ca="'+t.ca+'">DEX</button>'+
         '<button class="action-btn-text" data-action="buy" data-ca="'+t.ca+'">LIHAT PASAR</button></div>';
-      innerHTML+='<button type="button" class="token-open-details" data-token-detail="'+t.ca+'" aria-label="Lihat detail token '+escapeHTML(getName(t))+'">LIHAT DETAIL TOKEN <span aria-hidden="true">↗</span></button><div class="card-detail-section"></div>';
+      innerHTML+='<button type="button" class="token-open-details" data-token-detail="'+t.ca+'" aria-label="Lihat detail token '+escapeHTML(getName(t))+'">LIHAT DETAIL TOKEN <span aria-hidden="true">↗</span></button></div><div class="card-detail-section"></div>';
       div.innerHTML=innerHTML;
       div.querySelector('[data-token-detail]').addEventListener('click',e=>{e.stopPropagation();openTokenDetails(t)});
       div.tabIndex=0;div.setAttribute('aria-label','Token '+getName(t));
@@ -1796,8 +1842,14 @@ const RenderEngine = (()=>{
     $('tokenDetailTitle').textContent=getName(token);
     $('tokenDetailSubtitle').textContent=fmtPrice(token.price)+' USD · '+(token.source||'Sumber API')+' · Risiko belum diverifikasi';
     $('tokenDetailCopy').dataset.ca=token.ca;body.innerHTML=renderDetail(token);body.scrollTop=0;
+    const jump=$('tokenDetailJump');jump.replaceChildren();
+    body.querySelectorAll('.hud-module').forEach((section,index)=>{
+      section.id='token-detail-section-'+index;
+      const option=document.createElement('option');option.value=section.id;option.textContent=section.querySelector('summary').textContent;jump.appendChild(option);
+    });
     if(!dialog.open)dialog.showModal();$('tokenDetailClose').focus();
   }
+  $('tokenDetailJump').addEventListener('change',e=>{const section=document.getElementById(e.target.value);if(section){section.open=true;section.scrollIntoView({block:'start',behavior:'smooth'});$('tokenDetailBody').focus({preventScroll:true})}});
   $('tokenDetailClose').addEventListener('click',()=>$('tokenDetailDialog').close());
   $('tokenDetailDialog').addEventListener('click',e=>{if(e.target===$('tokenDetailDialog'))$('tokenDetailDialog').close()});
   function renderDetail(t){
@@ -1884,7 +1936,7 @@ const RenderEngine = (()=>{
     const alert='<p class="hud-not-verified">'+(isHistorical
       ?'DATA HISTORIS / SERVER — parameter yang belum diverifikasi ditampilkan sebagai tanda —, bukan angka buatan.'
       :'PARAMETER PENELITIAN — pastikan pemeriksaan risiko sebelum mengambil keputusan.')+'</p>';
-    return '<div class="hud-detail-grid">'+data+xaiCard+structure+exitCard+mcCard+factors+prediction+growth+pressure+wallet+evaluation+'</div>'+alert;
+    return '<div class="hud-detail-grid">'+data+xaiCard+pressure+prediction+wallet+factors+structure+exitCard+mcCard+growth+evaluation+'</div>'+alert;
   }
 
   function patchCard(div,t){if(!t._dirty)return;t._dirty=false;if(div.classList.contains('skeleton-card')){buildCard(t);return;}const d=t.decision||DECISION.AVOID,hero=S.hero;const decClass=d.toLowerCase().replace(/\s/g,'-');div.className='hud-card card-'+decClass+(hero&&t.ca===hero.ca?' hero-card':'')+(t._enrichError?' enrich-error':'')+(t._fromCache?' cached':'');const dt=div.querySelector('.decision-tag');if(dt){dt.textContent=d.replace(/_/g,' ');dt.className='decision-tag decision-'+decClass;}const ringVal=div.querySelector('.score-ring-value');if(ringVal)ringVal.textContent=Number.isFinite(t._finalAIScore)?Math.round(t._finalAIScore):'—';if(t.multiplier&&!t.restored&&t._passedGate&&!t._serverObservation){let mb=div.querySelector('.multiplier-badge-card');if(!mb){const ring=div.querySelector('.score-ring-container');if(ring){mb=document.createElement('span');mb.className='multiplier-badge-card';ring.parentNode.insertBefore(mb,ring);}}if(mb)mb.textContent='🚀'+t.multiplier.expected+'X';}}
@@ -2091,7 +2143,7 @@ setTimeout(()=>{
    if(id==='radarFeed'){
      let lastStep=0,wheelAccum=0;
      list.addEventListener('wheel',e=>{
-       const detail=e.target.closest('.card-detail-section')||e.target.closest('.hud-card');
+       const detail=e.target.closest('.token-card-body')||e.target.closest('.card-detail-section')||e.target.closest('.hud-card');
        if(detail&&detail.scrollHeight>detail.clientHeight+2){
          const roomDown=e.deltaY>0&&detail.scrollTop<detail.scrollHeight-detail.clientHeight-2;
          const roomUp=e.deltaY<0&&detail.scrollTop>2;
