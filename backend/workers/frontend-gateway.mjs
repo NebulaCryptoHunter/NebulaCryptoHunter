@@ -32,17 +32,29 @@ export default {async fetch(request,env){
  if(path.startsWith('/api/auth/'))return await handleAuth(request,authEnv,{frontendOrigin:u.origin});
  if(path==='/account'&&method==='GET')return new Response(accountHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'}});
  if(path==='/api/research/providers'&&method==='GET'){if(!env.API)return json({error:'API_BINDING_MISSING',providers:[]},503);const r=await env.API.fetch('https://api.internal/provider-health');const out=new Response(r.body,r);out.headers.set('Cache-Control','no-store');return out;}
- if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API,adminEnabled:!adminDisabled,manualScanAvailable:!adminDisabled&&!!env.SCANNER&&!!env.INTERNAL_TOKEN});
+ if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API,adminEnabled:!adminDisabled,manualScanAvailable:!adminDisabled&&!!env.SCANNER&&!!env.MANUAL_SCAN_TOKEN});
  if(path==='/api/research/latest'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   return json({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null});
  }
  if(path==='/api/research/scan'&&method==='POST'){
   const user=await authenticate(env.AUTH_DB,request);if(user?.role!=='SUPER_ADMIN')return json({error:'ADMIN_REQUIRED'},401);
-  if(!env.SCANNER||!env.INTERNAL_TOKEN)return json({error:'SCANNER_NOT_CONFIGURED'},503);
+  if(!env.SCANNER||!env.MANUAL_SCAN_TOKEN)return json({error:'SCANNER_NOT_CONFIGURED'},503);
   const b=await request.json();if(!Array.isArray(b?.mints)||b.mints.length<1||b.mints.length>5||!b.mints.every(mintOK))return json({error:'INVALID_MINTS'},400);
-  const results=[];for(const mint of [...new Set(b.mints)]){const r=await env.SCANNER.fetch('https://scanner.internal/pipeline?persist=1&mint='+mint,{headers:{Authorization:'Bearer '+env.INTERNAL_TOKEN}});const d=await r.json();results.push({mint,status:r.status,data:d});if(r.status===429)return json({error:'UPSTREAM_RATE_LIMITED',results},429);}
-  return json({success:results.every(r=>r.status===200),results},results.every(r=>r.status===200)?200:502);
+  // Only the authenticated Admin can invoke the private Worker service. Never expose tokens or raw provider payload.
+  const results=[];
+  for(const mint of [...new Set(b.mints)]){
+   let r,d;
+   try{
+    r=await env.SCANNER.fetch('https://scanner.internal/pipeline?persist=1&mint='+encodeURIComponent(mint),{headers:{Authorization:'Bearer '+env.MANUAL_SCAN_TOKEN}});
+    d=await r.json();
+   }catch{return json({error:'SCANNER_UNAVAILABLE',results},502);}
+   const summary={mint,status:r.status,observations:Array.isArray(d?.items)?d.items.length:0,persisted:d?.persisted===true,detail:typeof d?.error==='string'?d.error:(typeof d?.note==='string'?d.note:null)};
+   results.push(summary);
+   if(r.status===429)return json({success:false,error:'UPSTREAM_RATE_LIMITED',results},429);
+   if(!r.ok||d?.error)return json({success:false,error:'SCANNER_FAILED',results},502);
+  }
+  return json({success:true,results,totalObservations:results.reduce((sum,x)=>sum+x.observations,0)});
  }
  const isProxy=path.startsWith('/api/v1/')||/^\/(helius|dex|rugcheck|pumpfun)(\/|$)/.test(path);
  if(isProxy){

@@ -180,7 +180,11 @@ const worker={async scheduled(event,env,ctx){
   }catch{return reply({error:"UPSTREAM_UNAVAILABLE"},502);}
  }
  if(u.pathname==="/pipeline"&&request.method==="GET"){
-  if(!env.INTERNAL_TOKEN||request.headers.get("Authorization")!=="Bearer "+env.INTERNAL_TOKEN)return reply({error:"UNAUTHORIZED"},401);
+  // Manual scans use a dedicated secret. Existing INTERNAL_TOKEN remains reserved for cron/AI paths.
+  const header=request.headers.get("Authorization");
+  const internalAuthorized=!!env.INTERNAL_TOKEN&&header==="Bearer "+env.INTERNAL_TOKEN;
+  const manualAuthorized=!!env.MANUAL_SCAN_TOKEN&&header==="Bearer "+env.MANUAL_SCAN_TOKEN;
+  if(!internalAuthorized&&!manualAuthorized)return reply({error:"UNAUTHORIZED"},401);
   const cooldown=await env.STAGE_DB?.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
   if(Number(cooldown?.value)>Date.now())return reply({error:'PROVIDER_COOLDOWN'},429);
   if(!env.AI_ENGINE)return reply({error:"ENGINE_BINDING_MISSING"},503);

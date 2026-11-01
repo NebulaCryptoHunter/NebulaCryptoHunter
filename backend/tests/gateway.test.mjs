@@ -11,7 +11,7 @@ test('gateway authenticated administrator forwards only server key',async()=>{
 });
 test('gateway rejects normal user writes to shared dataset',async()=>{const AUTH_DB={prepare(){return {bind(){return this},async first(){return {role:'USER'}}}}};assert.equal((await gateway.fetch(post('/api/v1/predictions',{}, {Cookie:'__Host-nebula_session='+'a'.repeat(64)}),{AUTH_DB})).status,401)});
 test('frontend removes credential and passes JavaScript parser',()=>{
- const html=transformFrontend(fs.readFileSync('index.html','utf8'));assert.doesNotMatch(html,/apiKey\s*:/);assert.ok(!html.includes('https://nebula-api.nebula-crypto-proxy.workers.dev'));assert.ok(html.includes('id="nebulaResearchDock"'));assert.ok(html.indexOf('id="cockpitDashboard"')<html.indexOf('id="nebulaResearchDock"'));assert.doesNotMatch(html,/id="researchPanel"/);assert.equal(transformFrontend(html),html);
+ const html=transformFrontend(fs.readFileSync('index.html','utf8'));assert.doesNotMatch(html,/apiKey\s*:/);assert.ok(!html.includes('https://nebula-api.nebula-crypto-proxy.workers.dev'));assert.ok(html.includes('id="nebulaResearchDock"'));assert.ok(html.includes('id="nebulaManualScan"'));assert.ok(html.indexOf('id="cockpitDashboard"')<html.indexOf('id="nebulaResearchDock"'));assert.doesNotMatch(html,/id="researchPanel"/);assert.equal(transformFrontend(html),html);
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
 });
 test('API returns 400 for malformed JSON instead of 500',async()=>{assert.equal((await api.fetch(new Request(origin+'/api/v1/predictions',{method:'POST',headers:{'Content-Type':'application/json'},body:'{'}),{},{})).status,400)});
@@ -161,4 +161,64 @@ test('evaluation Wrangler config keeps both production D1 bindings canonical',()
  const expected={database_name:'nebula-db',database_id:'6eeadd5e-5e58-4a8c-90d9-92d039438a8f'};
  assert.deepEqual(databases.DB,expected);
  assert.deepEqual(databases.RESEARCH_DB,expected);
+});
+
+
+test('manual scan requires an authenticated Admin and refuses invalid mints',async()=>{
+ const AUTH_DB={prepare(){return{bind(){return this},async first(){return {role:'SUPER_ADMIN',id:'admin'}}}}};
+ const env={AUTH_DB,SCANNER:{fetch:async()=>{throw Error('scanner should not be called')}},MANUAL_SCAN_TOKEN:'private-test-secret'};
+ const request=(mints)=>post('/api/research/scan',{mints},{Cookie:'__Host-nebula_session='+'a'.repeat(64)});
+ for(const mints of [[],['not-a-solana-mint'],Array(6).fill('So11111111111111111111111111111111111111112')]){
+  const r=await gateway.fetch(request(mints),env);assert.equal(r.status,400);
+ }
+ const unauthed=await gateway.fetch(post('/api/research/scan',{mints:['So11111111111111111111111111111111111111112']}),env);
+ assert.equal(unauthed.status,401);
+});
+test('Admin manual scan forwards private credential, persists observations, never returns secret',async()=>{
+ const mint='So11111111111111111111111111111111111111112';
+ let calls=0;
+ const AUTH_DB={prepare(){return{bind(){return this},async first(){return {role:'SUPER_ADMIN',id:'admin'}}}}};
+ const env={AUTH_DB,MANUAL_SCAN_TOKEN:'private-manual-token',SCANNER:{fetch:async(url,options)=>{
+  calls++;assert.equal(new URL(url).pathname,'/pipeline');
+  assert.equal(new URL(url).searchParams.get('persist'),'1');
+  assert.equal(new URL(url).searchParams.get('mint'),mint);
+  assert.equal(options.headers.Authorization,'Bearer private-manual-token');
+  return Response.json({mint,items:[{pairAddress:'pair-id'}],persisted:true,results:[{score:42}]});
+ }}};
+ const r=await gateway.fetch(post('/api/research/scan',{mints:[mint,mint]},{Cookie:'__Host-nebula_session='+'a'.repeat(64)}),env);
+ assert.equal(r.status,200);assert.equal(calls,1);
+ const output=await r.text();assert.doesNotMatch(output,/private-manual-token/);
+ const payload=JSON.parse(output);assert.equal(payload.totalObservations,1);
+ assert.equal(payload.results[0].persisted,true);
+ const health=await gateway.fetch(new Request(origin+'/health'),env);
+ assert.equal((await health.json()).manualScanAvailable,true);
+});
+test('manual scan propagates provider rate-limit without claiming success',async()=>{
+ const mint='So11111111111111111111111111111111111111112';
+ const AUTH_DB={prepare(){return{bind(){return this},async first(){return {role:'SUPER_ADMIN',id:'admin'}}}}};
+ const env={AUTH_DB,MANUAL_SCAN_TOKEN:'x',SCANNER:{fetch:async()=>Response.json({error:'PROVIDER_COOLDOWN'},{status:429})}};
+ const r=await gateway.fetch(post('/api/research/scan',{mints:[mint]},{Cookie:'__Host-nebula_session='+'a'.repeat(64)}),env);
+ assert.equal(r.status,429);assert.equal((await r.json()).success,false);
+});
+test('manual scanner has separate secret from automatic INTERNAL_TOKEN',()=>{
+ const scanner=fs.readFileSync('backend/workers/nebula-scanner.mjs','utf8');
+ const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
+ assert.match(scanner,/manualAuthorized=!!env.MANUAL_SCAN_TOKEN/);
+ assert.match(scanner,/if\(!internalAuthorized&&!manualAuthorized\)/);
+ assert.equal(config.services.find(x=>x.binding==='SCANNER')?.service,'nebula-scanner');
+ assert.doesNotMatch(JSON.stringify(config),/private-manual-token|MANUAL_SCAN_TOKEN/);
+});
+
+
+test('manual scanner secret accepted only for restricted pipeline, never cron trigger',async()=>{
+ const {default:worker}=await import('../workers/nebula-scanner.mjs');
+ const origin='https://scanner.internal';
+ const env={MANUAL_SCAN_TOKEN:'separate-manual-test',INTERNAL_TOKEN:'cron-internal-test',AI_ENGINE:{}};
+ const url=origin+'/pipeline?mint=not-a-mint';
+ const unauthorized=await worker.fetch(new Request(url),env);
+ assert.equal(unauthorized.status,401);
+ const manual=await worker.fetch(new Request(url,{headers:{Authorization:'Bearer separate-manual-test'}}),env);
+ assert.equal(manual.status,400); // Authorized, but invalid mint rejected before provider call.
+ const cron=await worker.fetch(new Request(origin+'/run',{method:'POST',headers:{Authorization:'Bearer separate-manual-test'}}),env);
+ assert.equal(cron.status,401); // Cannot trigger scheduled scanner with manual credential.
 });
