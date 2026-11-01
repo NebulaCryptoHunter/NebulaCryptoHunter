@@ -8,8 +8,9 @@ const digest = async s => hex(new Uint8Array(await crypto.subtle.digest('SHA-256
 const eq = (a,b) => { if(a.length!==b.length)return false; let x=0;for(let i=0;i<a.length;i++)x|=a[i]^b[i];return x===0; };
 // Workers Web Crypto rejects counts above 100000 (verified in live runtime).
 const ITERATIONS = 100000;
-export async function hashPassword(password,salt=hex(bytes(16)),iterations=ITERATIONS){
-  if(typeof password!=='string'||password.length<12||password.length>1024)throw Error('Invalid password length');
+export async function hashPassword(password,salt=hex(bytes(16)),iterations=ITERATIONS,{allowTemporary=false}={}){
+  // Eight-character passwords are allowed ONLY when verifying a forced-change bootstrap account.
+  if(typeof password!=='string'||password.length<(allowTemporary?8:12)||password.length>1024)throw Error('Invalid password length');
   const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);
   const hash=await crypto.subtle.deriveBits({name:'PBKDF2',salt:unhex(salt),iterations,hash:'SHA-256'},key,256);
   return {hash:hex(new Uint8Array(hash)),salt,iterations};
@@ -18,7 +19,7 @@ export async function verifyPassword(password,user){
   // Always use stored per-user salt and iteration count. Never return password hashes to clients.
   if(typeof password!=='string'||password.length>1024)return false;
   try {
-    const h=await hashPassword(password,user.password_salt,user.password_iterations);
+    const h=await hashPassword(password,user.password_salt,user.password_iterations,{allowTemporary:Number(user.must_change_password)===1});
     return eq(unhex(h.hash),unhex(user.password_hash));
   }catch{return false;}
 }
@@ -38,7 +39,7 @@ export async function authenticate(DB,request){
   const raw=(request.headers.get('Cookie')||'').match(/(?:^|;\s*)__Host-nebula_session=([a-f0-9]{64})(?:;|$)/)?.[1];
   if(!raw)return null;
   const now=Math.floor(Date.now()/1000);
-  const user=await DB.prepare(`SELECT u.id,u.email,u.role,u.status,s.id_hash
+  const user=await DB.prepare(`SELECT u.id,u.email,u.username,u.role,u.status,u.must_change_password,s.id_hash
     FROM auth_sessions s JOIN auth_users u ON u.id=s.user_id
     WHERE s.id_hash=? AND s.expires_at>? AND s.revoked_at IS NULL AND u.status='active'`)
     .bind(await digest(raw),now).first();
