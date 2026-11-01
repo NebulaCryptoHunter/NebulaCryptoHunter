@@ -40,7 +40,7 @@ test('admin username login returns forced-change session without any elevated au
  assert.match(res.headers.get('set-cookie'),/Max-Age=900/);
  const read=await gateway.fetch(new Request(origin+'/api/auth/me',{headers:{Cookie:cookie}}),{AUTH_DB:db});
  assert.equal((await read.json()).user.mustChangePassword,true);
- const blocked=await gateway.fetch(post('/api/research/scan',{mints:['So11111111111111111111111111111111111111112']},{Cookie:cookie}),{AUTH_DB:db});
+ const blocked=await gateway.fetch(post('/api/research/scan-now',{}, {Cookie:cookie}),{AUTH_DB:db});
  assert.equal(blocked.status,401);assert.equal((await blocked.json()).error,'PASSWORD_CHANGE_REQUIRED');
  const write=await gateway.fetch(post('/api/v1/predictions',{value:1},{Cookie:cookie}),{AUTH_DB:db});
  assert.equal(write.status,401);assert.equal((await write.json()).error,'PASSWORD_CHANGE_REQUIRED');
