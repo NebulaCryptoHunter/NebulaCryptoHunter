@@ -1,0 +1,109 @@
+{
+  "recordedAt": "2026-11-01T13:30:42.342Z",
+  "model": "heuristic-v2.0.0",
+  "testCount": 131,
+  "validationType": "Technical regression and local integration, not prospective pump prediction validation",
+  "production": [
+    {
+      "name": "nebula-ai-engine",
+      "version": [
+        {
+          "version_id": "18578575-7550-484b-b3ff-7ec03d89431f",
+          "percentage": 100
+        }
+      ],
+      "crons": []
+    },
+    {
+      "name": "nebula-evaluation",
+      "version": [
+        {
+          "version_id": "c5b75ccb-5e88-4834-a5e5-8850c8cebdfd",
+          "percentage": 100
+        }
+      ],
+      "crons": [
+        "*/30 * * * *"
+      ]
+    },
+    {
+      "name": "nebula-api",
+      "version": [
+        {
+          "version_id": "2ea747e6-1a72-4968-a9aa-1d7e017b9762",
+          "percentage": 100
+        }
+      ],
+      "crons": []
+    },
+    {
+      "name": "nebula-scanner",
+      "version": [
+        {
+          "version_id": "672dfcfd-ba5b-4db3-828f-d1c1659f90b4",
+          "percentage": 100
+        }
+      ],
+      "crons": [
+        "*/30 * * * *"
+      ]
+    },
+    {
+      "name": "nebulacryptohunter",
+      "version": [
+        {
+          "version_id": "76ea15d2-4f15-4edf-b8e1-5b4c890861cf",
+          "percentage": 100
+        }
+      ],
+      "crons": []
+    }
+  ],
+  "rollback": [
+    {
+      "name": "nebula-ai-engine",
+      "previous": [
+        {
+          "version_id": "c97659c9-a6f7-4804-97dd-90cef4967e20",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-evaluation",
+      "previous": [
+        {
+          "version_id": "dec32da1-cfdd-4453-aed6-c9ce0ffce3e8",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-api",
+      "previous": [
+        {
+          "version_id": "6110e4db-a138-45ad-83ca-ff9d2f04da51",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-scanner",
+      "previous": [
+        {
+          "version_id": "9d1890ab-921a-4ae7-a328-22a6ae61e3f2",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebulacryptohunter",
+      "previous": [
+        {
+          "version_id": "f4f41365-84c2-4368-be0d-aedd2876787f",
+          "percentage": 100
+        }
+      ]
+    }
+  ]
+}

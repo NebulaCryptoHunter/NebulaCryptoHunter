@@ -26,4 +26,4 @@ jobs:
           node scripts/bundle-nebula-scanner.mjs
           node --check dist/nebula-scanner.mjs
       - name: Regression tests
-        run: node --test tests/*.test.mjs backend/tests/*.test.mjs
+        run: node --test tests/*.test.mjs backend/tests/*.test.mjs backend/prediction-engine-v2.test.mjs

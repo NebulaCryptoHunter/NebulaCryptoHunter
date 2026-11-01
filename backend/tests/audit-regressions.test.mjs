@@ -22,7 +22,7 @@ test('negative pagination cannot request all rows',async()=>{
 });
 test('absent or risky whale verification cannot produce REVIEW',()=>{
  for(const whaleConcentration of [undefined,null,'UNKNOWN','HIGH','RISK']){
-  const r=scoreCandidate({liquidityUsd:100000,volume24h:1e9,change24h:150,risk:{rugCheck:'SAFE',whaleConcentration}});
+  const r=scoreCandidate({priceUsd:1,observedAt:new Date().toISOString(),liquidityUsd:100000,volume24h:1e9,change24h:150,risk:{rugCheck:'SAFE',whaleConcentration}});
   assert.equal(r.decision,'WATCH');assert.equal(r.autoTrade,false);
  }
 });

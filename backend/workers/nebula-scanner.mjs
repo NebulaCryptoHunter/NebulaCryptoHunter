@@ -1,34 +1,13 @@
+import {selectScanMints} from './scanner-selection.mjs';
 import {marketPairs,discoverMints,marketFeed} from './market-sources.mjs';
 import {d1DailyLimitError,resetUTC} from './research-cache.mjs';
 import {evaluateResearch} from './research-evaluation.mjs';
 // NEBULA scanner: deterministic token identity and pool-specific discovery.
 // Research-only: staging D1 snapshots and scores; no trading.
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
-const number=x=>{if(x===null||x===undefined||x==='')return null;const n=Number(x);return Number.isFinite(n)?n:null};
 const mintOk=s=>typeof s==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
-export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
- const results=[];
- for(const p of Array.isArray(pairs)?pairs:[]){
-  if(p?.chainId!=="solana"||!p?.pairAddress)continue;
-  const base=p.baseToken,quote=p.quoteToken;
-  if(!base?.address||!quote?.address||!mintOk(base.address)||!mintOk(quote.address))continue;
-  const liq=number(p.liquidity?.usd);
-  if(liq===null||liq<minLiquidityUsd)continue;
-  const change24h=number(p.priceChange?.h24),volume24h=number(p.volume?.h24);
-  const tx=p.txns?.h24||{};
-  const buys=number(tx.buys)||0,sells=number(tx.sells)||0;
-  results.push({chain:"solana",pairAddress:p.pairAddress,dexId:p.dexId||null,
-   base:{mint:base.address,symbol:base.symbol||null,name:base.name||null},
-   quote:{mint:quote.address,symbol:quote.symbol||null,name:quote.name||null},
-   priceUsd:number(p.priceUsd),liquidityUsd:liq,volume24h,change24h,
-   buys24h:buys,sells24h:sells,
-   momentum:{volumeLiquidityRatio:volume24h!==null&&liq>0?volume24h/liq:null,
-    transactionBuyRatio:buys+sells>0?buys/(buys+sells):null},
-   risk:{rugCheck:"UNKNOWN",whaleConcentration:"UNKNOWN"},
-   source:p._source||"dexscreener",observedAt:p._observedAt||new Date().toISOString()});
- }
- return results.sort((a,b)=>(b.momentum.volumeLiquidityRatio??-1)-(a.momentum.volumeLiquidityRatio??-1));
-}
+import {scanPairs} from './market-observation.mjs';
+export {scanPairs} from './market-observation.mjs';
 async function diagnostic(env,stage,status,detail){try{await env.STAGE_DB.prepare("INSERT INTO scanner_diagnostics (observed_at,stage,status,detail) VALUES (?,?,?,?)").bind(new Date().toISOString(),stage,status,String(detail).slice(0,300)).run()}catch(e){console.error("diagnostic_write_failed",String(e))}}
 
 const BATCH_MAX_MINTS=12;
@@ -101,10 +80,15 @@ export async function runScheduledScan(event,env){
    }
    const known=await availablePool(env);
    const pool=tokenMints([...cached,...known]);
-   if(!pool.length){status='EMPTY';error='No valid mints discovered or tracked';}
+   const due=await env.STAGE_DB.prepare(`SELECT c.mint FROM prediction_candidates c
+    WHERE c.observed_at>=? AND c.observed_at<=? AND NOT EXISTS(SELECT 1 FROM candidate_evaluations e WHERE e.candidate_id=c.id)
+    GROUP BY c.mint ORDER BY MIN(c.observed_at),c.mint LIMIT 6`).bind(new Date(now-90*60000).toISOString(),new Date(now-25*60000).toISOString()).all();
+   const followups=tokenMints((due.results||[]).map(x=>x.mint));
+   if(!pool.length&&!followups.length){status='EMPTY';error='No valid mints discovered or tracked';}
    else{
-    const cursor=Math.max(0,Number(await getState(env,'rotation_index'))||0)%pool.length;
-    selected=Array.from({length:Math.min(BATCH_MAX_MINTS,pool.length)},(_,i)=>pool[(cursor+i)%pool.length]);
+    const cursor=Math.max(0,Number(await getState(env,'rotation_index'))||0);
+    const selection=selectScanMints(pool,followups,{cursor,limit:BATCH_MAX_MINTS});
+    selected=selection.selected;
     // At most ONE DexScreener price request per run for up to 12 mints.
     const market=await marketPairs(selected,{dexPaused});
     const dex=market.attempts.find(x=>x.provider==='dexscreener');
@@ -131,14 +115,16 @@ export async function runScheduledScan(event,env){
       for(let i=0;i<chosen.length;i++){
        const c=chosen[i],v=body.results[i];
        if(v?.mint!==c.base.mint||v?.pairAddress!==c.pairAddress)throw Error('AI score identity mismatch');
+       if(!['WATCH','REVIEW','INSUFFICIENT_DATA'].includes(v.decision)||typeof v.model!=='string'||!v.model||(v.decision==='INSUFFICIENT_DATA'?v.score!==null:!Number.isFinite(v.score)||v.score<0||v.score>100))throw Error('AI score invalid');
        statements.push(env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_snapshots(mint,pair_address,observed_at,liquidity_usd,volume_24h,change_24h,payload_json) VALUES (?,?,?,?,?,?,?)").bind(c.base.mint,c.pairAddress,c.observedAt,c.liquidityUsd,c.volume24h,c.change24h,JSON.stringify(c)));
        statements.push(env.STAGE_DB.prepare("INSERT OR IGNORE INTO engine_scores(mint,pair_address,observed_at,model,decision,score,payload_json) VALUES (?,?,?,?,?,?,?)").bind(v.mint,v.pairAddress,c.observedAt,v.model,v.decision,v.score,JSON.stringify({...v,observedAt:c.observedAt,source:c.source})));
       }
-      await env.STAGE_DB.batch(statements);
-      snapshotCount=chosen.length;
+      const writes=await env.STAGE_DB.batch(statements);
+      if(!Array.isArray(writes)||writes.length!==statements.length)throw Error('Snapshot persistence result unavailable');
+      snapshotCount=writes.reduce((sum,result,i)=>sum+(i%2===0?Number(result.meta?.changes)||0:0),0);
      }
      results=selected.map(mint=>({mint,status:grouped.has(mint)?200:404,snapshots:grouped.get(mint)?.length||0,providerAttempts:market.attempts}));
-     await putState(env,'rotation_index',(cursor+selected.length)%pool.length);
+     await putState(env,'rotation_index',selection.nextCursor);
      if(dex?.ok){await putState(env,'provider_backoff_level','0');await putState(env,'cooldown_until','0');}
      status=snapshotCount?'COMPLETED':'EMPTY';
      if(profilesWarning)error=profilesWarning;

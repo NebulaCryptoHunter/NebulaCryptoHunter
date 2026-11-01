@@ -37,7 +37,7 @@ export function fakeDb(){
    };
    return stmt;
   },
-  async batch(statements){rows.batchCalls++;for(const stmt of statements)await stmt.run();}
+  async batch(statements){rows.batchCalls++;const results=[];for(const stmt of statements)results.push(await stmt.run());return results;}
  };
  return {db,rows};
 }

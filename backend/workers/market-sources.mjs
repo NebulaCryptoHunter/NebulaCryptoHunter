@@ -1,3 +1,5 @@
+import {scanPairs} from './market-observation.mjs';
+import {scoreCandidate} from './scoring-v2.mjs';
 import {providerJSON} from './provider-runtime.mjs';
 export const validMint=x=>typeof x==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(x);
 const positive=x=>x!==null&&x!==''&&Number.isFinite(Number(x))&&Number(x)>0;
@@ -61,7 +63,11 @@ export async function freeQuotes(mints,env={}){
 export async function marketFeed(env={}){
  const discovery=await discoverMints(),m=await marketPairs(discovery.mints);
  const seen=new Set(),items=[];
- for(const p of m.pairs){if(seen.has(p.baseToken.address)||!positive(p.priceUsd)||!positive(p.liquidity?.usd)||Number(p.liquidity.usd)<10000)continue;seen.add(p.baseToken.address);items.push({mint:p.baseToken.address,symbol:p.baseToken.symbol,pair_address:p.pairAddress,observed_at:p._observedAt,price_usd:Number(p.priceUsd),liquidity_usd:Number(p.liquidity.usd),volume_24h:p.volume?.h24==null?null:Number(p.volume.h24),change_24h:p.priceChange?.h24==null?null:Number(p.priceChange.h24),source:p._source,score:null,decision:'WATCH',model:null,risk_verified:false,evaluation_status:'NOT_PERSISTED'})}
+ for(const c of scanPairs(m.pairs)){
+  if(seen.has(c.base.mint)||!positive(c.priceUsd))continue;seen.add(c.base.mint);
+  const score=scoreCandidate(c);
+  items.push({mint:c.base.mint,symbol:c.base.symbol,pair_address:c.pairAddress,observed_at:c.observedAt,price_usd:c.priceUsd,liquidity_usd:c.liquidityUsd,volume_24h:c.volume24h,change_24h:c.change24h,source:c.source,...score,risk_verified:false,evaluation_status:'NOT_PERSISTED'});
+ }
  const quotes=items.length?{items:[],attempts:[]}:await freeQuotes(discovery.mints,env);
  items.push(...quotes.items);
  return {items,source:'live-provider-fallback',dataStatus:'LIVE_ONLY',persisted:false,modelCalibrated:false,automaticScanning:false,counts:null,runs:[],candidates:[],evaluations:[],providerAttempts:[...discovery.attempts,...m.attempts,...quotes.attempts],generatedAt:new Date().toISOString()};

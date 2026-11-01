@@ -1,3 +1,5 @@
+import {pointOutcome,updateMeasuredAnalytics,EVALUATION_VERSION} from './evaluation-metrics.mjs';
+import {providerJSON} from './provider-runtime.mjs';
 import {evaluateResearch} from './research-evaluation.mjs';
 // =====================================================
 // NEBULA WORKER 2: EVALUATION ENGINE (V110.2.1)
@@ -6,7 +8,7 @@ import {evaluateResearch} from './research-evaluation.mjs';
 // Binding: DB (D1 Database)
 // =====================================================
 
-const VERSION = 'V110.3.3';
+const VERSION = EVALUATION_VERSION;
 const BUILD = '2026-10-26';
 
 const CFG = {
@@ -59,7 +61,7 @@ function setCachedDex(tokenCA, data) {
 
 // ==================== PRICE SERVICE ====================
 function bestSolPrice(data, ca) {
-  const pairs = (data?.pairs || []).filter(p => p.chainId === 'solana' && (p.baseToken?.address === ca || p.quoteToken?.address === ca));
+  const pairs = (data?.pairs || []).filter(p => p.chainId === 'solana' && (p.baseToken?.address === ca));
   pairs.sort((a,b) => (Number(b.liquidity?.usd)||0)-(Number(a.liquidity?.usd)||0));
   const p = pairs[0];
   if (!p) return 0;
@@ -67,119 +69,46 @@ function bestSolPrice(data, ca) {
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
 
-async function getTokenPrice(ca) {
-  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca)) return null;
-  const cached = getCachedDex(ca);
-  if (cached && cached.pairs && cached.pairs.length > 0) {
-    const price = bestSolPrice(cached, ca);
-    if (price > 0) return { price, cached: true };
-  }
-
-  for (let attempt = 0; attempt <= CFG.PRICE_RETRY_MAX; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${ca}`, { signal: controller.signal });
-      clearTimeout(timer);
-      if (res.ok) {
-        const text = await res.text();
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const data = JSON.parse(text);
-          setCachedDex(ca, data);
-          if (data.pairs && data.pairs.length > 0) {
-            const price = bestSolPrice(data, ca);
-            if (price > 0) return { price, cached: false };
-          }
-        }
-      }
-    } catch(e) {}
-    if (attempt < CFG.PRICE_RETRY_MAX) {
-      await new Promise(r => setTimeout(r, CFG.PRICE_RETRY_BACKOFF * (attempt + 1)));
-    }
-  }
-  return null;
+export async function getTokenPrice(ca,budget){
+ if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca))return null;
+ if(budget.pending.has(ca))return budget.pending.get(ca);
+ if(budget.remaining<=0)return null;
+ budget.remaining--;
+ const work=(async()=>{
+  const dex=await providerJSON('dexscreener','https://api.dexscreener.com/latest/dex/tokens/'+ca,{}, {ttl:60,timeout:2500});
+  if(dex.ok){const price=bestSolPrice(dex.data,ca);if(price>0)return {price,cached:!!dex.cached,source:'dexscreener',observedAt:dex.fetchedAt}}
+  const gecko=await providerJSON('geckoterminal','https://api.geckoterminal.com/api/v2/networks/solana/tokens/'+ca,{}, {ttl:60,timeout:2500});
+  const price=Number(gecko.data?.data?.attributes?.price_usd);
+  return gecko.ok&&gecko.data?.data?.id==='solana_'+ca&&Number.isFinite(price)&&price>0?{price,cached:!!gecko.cached,source:'geckoterminal',observedAt:gecko.fetchedAt}:null;
+ })();
+ budget.pending.set(ca,work);return work;
 }
 
 // ==================== EVALUATION SERVICE ====================
-async function evaluatePrediction(db, prediction, windowKey, runId) {
+export async function evaluatePrediction(db, prediction, windowKey, runId,budget) {
   const { id, token_ca, entry_price, predicted_multiplier, decision, confidence } = prediction;
   if (!entry_price || entry_price <= 0) return { skipped: true, reason: 'No entry price' };
+  const window=CFG.EVALUATION_WINDOWS.find(x=>x.key===windowKey);
+  const rawTime=typeof prediction.created_at==='string'?prediction.created_at.replace(' ','T'):'';
+  const entryTime=Date.parse(rawTime&&!/Z$|[+-]\d\d:\d\d$/.test(rawTime)?rawTime+'Z':rawTime);
+  if(!window||!Number.isFinite(entryTime))return {skipped:true,reason:'Invalid entry time or horizon'};
 
-  const priceResult = await getTokenPrice(token_ca);
+  const priceResult = await getTokenPrice(token_ca,budget);
   if (priceResult === null) return { skipped: true, reason: 'Price unavailable' };
+  const exitTime=Date.parse(priceResult.observedAt);
+  if(!Number.isFinite(exitTime)||exitTime<entryTime+window.ms||exitTime>entryTime+window.ms+40*60000||exitTime>Date.now()+60000)return {skipped:true,reason:'Quote outside declared horizon'};
 
-  const { price: currentPrice, cached } = priceResult;
-  const roi = ((currentPrice - entry_price) / entry_price) * 100;
-  const actualMultiplier = currentPrice / entry_price;
-
-  // Directional score (0-100)
-  let directionalScore = 50;
-  if (decision === 'STRONG_BUY' || decision === 'BUY') {
-    if (roi > 0) directionalScore = 100;
-    else if (roi > -5) directionalScore = 70;
-    else directionalScore = 30;
-  } else if (decision === 'AVOID') {
-    if (roi < 0) directionalScore = 100;
-    else if (roi < 5) directionalScore = 70;
-    else directionalScore = 30;
-  }
-
-  // Multiplier score (0-100)
-  let multiplierScore = 0;
-  if (predicted_multiplier && predicted_multiplier > 0 && actualMultiplier > 0) {
-    const error = Math.abs(predicted_multiplier - actualMultiplier) / Math.max(predicted_multiplier, actualMultiplier);
-    multiplierScore = Math.round(clamp((1 - error) * 100, 0, 100));
-  } else {
-    multiplierScore = 50;
-  }
-
-  // Timing score (0-100)
-  let timingScore = 50;
-  if (windowKey === '30m' && roi > 5) timingScore = 80;
-  else if (windowKey === '2h' && roi > 20) timingScore = 85;
-  else if (windowKey === '6h' && roi > 50) timingScore = 90;
-  else if (windowKey === '24h' && roi > 100) timingScore = 95;
-
-  // Risk score
-  const riskScore = clamp(Math.round(100 - Math.abs(roi) * 0.2), 10, 100);
-
-  // Opportunity cost
-  let opportunityCostScore = 100;
-  if (decision === 'AVOID' && roi > 20) opportunityCostScore = 30;
-  else if (decision === 'WAIT' && roi > 30) opportunityCostScore = 40;
-
-  // Sustainability
-  const ageHours = (Date.now() - new Date(prediction.created_at).getTime()) / (60*60*1000);
-  const sustainedHours = null; // Not measurable from one spot-price observation.
-  const sustainabilityScore = 50; // Neutral; unobserved trajectory.
-
-  // Confidence calibration
-  const confidenceCalibrationScore = clamp(Math.round(100 - Math.abs((confidence||50) - (roi>0?100:0))), 10, 100);
-
-  // Overall success score (weighted)
-  const successScore = Math.round(
-    directionalScore * 0.25 +
-    multiplierScore * 0.30 +
-    timingScore * 0.15 +
-    riskScore * 0.10 +
-    opportunityCostScore * 0.10 +
-    sustainabilityScore * 0.05 +
-    confidenceCalibrationScore * 0.05
-  );
+  const {price:currentPrice,cached}=priceResult;
+  const measured=pointOutcome({entryPrice:entry_price,exitPrice:currentPrice,decision,predictedMultiplier:predicted_multiplier});
+  if(!measured)return {skipped:true,reason:'Invalid point-in-time return'};
+  const {roi,actualMultiplier,directionalScore,multiplierScore,successScore,timingScore,riskScore,opportunityCostScore,sustainabilityScore,confidenceCalibrationScore,sustainedHours}=measured;
 
   // Check for existing evaluation for this window
   const existing = await db.prepare(`SELECT id FROM evaluations WHERE prediction_id=? AND evaluation_window=?`)
     .bind(id, windowKey).first();
   if (existing) return { skipped: true, reason: 'Already evaluated' };
 
-  // Determine win/loss status
-  let winLoss = 'PENDING';
-  if (roi >= 100) winLoss = 'WIN';
-  else if (roi <= -90) winLoss = 'RUGGED';
-  else if (roi > 0) winLoss = 'ACTIVE';
-  else winLoss = 'LOSS';
-
+  const winLoss=measured.outcome;
   // Store evaluation
   await db.prepare(`INSERT INTO evaluations (
     prediction_id, token_ca, directional_score, multiplier_score, timing_score,
@@ -187,12 +116,12 @@ async function evaluatePrediction(db, prediction, windowKey, runId) {
     confidence_calibration_score, success_score, actual_roi, actual_multiplier,
     max_drawdown, time_to_ath, sustained_hours, evaluation_confidence,
     market_regime, evaluation_window, engine_version, notes, evaluated_at
-  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?,50,?,?,?,?,datetime('now'))`)
+  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?,NULL,?,?,?,?,datetime('now'))`)
     .bind(id, token_ca, directionalScore, multiplierScore, timingScore,
       riskScore, opportunityCostScore, sustainabilityScore,
       confidenceCalibrationScore, successScore, roi, actualMultiplier,
       sustainedHours, prediction.market_regime||'SIDEWAY', windowKey, VERSION,
-      `POINT_IN_TIME_ONLY; sustainability/drawdown/ATH unmeasured; WL:${winLoss} ROI:${roi.toFixed(1)}%`)
+      `POINT_IN_TIME_V2; source:${priceResult.source}; source_observed_at:${priceResult.observedAt}; elapsed_seconds:${Math.round((exitTime-entryTime)/1000)}; legacy entry pool unspecified; OUTCOME:${winLoss}; not trade P&L; drawdown/ATH/rug/calibration unmeasured`)
     .run();
 
   // Hanya update status ke EVALUATED jika ini adalah window terakhir (7d)
@@ -213,42 +142,20 @@ async function evaluatePrediction(db, prediction, windowKey, runId) {
 }
 
 // ==================== ANALYTICS UPDATE ====================
-async function updateAnalyticsStats(db, runId) {
-  try {
-    const [tp,te,bw,tb,ar] = await Promise.all([
-      db.prepare(`SELECT COUNT(*) as c FROM predictions`).first(),
-      db.prepare(`SELECT COUNT(*) as c FROM evaluations`).first(),
-      db.prepare(`SELECT COUNT(*) as c FROM evaluations e JOIN predictions p ON e.prediction_id=p.id WHERE p.decision IN ('BUY','STRONG_BUY') AND e.success_score>=60`).first(),
-      db.prepare(`SELECT COUNT(*) as c FROM predictions WHERE decision IN ('BUY','STRONG_BUY')`).first(),
-      db.prepare(`SELECT AVG(actual_roi) as avg FROM evaluations`).first()
-    ]);
-
-    const totalPreds = tp?.c || 0;
-    const totalEvals = te?.c || 0;
-    const wins = bw?.c || 0;
-    const buyPreds = tb?.c || 0;
-    const avgROI = Math.round(ar?.avg || 0);
-
-    const precision = buyPreds > 0 ? wins / buyPreds : 0;
-    const recall = totalEvals > 0 ? wins / totalEvals : 0;
-    const f1 = (precision + recall) > 0 ? 2*(precision*recall)/(precision+recall) : 0;
-    const winRate = totalPreds > 0 ? wins / totalPreds : 0;
-
-    await db.prepare(`UPDATE ai_stats SET total_predictions=?, total_evaluations=?, overall_win_rate=?, overall_avg_roi=?, overall_precision=?, overall_recall=?, overall_f1=?, updated_at=datetime('now') WHERE id=1`)
-      .bind(totalPreds, totalEvals, Math.round(winRate*100), avgROI, Math.round(precision*100), Math.round(recall*100), Math.round(f1*100)).run();
-
-    await logSystem(db, 'INFO', 'analytics', `Stats: Preds ${totalPreds}, Evals ${totalEvals}, F1 ${Math.round(f1*100)}%, ROI ${avgROI}%`, runId);
-  } catch(e) {
-    await logSystem(db, 'ERROR', 'analytics', `Failed to update stats: ${e.message}`, runId);
-  }
+async function updateAnalyticsStats(db,runId){
+ const summary=await updateMeasuredAnalytics(db);
+ await logSystem(db,'INFO','analytics','Fixed 30m samples '+summary.samples+'; uncalibrated',runId);
+ return summary;
 }
 
 // ==================== CRON HANDLER ====================
-async function handleScheduled(env, ctx) {
+export async function handleScheduled(env, ctx) {
   const db = env.DB;
   const runId = UUID();
   const cronStartTime = Date.now();
   const now = Date.now();
+  // Four unique token quotes maximum: at most 8 provider fetches plus bounded Cache API calls.
+  const priceBudget={remaining:4,pending:new Map()};
   
   // Statistik Cron
   const stats = {
@@ -315,7 +222,7 @@ async function handleScheduled(env, ctx) {
 
       const batch = results.slice(i, i + CFG.CRON_MAX_CONCURRENT);
       const promises = batch.map(pred =>
-        evaluatePrediction(db, pred, window.key, runId)
+        evaluatePrediction(db, pred, window.key, runId,priceBudget)
           .then(result => {
             if (!result) {
               windowFailed++;
@@ -400,6 +307,6 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([handleScheduled(env, ctx),evaluateResearch(env.RESEARCH_DB)]));
+    ctx.waitUntil(Promise.allSettled([handleScheduled(env, ctx),evaluateResearch(env.RESEARCH_DB)]).then(results=>{for(const result of results)if(result.status==='rejected')console.warn('evaluation_task_failed',String(result.reason?.message||result.reason).slice(0,120))}));
   }
 };

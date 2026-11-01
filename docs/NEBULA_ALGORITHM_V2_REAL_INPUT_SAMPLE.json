@@ -1,0 +1,76 @@
+{
+  "capturedAt": "2026-11-01T13:25:23.230Z",
+  "model": "heuristic-v2.0.0",
+  "kind": "Real input comparison only; values are collection observations, not prospective forecasts or validation outcomes",
+  "items": [
+    {
+      "mint": "8ANLUXihz9FrSy6Jbg85CGsuPCpPjf5S9ZUXNRG5pump",
+      "pairAddress": "8EzXtricxU35cAigVYgAXN4mHgZvGJo3bFm2xQaoJVNw",
+      "liquidityUsd": 8916.1,
+      "volume24h": 403794.59,
+      "change24h": -60.76,
+      "timeframes": {
+        "m5": {
+          "volumeUsd": 857.32,
+          "changePct": -10.01,
+          "buys": 23,
+          "sells": 29,
+          "transactions": 52,
+          "buyRatio": 0.4423076923076923
+        },
+        "h1": {
+          "volumeUsd": 305770.88,
+          "changePct": -82.04,
+          "buys": 4172,
+          "sells": 3327,
+          "transactions": 7499,
+          "buyRatio": 0.5563408454460594
+        },
+        "h24": {
+          "volumeUsd": 403794.59,
+          "changePct": -60.76,
+          "buys": 5674,
+          "sells": 4432,
+          "transactions": 10106,
+          "buyRatio": 0.5614486443696813
+        }
+      },
+      "excludedFromScanner": true,
+      "oldRankingScore": 36.64,
+      "newRanking": {
+        "model": "heuristic-v2.0.0",
+        "dataCoverageDefinition": "Market inputs only; excludes risk verification",
+        "confidence": null,
+        "confidenceReason": "NOT_CALIBRATED",
+        "probabilityOfProfit": null,
+        "predictedMultiplier": null,
+        "autoTrade": false,
+        "modelCalibrated": false,
+        "decision": "WATCH",
+        "score": 0,
+        "reasons": [
+          "Security or whale concentration unverified",
+          "THIN_LIQUIDITY",
+          "DOWNSIDE_MOMENTUM"
+        ],
+        "riskFlags": [
+          "THIN_LIQUIDITY",
+          "DOWNSIDE_MOMENTUM"
+        ],
+        "dataCoverage": 100,
+        "components": {
+          "liquidity": 0,
+          "activity": 100,
+          "momentum": 0,
+          "buyPressure": 55.62
+        },
+        "metrics": {
+          "volumeLiquidityRatio": 45.29,
+          "pressureTransactions": 7499,
+          "buyPressureWindow": "h1",
+          "ageMs": -1
+        }
+      }
+    }
+  ]
+}
