@@ -37,7 +37,7 @@ export default {async fetch(request,env){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   let archived=null,fallbackReason='D1_DAILY_READ_LIMIT';
   try{
-   const response=await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:180000});
+   const response=await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:600000});
    archived=await response.clone().json();
    const newest=Math.max(0,...(archived.items||[]).map(x=>Date.parse(x.observed_at)||0));
    const observationsOld=newest>0&&Date.now()-newest>60*60*1000;
@@ -58,7 +58,7 @@ export default {async fetch(request,env){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   const limit=Number.parseInt(u.searchParams.get('limit')||'25',10);
   const offset=Number.parseInt(u.searchParams.get('offset')||'0',10);
-  return await cachedResearch(new Request(new URL('/api/research/history?limit='+Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25))+'&offset='+Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0)),u.origin)),()=>unifiedHistory(env.RESEARCH_DB,{limit,offset}),{freshMs:600000});
+  return await cachedResearch(new Request(new URL('/api/research/history?limit='+Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25))+'&offset='+Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0)),u.origin)),()=>unifiedHistory(env.RESEARCH_DB,{limit,offset}),{freshMs:1800000});
  }
  if(path==='/api/research/scan-now'&&method==='POST'){
   // One-click primary SCAN: private Worker-to-Worker call, never accept mint/pair payload from the browser.
