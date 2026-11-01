@@ -780,6 +780,133 @@ body{margin:0}
  .hunter-mobile-tabs button{min-height:36px!important}
 }
 
+
+/* NEBULA HUNTER V2.4 — TOKEN VISIBILITY FIRST.
+   The outer app remains a fixed-height HUD; decorative radar/cockpit do not
+   consume the token feed. Functional token cards and details remain unchanged. */
+
+/* Restore the original Hunter spaceship sizing, explicitly overriding V2.3.
+   Do not alter source images or planet styling. */
+.hunter-banner .hunter-ship{
+ width:min(26%,310px);height:auto;max-width:none;max-height:none;
+ left:2%;top:-27px;transform:rotate(-5deg);object-fit:contain;
+}
+
+/* Make the token viewport the flexible priority within the center panel. */
+.hunter-layout > .hunter-targets-panel{
+ min-height:0;overflow:hidden;
+ display:flex;flex-direction:column;
+}
+.hunter-targets-panel .radar-grid{
+ flex:1 1 0!important;min-height:0!important;
+ height:0;max-height:none!important;
+ overflow-x:hidden!important;overflow-y:scroll!important;
+ padding-top:3px;padding-bottom:10px;
+}
+.hunter-targets-panel .radar-grid>.hud-card{flex:0 0 auto;min-width:0}
+.hunter-targets-panel .hunter-panel-heading{flex:0 0 auto}
+.hunter-targets-panel .hunter-targets-heading{flex:0 0 auto}
+
+/* Radar stays a working status indicator, but no longer takes 100–152px. */
+.hunter-targets-panel .hunter-radar-zone{
+ flex:0 0 54px!important;
+ height:54px!important;min-height:54px!important;max-height:54px;
+ padding:4px 8px!important;margin:0 0 4px!important;gap:12px;
+}
+.hunter-targets-panel .hunter-radar-scope{
+ width:44px!important;height:44px!important;flex:0 0 44px!important;
+ min-width:44px;min-height:44px;
+}
+.hunter-targets-panel .hunter-radar-center{width:12px;height:12px}
+.hunter-targets-panel .hunter-radar-center:before{top:4px;left:-8px;width:24px}
+.hunter-targets-panel .hunter-radar-center:after{left:4px;top:-8px;height:24px}
+.hunter-targets-panel .hunter-radar-status{
+ display:flex;flex-direction:row;align-items:center;justify-content:flex-start;
+ gap:clamp(6px,1vw,14px);flex-wrap:wrap;min-width:0;
+}
+.hunter-targets-panel .hunter-radar-status .title{font-size:11px;white-space:nowrap}
+.hunter-targets-panel .hunter-radar-status strong{font-size:18px;line-height:1}
+.hunter-targets-panel .hunter-radar-status .hunter-radar-key{
+ font-size:10px;overflow-wrap:anywhere;
+}
+.hunter-targets-panel .hunter-radar-status p{display:none!important}
+.hunter-targets-panel .hunter-targets-heading{min-height:40px;gap:6px;margin-bottom:3px}
+.hunter-targets-panel .hunter-feed-notice:not([hidden]){
+ max-height:55px;overflow-y:auto;overscroll-behavior:contain;
+}
+
+/* Desktop height budget: give center data grid space rather than footer art.
+   No hidden token controls; cockpit image still remains visible. */
+@media (min-width:1200px){
+ .hunter-banner{height:clamp(82px,10vh,103px)}
+ .hunter-kpi-row{margin:6px 0;gap:9px}
+ .hunter-kpi{min-height:64px;height:64px;padding:6px 13px;gap:9px}
+ .hunter-kpi-value{font-size:clamp(1.18rem,1.9vw,1.75rem)}
+ .hunter-layout>.hunter-panel{padding:10px 12px}
+ .hunter-targets-panel .hunter-panel-heading{
+  min-height:43px;margin:0 0 5px;padding:0 2px 5px;
+ }
+ .hunter-targets-panel .hunter-panel-heading small{margin-top:3px}
+ .hunter-console-wrap{margin-top:3px}
+ .hunter-console-wrap .hunter-console-head{display:none}
+ .hunter-console-wrap .ai-console{
+  box-sizing:border-box;height:30px!important;max-height:30px!important;
+  min-height:30px!important;margin:1px 0!important;padding:4px 8px;
+  overflow-y:auto;
+ }
+ .hunter-cockpit-footer{
+  flex:0 0 48px!important;height:48px!important;
+  margin-top:0;
+ }
+ .hunter-cockpit-footer img{bottom:-37%}
+ .hunter-targets-panel .radar-grid{scroll-padding-top:4px}
+}
+@media (min-width:1200px) and (max-height:760px){
+ .hunter-banner{height:76px}
+ .hunter-kpi{min-height:55px;height:55px}
+ .hunter-kpi-row{margin:4px 0}
+ .hunter-cockpit-footer{flex-basis:37px!important;height:37px!important}
+ .hunter-targets-panel .hunter-radar-zone{
+  flex-basis:46px!important;height:46px!important;min-height:46px!important;
+ }
+ .hunter-targets-panel .hunter-radar-scope{
+  width:36px!important;height:36px!important;min-width:36px;min-height:36px;flex-basis:36px!important;
+ }
+ .hunter-console-wrap .ai-console{height:26px!important;min-height:26px!important;max-height:26px!important}
+}
+
+/* Tablet/mobile use only one panel tab at a time; radar stays compact and
+   token list must remain independently scrollable. */
+@media(max-width:1199px){
+ .hunter-layout>.hunter-targets-panel.hunter-tab-active{display:flex!important}
+ .hunter-targets-panel .hunter-radar-zone{
+  height:52px!important;min-height:52px!important;flex-basis:52px!important;
+ }
+ .hunter-targets-panel .radar-grid{height:0}
+ .hunter-console-wrap .ai-console{
+  box-sizing:border-box;max-height:28px!important;min-height:24px!important;
+ }
+ .hunter-cockpit-footer{flex-basis:42px!important;height:42px!important}
+}
+@media(max-width:767px){
+ .hunter-banner .hunter-ship{
+  width:33%;height:auto;max-width:none;max-height:none;
+  left:-14%;top:0;transform:rotate(-5deg);
+ }
+ .hunter-targets-panel .hunter-radar-zone{
+  height:47px!important;min-height:47px!important;flex-basis:47px!important;
+  gap:7px;padding:3px 5px!important;
+ }
+ .hunter-targets-panel .hunter-radar-scope{
+  width:38px!important;height:38px!important;min-width:38px;min-height:38px;flex-basis:38px!important;
+ }
+ .hunter-targets-panel .hunter-radar-status{gap:5px}
+ .hunter-targets-panel .hunter-radar-status .title{font-size:10px}
+ .hunter-targets-panel .hunter-radar-status .hunter-radar-key{font-size:9px}
+ .hunter-targets-panel .hunter-targets-heading{min-height:39px}
+ .hunter-cockpit-footer{flex-basis:34px!important;height:34px!important}
+}
+
 @media(prefers-reduced-motion:reduce){.bg-scanline,.hero-card,.ep-mini{animation:none!important}.gauge-fill{transition:none}}
 
   </style>
