@@ -374,7 +374,7 @@ test('DB is one research database, PRED is all records, UNIQUE is distinct coin 
  assert.match(api,/total_records/);
  assert.match(api,/unique_mints/);
  assert.match(html,/id:'dash-db',lbl:'DATABASE'/);
- assert.match(html,/id:'dash-pred',lbl:'PRED'/);
+ assert.match(html,/id:'dash-pred',lbl:'PREDICTION'/);
  assert.match(html,/id:'dash-unique',lbl:'UNIQUE'/);
  assert.doesNotMatch(html,/id:'dash-total',lbl:'TOT'/);
  assert.match(html,/updatePanel\('dash-db',S\.dash\.dbTotal\?\?'—'/);
