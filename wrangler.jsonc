@@ -14,8 +14,8 @@
   "d1_databases": [
     {
       "binding": "RESEARCH_DB",
-      "database_name": "nebula-scanner-stage",
-      "database_id": "0d565690-e6c0-4aa8-a8d4-17b91edc81dc"
+      "database_name": "nebula-db",
+      "database_id": "6eeadd5e-5e58-4a8c-90d9-92d039438a8f"
     },
     {
       "binding": "AUTH_DB",
