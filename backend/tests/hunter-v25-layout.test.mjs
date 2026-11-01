@@ -43,13 +43,13 @@ test('AI validation animation is decorative only and respects reduced motion',()
  ok("calibrated?'READY':'—'");
  ok("calibrated?'CALIBRATED':'NOT CALIBRATED'");
 });
-test('AI stats have own scroll area and arrows; text opacity preserved',()=>{
+test('AI instruments fit two rows without scroll; details and text opacity preserved',()=>{
  ok('id="aiHealthDash" class="ai-health-grid hunter-scrollable" tabindex="0"');
- ok('data-scroll-target="aiHealthDash" data-scroll-direction="-1"');
- ok('data-scroll-target="aiHealthDash" data-scroll-direction="1"');
+ assert.doesNotMatch(html,/data-scroll-target="aiHealthDash"/);
+ ok('id="showAllIndicators"');
  ok("const ids=['radarFeed','hunterRecentList','aiHealthDash']");
- assert.match(css,/\.hunter-ai-panel \.ai-health-grid\{[^}]*overflow-y:scroll!important/);
- assert.match(css,/\.hunter-ai-panel \.ai-health-grid\{[^}]*grid-auto-rows:minmax\(48px,auto\)/);
+ assert.match(css,/\.hunter-ai-panel #aiHealthDash\{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important/);
+ assert.match(css,/\.hunter-ai-panel #aiHealthDash\{[^}]*grid-template-rows:repeat\(2,minmax\(0,1fr\)\)!important[^}]*overflow:hidden!important/);
  assert.match(css,/\.hunter-panel\{[\s\S]*?rgba\(5,17,40,.79\)/);
  assert.match(css,/\.hunter-kpi\{[\s\S]*?rgba\(4,21,49,.81\)/);
  assert.doesNotMatch(css,/\.hunter-panel\s*,\s*\.hunter-panel \*\s*\{text-shadow:inherit\}/);
