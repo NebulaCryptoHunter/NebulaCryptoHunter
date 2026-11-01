@@ -1455,6 +1455,64 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  .hunter-targets-panel .token-card-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 }
 
+/* V2.9: Eight distinct horizontal AI performance bars (all viewports). */
+.hunter-ai-panel .hunter-ai-main{display:flex;align-items:center;gap:8px!important;min-width:0;flex:0 0 auto}
+.hunter-model-validation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:center;flex:0 0 115px;min-width:0;border:1px solid #625877;border-radius:8px;background:#102139df;padding:8px;color:#cae0ef}
+.hunter-model-validation span{grid-column:1/-1;font:800 9px 'Orbitron',sans-serif}
+.hunter-model-validation strong{font:900 13px 'Share Tech Mono',monospace;color:#ffcf85}
+.hunter-validation-status-dot{width:9px;height:9px;border-radius:50%;background:#c19d50}
+.hunter-model-validation.is-validated{border-color:#35ed99}
+.hunter-model-validation.is-validated strong{color:#a8ffd0}
+.hunter-model-validation.is-validated .hunter-validation-status-dot{background:#3dffa0;box-shadow:0 0 8px #3dffa0}
+.hunter-ai-panel #aiHealthDash{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:repeat(8,minmax(0,1fr))!important;grid-auto-rows:minmax(0,1fr)!important;gap:4px!important;padding:1px!important;margin:0!important;flex:1 1 0!important;min-height:0!important;max-height:none!important;overflow:hidden!important;scrollbar-gutter:auto!important;align-content:stretch!important}
+.hunter-ai-panel #aiHealthDash .instrument-bar{display:flex!important;flex-direction:column!important;justify-content:center!important;gap:3px!important;min-width:0!important;min-height:0!important;padding:4px 8px!important;overflow:hidden!important;text-align:left!important;border-radius:6px;border:1px solid color-mix(in srgb,var(--instrument) 50%,#183145)!important;border-left:3px solid var(--instrument)!important;background:linear-gradient(100deg,color-mix(in srgb,var(--instrument) 12%,transparent),rgba(3,16,31,.72))!important}
+.instrument-bar-head{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0}
+.hunter-ai-panel .instrument-bar .lbl{font:800 11px/1.1 'Share Tech Mono',monospace!important;color:#eafaff!important;letter-spacing:.1px!important;overflow-wrap:anywhere}
+.instrument-bar-number{font:900 12px/1.1 'Orbitron',sans-serif;color:var(--instrument);flex:0 0 auto}
+.instrument-bar-track{display:block;width:100%;height:7px;min-height:7px;flex:0 0 7px;background:#061322;border:1px solid #284357;border-radius:10px;overflow:hidden}
+.instrument-bar-track span{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--instrument) 65%,#10334a),var(--instrument));box-shadow:0 0 9px var(--instrument);transition:width .4s}
+.instrument-bar.is-unknown .instrument-bar-track{background:repeating-linear-gradient(110deg,#27364c 0 6px,#101f31 6px 12px)}
+.instrument-bar.is-unknown .instrument-bar-number{color:#aebbd6}
+.instrument-bar-caption{font:600 9px/1.1 'Share Tech Mono',monospace;color:#9bb8cc!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hunter-login{gap:6px;transition:background .2s,border-color .2s}
+.hunter-login-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#617c95}
+.hunter-login.is-admin-on{background:rgba(6,76,51,.94)!important;color:#baffd9!important;border-color:#35edaa!important;box-shadow:0 0 13px #20cf8c55}
+.hunter-login.is-admin-on .hunter-login-dot{background:#42ff9d;box-shadow:0 0 9px #25ff90;animation:nebulaAdminPulse 2s ease-in-out infinite}
+.hunter-login.is-admin-pending{background:#4b3719!important;color:#ffe3a0!important;border-color:#ffcb63!important}
+.hunter-login.is-admin-pending .hunter-login-dot{background:#ffcd61}
+@keyframes nebulaAdminPulse{50%{opacity:.6}}
+.hunter-targets-panel .token-card-head{min-width:0;flex-wrap:nowrap!important;gap:7px!important}
+.token-dex-shortcut{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;gap:3px;min-height:38px;min-width:60px;padding:6px 8px;white-space:nowrap;border:1px solid #45e7bf;border-radius:6px;color:#b7ffea!important;background:linear-gradient(140deg,#0a5a5b,#09374d);font:900 11px 'Orbitron',sans-serif;text-decoration:none}
+.token-dex-shortcut:hover,.token-dex-shortcut:focus-visible{background:#147d79;outline:2px solid #3bdebd;outline-offset:2px}
+.token-dex-shortcut[aria-disabled="true"]{pointer-events:none;opacity:.5}
+@media(min-width:1200px){
+ .hunter-layout{grid-template-columns:minmax(240px,.75fr) minmax(560px,2.15fr) minmax(235px,.75fr)!important}
+ .hunter-targets-panel .radar-grid>.hud-card{gap:6px!important;padding:12px!important}
+ .hunter-targets-panel .hud-card .token-name{font-size:clamp(15px,1.3vw,21px)!important;line-height:1.25!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-body{min-height:0!important;overflow-y:auto!important}
+ .hunter-targets-panel .token-card-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+ .hunter-targets-panel .token-card-metric{padding:9px 11px!important}
+ .hunter-targets-panel .token-card-metric dt{font-size:12px!important}
+ .hunter-targets-panel .token-card-metric dd{font-size:14px!important}
+ .hunter-targets-panel .token-card-price{font-size:clamp(16px,1.4vw,24px)!important}
+ .hunter-targets-panel .token-card-provenance,.hunter-targets-panel .token-risk-chip{font-size:10px!important}
+ .hunter-targets-panel .token-card-actions{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+ .hunter-targets-panel .action-btn-text{font-size:10px!important;min-height:38px!important}
+}
+@media(max-width:1199px){.hunter-ai-panel .instrument-bar .lbl{font-size:11px!important}}
+@media(max-width:767px){
+ .hunter-model-validation{flex-basis:105px;padding:6px}
+ .hunter-ai-panel #aiHealthDash{gap:3px!important}
+ .hunter-ai-panel #aiHealthDash .instrument-bar{padding:3px 8px!important;gap:2px!important}
+ .instrument-bar-track{height:6px;min-height:6px;flex-basis:6px}
+ .hunter-targets-panel .token-dex-shortcut{min-width:47px;min-height:35px;padding:5px;font-size:9px}
+ .hunter-targets-panel .token-card-head{gap:4px!important}
+ .hunter-targets-panel .token-emblem{width:29px!important;flex-basis:29px!important}
+ .hunter-targets-panel .token-score-instrument{transform:scale(.85);transform-origin:center}
+}
+@media(max-width:359px){.hunter-targets-panel .token-score-instrument{display:none!important}}
+@media(prefers-reduced-motion:reduce){.instrument-bar-track span{transition:none!important}.hunter-login.is-admin-on .hunter-login-dot{animation:none!important}}
+
 </style>
 </head>
 <body>
