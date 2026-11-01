@@ -74,7 +74,8 @@ export async function runScheduledScan(event,env){
  const now=Date.now(),startISO=new Date(now).toISOString();
  await env.STAGE_DB.prepare("UPDATE scanner_runs SET status='FAILED',completed_at=?,error='RUN_TIMEOUT_RECOVERED' WHERE status='RUNNING' AND started_at<?").bind(startISO,new Date(now-15*60*1000).toISOString()).run();
  const scheduledTime=Number(event?.scheduledTime)||now;
- const scheduleKey='cron:'+Math.floor(scheduledTime/1800000);
+ // Manual batch scans have a separate 15-minute duplicate key; cron retains its original schedule key.
+ const scheduleKey=event?.kind==='manual'?'manual:'+Math.floor(scheduledTime/900000):'cron:'+Math.floor(scheduledTime/1800000);
  const created=await env.STAGE_DB.prepare("INSERT OR IGNORE INTO scanner_runs(schedule_key,started_at,status) VALUES (?,?,'RUNNING')").bind(scheduleKey,startISO).run();
  if(!created.meta?.changes)return {status:'SKIPPED_DUPLICATE',scheduleKey};
  const runId=created.meta.last_row_id;
@@ -163,8 +164,18 @@ const worker={async scheduled(event,env,ctx){
 },async fetch(request,env){
  const u=new URL(request.url);
  if(u.pathname==='/run'&&request.method==='POST'){
-  if(!env.INTERNAL_TOKEN||request.headers.get('Authorization')!=='Bearer '+env.INTERNAL_TOKEN)return reply({error:'UNAUTHORIZED'},401);
-  await runScheduledScan({scheduledTime:Date.now()},env);return reply({success:true});
+  const header=request.headers.get('Authorization');
+  const internalAuthorized=!!env.INTERNAL_TOKEN&&header==='Bearer '+env.INTERNAL_TOKEN;
+  const manualAuthorized=!!env.MANUAL_SCAN_TOKEN&&header==='Bearer '+env.MANUAL_SCAN_TOKEN;
+  if(!internalAuthorized&&!manualAuthorized)return reply({error:'UNAUTHORIZED'},401);
+  if(!env.STAGE_DB||!env.AI_ENGINE||!env.INTERNAL_TOKEN)return reply({error:'SCANNER_BINDING_MISSING'},503);
+  try{
+   const result=await runScheduledScan({scheduledTime:Date.now(),kind:manualAuthorized&&!internalAuthorized?'manual':'cron'},env);
+   if(result.status==='SKIPPED_DUPLICATE')return reply({success:false,...result},429);
+   if(result.status==='RATE_LIMITED')return reply({success:false,...result},429);
+   if(result.status==='FAILED')return reply({success:false,...result},502);
+   return reply({success:true,...result});
+  }catch{return reply({success:false,error:'SCANNER_UNAVAILABLE'},503);}
  }
  if(u.pathname==="/health")return reply({service:"nebula-scanner",status:"ok"});
  if(u.pathname==="/discover"&&request.method==="GET"){
