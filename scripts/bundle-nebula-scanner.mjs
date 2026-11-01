@@ -1,6 +1,3 @@
-import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-const base=new URL('../backend/workers/',import.meta.url);
-const scanner=readFileSync(new URL('nebula-scanner.mjs',base),'utf8').replace("import {evaluateResearch} from './research-evaluation.mjs';",'');
-const evaluation=readFileSync(new URL('research-evaluation.mjs',base),'utf8').replace('export async function','async function');
+import {cpSync,mkdirSync} from 'node:fs';
 mkdirSync(new URL('../dist/',import.meta.url),{recursive:true});
-writeFileSync(new URL('../dist/nebula-scanner.mjs',import.meta.url),evaluation+'\n'+scanner);
+for(const file of ['nebula-scanner.mjs','research-evaluation.mjs','research-cache.mjs','provider-runtime.mjs','market-sources.mjs'])cpSync(new URL('../backend/workers/'+file,import.meta.url),new URL('../dist/'+file,import.meta.url));

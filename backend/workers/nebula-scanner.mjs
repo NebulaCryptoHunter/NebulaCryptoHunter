@@ -1,3 +1,5 @@
+import {marketPairs,discoverMints,marketFeed} from './market-sources.mjs';
+import {d1DailyLimitError,resetUTC} from './research-cache.mjs';
 import {evaluateResearch} from './research-evaluation.mjs';
 // NEBULA scanner: deterministic token identity and pool-specific discovery.
 // Research-only: staging D1 snapshots and scores; no trading.
@@ -23,7 +25,7 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
    momentum:{volumeLiquidityRatio:volume24h!==null&&liq>0?volume24h/liq:null,
     transactionBuyRatio:buys+sells>0?buys/(buys+sells):null},
    risk:{rugCheck:"UNKNOWN",whaleConcentration:"UNKNOWN"},
-   source:"dexscreener",observedAt:new Date().toISOString()});
+   source:p._source||"dexscreener",observedAt:p._observedAt||new Date().toISOString()});
  }
  return results.sort((a,b)=>(b.momentum.volumeLiquidityRatio??-1)-(a.momentum.volumeLiquidityRatio??-1));
 }
@@ -81,9 +83,8 @@ export async function runScheduledScan(event,env){
  const runId=created.meta.last_row_id;
  let status='COMPLETED',error=null,selected=[],snapshotCount=0,results=[],profilesWarning=null;
  try{
-  if(Number(await getState(env,'cooldown_until'))>now){
-   status='RATE_LIMITED';error='Provider backoff active; no HTTP requests sent';
-  }else{
+  {
+   const dexPaused=Number(await getState(env,'cooldown_until'))>now;
    let cached=[];
    try{cached=JSON.parse(await getState(env,'discovery_cached_mints')||'[]')}catch{}
    if(!Array.isArray(cached))cached=[];
@@ -92,19 +93,10 @@ export async function runScheduledScan(event,env){
     // Once per six hours, not once per 30-minute run.
     await putState(env,'discovery_next_at',now+DISCOVERY_INTERVAL_MS);
     try{
-     const response=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(8000)});
-     if(response.status===429){
-      await providerBackoff(env,'discovery',response);
-      profilesWarning='Discovery HTTP 429; falling back to cached/tracked mints';
-     }else if(!response.ok){profilesWarning='Discovery HTTP '+response.status;}
-     else {
-      const profiles=await response.json();
-      if(!Array.isArray(profiles))throw Error('Invalid discovery payload');
-      cached=tokenMints(profiles.filter(p=>p.chainId==='solana').map(p=>p.tokenAddress)).slice(0,80);
-      await putState(env,'discovery_cached_mints',JSON.stringify(cached));
-      await putState(env,'discovery_backoff_level','0');
-      await putState(env,'discovery_cooldown_until','0');
-     }
+     const discovery=await discoverMints();
+     if(discovery.mints.length){cached=discovery.mints.slice(0,80);await putState(env,'discovery_cached_mints',JSON.stringify(cached));}
+     const limited=discovery.attempts.find(x=>x.error==='RATE_LIMIT');
+     if(limited){await providerBackoff(env,'discovery');profilesWarning='Discovery HTTP 429; using independent fallback/cached mints';}
     }catch(e){profilesWarning='Discovery unavailable: '+String(e.message).slice(0,100);}
    }
    const known=await availablePool(env);
@@ -114,12 +106,14 @@ export async function runScheduledScan(event,env){
     const cursor=Math.max(0,Number(await getState(env,'rotation_index'))||0)%pool.length;
     selected=Array.from({length:Math.min(BATCH_MAX_MINTS,pool.length)},(_,i)=>pool[(cursor+i)%pool.length]);
     // At most ONE DexScreener price request per run for up to 12 mints.
-    const response=await fetch('https://api.dexscreener.com/tokens/v1/solana/'+selected.map(encodeURIComponent).join(','),{signal:AbortSignal.timeout(10000)});
-    if(response.status===429){status='RATE_LIMITED';const delay=await providerBackoff(env,'pairs',response);error='Batch pricing HTTP 429; backoff '+Math.round(delay/60000)+' min';}
-    else if(!response.ok){status='FAILED';error='Batch pricing HTTP '+response.status;}
-    else{
-     const data=await response.json();
-     if(!Array.isArray(data))throw Error('Invalid batch pricing response');
+    const market=await marketPairs(selected,{dexPaused});
+    const dex=market.attempts.find(x=>x.provider==='dexscreener');
+    if(dex?.error==='RATE_LIMIT')await providerBackoff(env,'pairs',{headers:new Headers(dex.retryAt?{'retry-after':dex.retryAt}:{})});
+    if(!market.pairs.length&&market.attempts.every(x=>!x.ok)){
+     status=market.attempts.some(x=>['RATE_LIMIT','COOLDOWN'].includes(x.error))?'RATE_LIMITED':'FAILED';
+     error='All pool sources unavailable; '+market.attempts.map(x=>x.provider+':'+x.error).join(',');
+    }else{
+     const data=market.pairs;
      const items=scanPairs(data.filter(p=>selected.includes(p?.baseToken?.address)));
      const grouped=new Map();
      for(const item of items){
@@ -143,10 +137,9 @@ export async function runScheduledScan(event,env){
       await env.STAGE_DB.batch(statements);
       snapshotCount=chosen.length;
      }
-     results=selected.map(mint=>({mint,status:200,snapshots:grouped.get(mint)?.length||0}));
+     results=selected.map(mint=>({mint,status:grouped.has(mint)?200:404,snapshots:grouped.get(mint)?.length||0,providerAttempts:market.attempts}));
      await putState(env,'rotation_index',(cursor+selected.length)%pool.length);
-     await putState(env,'provider_backoff_level','0');
-     await putState(env,'cooldown_until','0');
+     if(dex?.ok){await putState(env,'provider_backoff_level','0');await putState(env,'cooldown_until','0');}
      status=snapshotCount?'COMPLETED':'EMPTY';
      if(profilesWarning)error=profilesWarning;
     }
@@ -158,9 +151,9 @@ export async function runScheduledScan(event,env){
  return {status,selectedCount:selected.length,snapshotCount,error};
 }
 
-async function setCooldown(env){await env.STAGE_DB.prepare("INSERT INTO scanner_state(key,value) VALUES ('cooldown_until',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(Date.now()+30*60*1000)).run();}
+export async function liveOnlyScan(){const feed=await marketFeed();return {success:feed.items.length>0,status:'LIVE_ONLY',selectedCount:feed.items.length,snapshotCount:0,persisted:false,warning:'D1_DAILY_READ_LIMIT',resetAt:resetUTC(Date.now()),items:feed.items,providerAttempts:feed.providerAttempts};}
 const worker={async scheduled(event,env,ctx){
- ctx.waitUntil((async()=>{await runScheduledScan(event,env);await evaluateResearch(env.STAGE_DB)})());
+ ctx.waitUntil((async()=>{try{await runScheduledScan(event,env);await evaluateResearch(env.STAGE_DB)}catch(e){if(!d1DailyLimitError(e))throw e;const live=await liveOnlyScan();console.warn('scanner_live_only',JSON.stringify({status:live.status,items:live.items.length,persisted:false,resetAt:live.resetAt}));}})());
 },async fetch(request,env){
  const u=new URL(request.url);
  if(u.pathname==='/run'&&request.method==='POST'){
@@ -171,13 +164,6 @@ const worker={async scheduled(event,env,ctx){
   if(!env.STAGE_DB||!env.AI_ENGINE||!env.INTERNAL_TOKEN)return reply({error:'SCANNER_BINDING_MISSING'},503);
   try{
    const isManual=manualAuthorized&&!internalAuthorized;
-   // Do not consume a 15-minute manual-scan slot while provider cooldown is in effect.
-   if(isManual){
-    const state=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
-    const until=Number(state?.value);
-    if(Number.isFinite(until)&&until>Date.now())
-     return reply({success:false,error:'PROVIDER_COOLDOWN',status:'RATE_LIMITED',retryAt:new Date(until).toISOString(),selectedCount:0,snapshotCount:0},429);
-   }
    const result=await runScheduledScan({scheduledTime:Date.now(),kind:isManual?'manual':'cron'},env);
    if(result.status==='SKIPPED_DUPLICATE'){
     const retryAt=isManual?new Date((Math.floor(Date.now()/900000)+1)*900000).toISOString():null;
@@ -191,7 +177,7 @@ const worker={async scheduled(event,env,ctx){
    }
    if(result.status==='FAILED')return reply({success:false,error:'SCANNER_FAILED',...result},502);
    return reply({success:true,...result});
-  }catch{return reply({success:false,error:'SCANNER_UNAVAILABLE'},503);}
+  }catch(e){if(d1DailyLimitError(e)){const live=await liveOnlyScan();return reply(live,live.success?200:503)}return reply({success:false,error:'SCANNER_UNAVAILABLE'},503);}
  }
  if(u.pathname==="/health")return reply({service:"nebula-scanner",status:"ok"});
  if(u.pathname==="/discover"&&request.method==="GET"){
@@ -199,11 +185,11 @@ const worker={async scheduled(event,env,ctx){
   const mint=u.searchParams.get("mint");
   if(!mintOk(mint))return reply({error:"INVALID_MINT"},400);
   try{
-   const upstream=await fetch("https://api.dexscreener.com/token-pairs/v1/solana/"+encodeURIComponent(mint),{signal:AbortSignal.timeout(8000)});
-   if(!upstream.ok){if(upstream.status===429&&env.STAGE_DB)await setCooldown(env);return reply({error:"UPSTREAM_ERROR",status:upstream.status},upstream.status===429?429:502);}
-   const data=await upstream.json();
+   const market=await marketPairs([mint]);
+   if(!market.pairs.length&&market.attempts.every(x=>!x.ok))return reply({error:'POOL_SOURCES_UNAVAILABLE',attempts:market.attempts},market.attempts.some(x=>x.error==='RATE_LIMIT')?429:502);
+   const data=market.pairs;
    const pairs=(Array.isArray(data)?data:[]).filter(p=>p.baseToken?.address===mint||p.quoteToken?.address===mint);
-   return reply({mint,items:scanPairs(pairs),totalPairs:pairs.length,source:"dexscreener"});
+   return reply({mint,items:scanPairs(pairs),totalPairs:pairs.length,sources:[...new Set(pairs.map(p=>p._source))]});
   }catch{return reply({error:"UPSTREAM_UNAVAILABLE"},502);}
  }
  if(u.pathname==="/pipeline"&&request.method==="GET"){
@@ -212,15 +198,14 @@ const worker={async scheduled(event,env,ctx){
   const internalAuthorized=!!env.INTERNAL_TOKEN&&header==="Bearer "+env.INTERNAL_TOKEN;
   const manualAuthorized=!!env.MANUAL_SCAN_TOKEN&&header==="Bearer "+env.MANUAL_SCAN_TOKEN;
   if(!internalAuthorized&&!manualAuthorized)return reply({error:"UNAUTHORIZED"},401);
-  const cooldown=await env.STAGE_DB?.prepare("SELECT value FROM scanner_state WHERE key='cooldown_until'").first();
-  if(Number(cooldown?.value)>Date.now())return reply({error:'PROVIDER_COOLDOWN'},429);
+
   if(!env.AI_ENGINE)return reply({error:"ENGINE_BINDING_MISSING"},503);
   const mint=u.searchParams.get("mint");
   if(!mintOk(mint))return reply({error:"INVALID_MINT"},400);
   try{
-   const upstream=await fetch("https://api.dexscreener.com/token-pairs/v1/solana/"+encodeURIComponent(mint),{signal:AbortSignal.timeout(8000)});
-   if(!upstream.ok){if(upstream.status===429&&env.STAGE_DB)await setCooldown(env);return reply({error:"UPSTREAM_ERROR",status:upstream.status},upstream.status===429?429:502);}
-   const pairs=await upstream.json();
+   const market=await marketPairs([mint]);
+   if(!market.pairs.length&&market.attempts.every(x=>!x.ok))return reply({error:'POOL_SOURCES_UNAVAILABLE',attempts:market.attempts},market.attempts.some(x=>x.error==='RATE_LIMIT')?429:502);
+   const pairs=market.pairs;
    const selected=(Array.isArray(pairs)?pairs:[]).filter(p=>p.baseToken?.address===mint);
    const items=scanPairs(selected).slice(0,200);
    if(!items.length)return reply({mint,items:[],results:[],note:"NO_BASE_TOKEN_PAIRS"});
@@ -243,7 +228,7 @@ const worker={async scheduled(event,env,ctx){
      }
     }catch{return reply({error:"STAGING_WRITE_FAILED"},503);}
    }
-   return reply({mint,items,results:data.results,source:"dexscreener",persisted:persist});
+   return reply({mint,items,results:data.results,sources:[...new Set(items.map(p=>p.source))],persisted:persist});
   }catch{return reply({error:"PIPELINE_UNAVAILABLE"},502);}
  }
  if(u.pathname!=="/scan"||request.method!=="POST")return reply({error:"NOT_FOUND"},404);

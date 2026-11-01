@@ -1,0 +1,100 @@
+{
+  "checkedAt": "2026-11-01T13:00:31.583Z",
+  "cacheSeconds": 600,
+  "mode": "FREE",
+  "providerCount": 12,
+  "providers": [
+    {
+      "name": "Pump.fun",
+      "status": "AUTH_ERROR",
+      "httpStatus": 403,
+      "latencyMs": 21,
+      "retryAt": "2026-11-01T13:01:30.816Z",
+      "detail": "AUTH_ERROR"
+    },
+    {
+      "name": "DexScreener",
+      "status": "HEALTHY",
+      "httpStatus": 200,
+      "latencyMs": 59,
+      "retryAt": null,
+      "detail": null
+    },
+    {
+      "name": "Helius",
+      "status": "HEALTHY",
+      "httpStatus": 200,
+      "latencyMs": 21,
+      "retryAt": null,
+      "detail": null
+    },
+    {
+      "name": "Jupiter",
+      "status": "HEALTHY",
+      "httpStatus": 200,
+      "latencyMs": 57,
+      "retryAt": null,
+      "detail": null
+    },
+    {
+      "name": "GeckoTerminal",
+      "status": "RATE_LIMITED",
+      "httpStatus": 429,
+      "latencyMs": 11,
+      "retryAt": "2026-11-01T13:00:48.486Z",
+      "detail": "RATE_LIMIT"
+    },
+    {
+      "name": "Birdeye",
+      "status": "HEALTHY",
+      "httpStatus": 200,
+      "latencyMs": 307,
+      "retryAt": null,
+      "detail": null
+    },
+    {
+      "name": "Ankr",
+      "status": "CONFIG_ERROR",
+      "httpStatus": null,
+      "detail": "Free API credential not configured; other providers continue"
+    },
+    {
+      "name": "Solana RPC",
+      "status": "AUTH_ERROR",
+      "httpStatus": 403,
+      "latencyMs": 353,
+      "retryAt": "2026-11-01T13:01:30.875Z",
+      "detail": "AUTH_ERROR"
+    },
+    {
+      "name": "CoinGecko",
+      "status": "HEALTHY",
+      "httpStatus": 200,
+      "latencyMs": 22,
+      "retryAt": null,
+      "detail": null
+    },
+    {
+      "name": "Rugcheck",
+      "status": "HEALTHY",
+      "httpStatus": 200,
+      "latencyMs": 182,
+      "retryAt": null,
+      "detail": null
+    },
+    {
+      "name": "CoinPaprika",
+      "status": "HEALTHY",
+      "httpStatus": 200,
+      "latencyMs": 36,
+      "retryAt": null,
+      "detail": null
+    },
+    {
+      "name": "PumpPortal WebSocket",
+      "status": "HEALTHY",
+      "httpStatus": 101,
+      "detail": "Free new-token subscription acknowledged; trade subscriptions disabled"
+    }
+  ]
+}

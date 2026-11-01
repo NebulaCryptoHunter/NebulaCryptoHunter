@@ -1,3 +1,6 @@
+import {providerJSON} from './provider-runtime.mjs';
+import {providerRoute,rpcFallback} from './provider-routes.mjs';
+import {marketPairs} from './market-sources.mjs';
 import {providerHealth} from './provider-health.mjs';
 // =====================================================
 // NEBULA API WORKER V109.1 — "Production Polish"
@@ -123,37 +126,11 @@ function setCachedDex(tokenCA, data) {
 }
 
 // ==================== PRICE SERVICE ====================
-async function getTokenPrice(ca) {
-  const cached = getCachedDex(ca);
-  if (cached && cached.pairs && cached.pairs.length > 0) {
-    const price = bestSolPrice(cached, ca);
-    if (price > 0) return price;
-  }
-
-  for (let attempt = 0; attempt <= CFG.PRICE_RETRY_MAX; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${ca}`, { signal: controller.signal });
-      clearTimeout(timer);
-      if (res.ok) {
-        const text = await res.text();
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const data = JSON.parse(text);
-          setCachedDex(ca, data);
-          if (data.pairs && data.pairs.length > 0) {
-            const price = bestSolPrice(data, ca);
-            if (price > 0) return price;
-          }
-        }
-      }
-    } catch(e) {}
-    if (attempt < CFG.PRICE_RETRY_MAX) {
-      await new Promise(r => setTimeout(r, CFG.PRICE_RETRY_BACKOFF * (attempt + 1)));
-    }
-  }
-  return null;
+async function getTokenPrice(ca){
+ if(!vCA(ca))return null;
+ const market=await marketPairs([ca]);
+ const price=bestSolPrice({pairs:market.pairs},ca);
+ return price>0?price:null;
 }
 
 // ==================== EVALUATION SERVICE ====================
@@ -345,118 +322,17 @@ async function handleScheduled(env, ctx) {
 }
 
 // ==================== SAFE PROXY FETCH (V109.1 – perbaikan logging status) ====================
-async function safeProxyFetch(url, serviceName, db, rid, useCache = false) {
-  const startTime = Date.now();
-  if (useCache && serviceName === 'DEX') {
-    const tokenCA = url.split('/tokens/')[1]?.split('?')[0];
-    if (tokenCA) {
-      const cached = getCachedDex(tokenCA);
-      if (cached) {
-        await logSystem(db, 'INFO', 'proxy', `DEX CACHE HIT | TOKEN=${tokenCA}`, rid);
-        return { ok: true, status: 200, data: cached };
-      }
-    }
-  }
-
-  let retries = 0;
-  const maxRetries = 2;
-  let lastError;
-
-  while (retries <= maxRetries) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), CFG.PROXY_TIMEOUT);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
-
-      const status = res.status;
-      const contentType = res.headers.get('content-type') || '';
-      let text = '';
-      try { text = await res.text(); } catch(e) { text = '[STREAM READ ERROR]'; }
-      const duration = Date.now() - startTime;
-
-      if (status === 429) {
-        if (useCache && serviceName === 'DEX') {
-          const tokenCA = url.split('/tokens/')[1]?.split('?')[0];
-          if (tokenCA) {
-            const entry = dexCache.get(tokenCA);
-            if (entry) {
-              await logSystem(db, 'WARNING', 'proxy', `DEX 429, using stale cache for ${tokenCA}`, rid);
-              return { ok: true, status: 200, data: entry.data };
-            }
-          }
-        }
-        await new Promise(r => setTimeout(r, 2000 * (retries + 1)));
-        retries++;
-        continue;
-      }
-
-      if (!contentType.includes('application/json')) {
-        await logSystem(db, 'ERROR', 'proxy',
-          `${serviceName} NON JSON | URL=${url} | HTTP=${status} | TIME=${duration}ms | BODY=${text.substring(0, 500)}`, rid);
-        return { ok: false, status: 502, upstreamStatus: status, data: null, error: `${serviceName} returned non-JSON (HTTP ${status})` };
-      }
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch(e) {
-        await logSystem(db, 'ERROR', 'proxy',
-          `${serviceName} JSON PARSE ERROR | URL=${url} | HTTP=${status} | TIME=${duration}ms | BODY=${text.substring(0, 500)}`, rid);
-        return { ok: false, status: 502, upstreamStatus: status, data: null, error: `${serviceName} returned invalid JSON` };
-      }
-
-      // Logging yang diperbaiki: 4xx/5xx bukan "OK"
-      if (status >= 400) {
-        await logSystem(db, 'ERROR', 'proxy',
-          `${serviceName} HTTP ${status} | URL=${url} | TIME=${duration}ms | BODY=${text.substring(0, 300)}`, rid);
-        if (status === 404) {
-          return { ok: false, status: 404, upstreamStatus: status, data: null, error: `${serviceName} returned 404` };
-        }
-        if (status >= 500) {
-          // Retry untuk 5xx
-          if (retries < maxRetries) {
-            retries++;
-            await new Promise(r => setTimeout(r, 1500 * retries));
-            continue;
-          }
-        }
-        return { ok: false, status: 502, upstreamStatus: status, data: null, error: `${serviceName} returned HTTP ${status}` };
-      }
-
-      if (data === null || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0)) {
-        await logSystem(db, 'WARNING', 'proxy',
-          `${serviceName} EMPTY RESPONSE | URL=${url} | HTTP=${status} | TIME=${duration}ms`, rid);
-      }
-
-      if (useCache && serviceName === 'DEX' && res.ok) {
-        const tokenCA = url.split('/tokens/')[1]?.split('?')[0];
-        if (tokenCA) setCachedDex(tokenCA, data);
-      }
-
-      await logSystem(db, 'INFO', 'proxy',
-        `${serviceName} OK | URL=${url} | HTTP=${status} | TIME=${duration}ms`, rid);
-
-      return { ok: res.ok, status, data };
-
-    } catch(e) {
-      const duration = Date.now() - startTime;
-      await logSystem(db, 'ERROR', 'proxy',
-        `${serviceName} FETCH ERROR | URL=${url} | ERROR=${e.message} | TIME=${duration}ms`, rid);
-      lastError = e;
-      if (retries < maxRetries) {
-        retries++;
-        await new Promise(r => setTimeout(r, 1000 * retries));
-      } else {
-        break;
-      }
-    }
-  }
-
-  return { ok: false, status: 502, upstreamStatus: 0, data: null, error: lastError?.message || `${serviceName} failed after retries` };
+async function safeProxyFetch(url,serviceName,db,rid,useCache=false){
+ const provider={DEX:'dexscreener',RUGCHECK:'rugcheck',PUMPFUN:'pumpfun'}[serviceName]||serviceName.toLowerCase();
+ const r=await providerJSON(provider,url,{}, {ttl:provider==='rugcheck'?300:60});
+ if(r.ok)return {ok:true,status:200,data:r.data};
+ if(serviceName==='DEX'){
+  const mint=url.split('/tokens/')[1];
+  if(vCA(mint)){const m=await marketPairs([mint],{dexPaused:true});if(m.pairs.length)return {ok:true,status:200,data:{pairs:m.pairs,source:'geckoterminal'}};}
+ }
+ return {ok:false,status:r.status===429?429:502,error:r.error};
 }
 
-// ==================== RPC HELPERS ====================
 function classifyRpcError(status, isTimeout, isNetworkError) {
   if (isTimeout) return 'HELIUS_TIMEOUT';
   if (isNetworkError) return 'HELIUS_NETWORK';
@@ -680,76 +556,7 @@ export default {
       // ==================== LOGS ====================
       if(path===`${API}/logs`) { const lm=Math.min(parseInt(url.searchParams.get('limit'))||50,200); const {results}=await db.prepare(`SELECT * FROM system_log ORDER BY created_at DESC LIMIT ?`).bind(lm).all(); return new Response(JSON.stringify(ok({logs:results})),{headers:h}); }
 
-      // NEBULA OPTIONAL PROVIDERS V1 — read-only; BUY Gate and D1 untouched
-      if(method==='GET' && /^\/api\/v1\/providers\/(solana_rpc|ankr|coingecko|coinpaprika|pump_ws)(\/|$)/.test(path)){
-        const parts=path.split('/');const kind=parts[4];const mint=parts[5]||'';
-        const out=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{...h,'Content-Type':'application/json','Cache-Control':'no-store'}});
-        if(kind==='pump_ws')return out({success:false,provider:kind,error:'WEBSOCKET_LIFECYCLE_REQUIRED'},501);
-        if(kind==='ankr'&&!env.ANKR_RPC_URL)return out({success:false,provider:kind,error:'ENDPOINT_NOT_CONFIGURED'},503);
-        if((kind==='coingecko'||kind==='coinpaprika')&&!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint))return out({success:false,provider:kind,error:'INVALID_MINT'},400);
-        try{
-          let target,opts={method:'GET',headers:{Accept:'application/json'}};
-          if(kind==='solana_rpc'||kind==='ankr'){
-            if(kind==='solana_rpc'&&!env.HELIUS_API_KEY)return out({success:false,provider:kind,error:'HELIUS_API_KEY_MISSING'},503);
-            target=kind==='ankr'?env.ANKR_RPC_URL:'https://mainnet.helius-rpc.com/?api-key='+encodeURIComponent(env.HELIUS_API_KEY);
-            opts={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getHealth'})};
-          }else if(kind==='coingecko'){
-            target='https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses='+encodeURIComponent(mint)+'&vs_currencies=usd';
-            if(env.COINGECKO_API_KEY)opts.headers['x-cg-demo-api-key']=env.COINGECKO_API_KEY;
-          }else target='https://api.coinpaprika.com/v1/contracts/solana/'+encodeURIComponent(mint);
-          const resp=await fetch(target,{...opts,signal:AbortSignal.timeout(6500)});
-          if(!resp.ok)return out({success:false,provider:kind,error:resp.status===429?'RATE_LIMIT':'HTTP_'+resp.status},resp.status===429?429:502);
-          const data=await resp.json();
-          if(kind==='solana_rpc'||kind==='ankr')return out({success:data?.result==='ok',provider:kind,verified:data?.result==='ok',error:data?.result==='ok'?null:'RPC_NOT_HEALTHY'},data?.result==='ok'?200:503);
-          if(kind==='coingecko'){
-            const entry=Object.entries(data||{}).find(([k])=>k.toLowerCase()===mint.toLowerCase());const price=Number(entry?.[1]?.usd);
-            return out({success:Number.isFinite(price)&&price>0,provider:kind,data:Number.isFinite(price)&&price>0?{token_ca:mint,price_usd:price}:null,error:Number.isFinite(price)&&price>0?null:'TOKEN_NOT_FOUND'},Number.isFinite(price)&&price>0?200:404);
-          }
-          const id=data?.id;return out({success:typeof id==='string'&&!!id,provider:kind,data:id?{token_ca:mint,coinpaprika_id:id}:null,error:id?null:'TOKEN_NOT_FOUND'},id?200:404);
-        }catch(e){return out({success:false,provider:kind,error:'UPSTREAM_UNAVAILABLE'},503);}
-      }
-      
-      // NEBULA MULTIPROVIDER LIVE V1 - read-only, no D1 mutations
-      if(method==='GET'&&(path.startsWith('/api/v1/providers/')||path.startsWith('/api/v1/holders/'))){
-        const mint=decodeURIComponent(path.split('/').pop());
-        if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint))return new Response(JSON.stringify({success:false,error:'INVALID_MINT'}),{status:400,headers:h});
-        const kind=path.includes('/holders/')?'holders':path.split('/')[4];
-        if(!['holders','jupiter','gecko','birdeye','market'].includes(kind))return new Response(JSON.stringify({success:false,error:'UNKNOWN_PROVIDER'}),{status:404,headers:h});
-        const headers={'Content-Type':'application/json',...h,'Cache-Control':'public, max-age=30'};
-        const query=async(provider)=>{
-          try{
-            let target,opts={headers:{Accept:'application/json'}};
-            if(provider==='jupiter'){
-              target='https://api.jup.ag/tokens/v2/search?query='+encodeURIComponent(mint);
-              if(env.JUPITER_API_KEY)opts.headers['x-api-key']=env.JUPITER_API_KEY;
-            }else if(provider==='gecko')target='https://api.geckoterminal.com/api/v2/networks/solana/tokens/'+encodeURIComponent(mint);
-            else if(provider==='birdeye'){
-              if(!env.BIRDEYE_API_KEY)return {provider,ok:false,error:'API_KEY_MISSING'};
-              target='https://public-api.birdeye.so/defi/price?address='+encodeURIComponent(mint);
-              opts.headers['X-API-KEY']=env.BIRDEYE_API_KEY;opts.headers['x-chain']='solana';
-            }
-            const resp=await fetch(target,{...opts,signal:AbortSignal.timeout(6500)});
-            if(!resp.ok)return {provider,ok:false,error:resp.status===429?'RATE_LIMIT':'HTTP_'+resp.status,retry_after:resp.headers.get('Retry-After')||null};
-            const j=await resp.json();let price=null,holders=null,organic=null;
-            if(provider==='jupiter'){
-              const a=Array.isArray(j)?j.find(x=>x.id===mint):null;
-              if(!a)return {provider,ok:false,error:'TOKEN_NOT_FOUND'};
-              price=Number(a.usdPrice);holders=Number.isInteger(a.holderCount)&&a.holderCount>=0?a.holderCount:null;organic=a.organicScore??null;
-            }else if(provider==='gecko'){
-              if(j?.data?.id!=='solana_'+mint)return {provider,ok:false,error:'TOKEN_MISMATCH'};
-              price=Number(j.data.attributes?.price_usd);
-            }else{
-              if(j?.success!==true)return {provider,ok:false,error:'PROVIDER_REJECTED'};
-              price=Number(j.data?.value);
-            }
-            return {provider,ok:true,token_ca:mint,price_usd:Number.isFinite(price)&&price>0?price:null,holder_count:holders,holder_count_verified:provider==='jupiter'&&holders!==null,organic_score:organic,checked_at:new Date().toISOString()};
-          }catch(e){return {provider,ok:false,error:'UPSTREAM_UNAVAILABLE'};}
-        };
-        const order=kind==='holders'?['jupiter']:kind==='market'?['jupiter','gecko','birdeye']:[kind];
-        const attempts=[];let selected=null;
-        for(const p of order){const result=await query(p);attempts.push(result);if(result.ok&&(kind==='holders'?result.holder_count_verified:result.price_usd!==null)){selected=result;break;}}
-        return new Response(JSON.stringify({success:!!selected,data:selected,attempts:attempts.map(a=>({provider:a.provider,ok:a.ok,error:a.error||null})),verified:kind==='holders'?!!selected?.holder_count_verified:!!selected}),{status:selected?200:503,headers});
-      }
+      if(method==='GET'){const response=await providerRoute(path,env);if(response){const out=new Response(response.body,response);for(const [key,value] of Object.entries(h))out.headers.set(key,value);return out;}}
       // ==================== PROXY ====================
       // Helius RPC
       if(path==='/helius/rpc'&&method==='POST') {
@@ -758,20 +565,9 @@ export default {
         if(!body?.jsonrpc||!body.method||!body.params) return new Response(JSON.stringify(err('Invalid JSON-RPC','VALIDATION')),{status:400,headers:h});
         if(!ALLOWED_RPC.has(body.method)) return new Response(JSON.stringify(err(`Method ${body.method} not allowed`,'VALIDATION')),{status:400,headers:h});
 
-        if (!env.HELIUS_API_KEY) {
-          return new Response(JSON.stringify(err('HELIUS_API_KEY not configured','CONFIG_ERROR')),{status:500,headers:h});
-        }
-
-        const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${env.HELIUS_API_KEY}`;
-        let r = await rpcFetch(heliusUrl, body, env, db, rid);
-
-        if (!r.ok) {
-          const errorCode = r.errorCode || 'HELIUS_ERROR';
-          const errorMsg = r.errorMsg || 'Helius RPC failed';
-          return new Response(JSON.stringify(err(errorMsg, errorCode)),{status:503,headers:h});
-        }
-
-        return new Response(JSON.stringify(r.data),{headers:{...h,'Cache-Control':'public, max-age=30'}});
+        const r=await rpcFallback(body,env);
+        if(!r.ok)return new Response(JSON.stringify(err('All configured RPC sources are unavailable','RPC_SOURCES_UNAVAILABLE')),{status:503,headers:h});
+        return new Response(JSON.stringify(r.data),{headers:{...h,'Cache-Control':'no-store','X-NEBULA-Provider':r.provider}});
       }
 
       // DEX with caching and retry for rate limit
@@ -798,7 +594,7 @@ export default {
 
       // Pumpfun
       if(path==='/pumpfun/coins') {
-        const result = await safeProxyFetch(`https://frontend-api.pump.fun/coins${url.search}`, 'PUMPFUN', db, rid, false);
+        const result = await safeProxyFetch(`https://frontend-api-v3.pump.fun/coins${url.search}`, 'PUMPFUN', db, rid, false);
         if (!result.ok) {
           return new Response(JSON.stringify(err(result.error||'Pumpfun proxy failed','PROXY_ERROR')),{status:result.status,headers:h});
         }

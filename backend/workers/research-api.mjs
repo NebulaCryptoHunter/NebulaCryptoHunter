@@ -1,3 +1,11 @@
+// Cache aggregate scans separately: exact totals need not rescan legacy tables every HUD refresh.
+async function aggregateCache(key,produce){
+ const url='https://nebula.internal/canonical-d1-aggregate-v1/'+key;
+ try{const r=await globalThis.caches?.default?.match(url);if(r){const saved=await r.json();if(Array.isArray(saved.results))return saved}}catch{}
+ const result={...await produce(),countsAsOf:new Date().toISOString()};
+ try{await globalThis.caches?.default?.put(url,Response.json(result,{headers:{'Cache-Control':'public,max-age=3600'}}))}catch{}
+ return result;
+}
 export async function researchData(db){
  const queries=[
  `SELECT s.id,s.mint,s.pair_address,s.observed_at,s.liquidity_usd,s.volume_24h,s.change_24h,json_extract(s.payload_json,'$.priceUsd') price_usd,json_extract(s.payload_json,'$.base.symbol') symbol,json_extract(s.payload_json,'$.source') source,e.decision,e.score,e.model,json_extract(e.payload_json,'$.reasons') reasons FROM scanner_snapshots s LEFT JOIN engine_scores e ON e.id=(SELECT MAX(x.id) FROM engine_scores x WHERE x.mint=s.mint AND x.pair_address=s.pair_address AND x.observed_at=s.observed_at) WHERE s.observed_at=(SELECT MAX(x.observed_at) FROM scanner_snapshots x WHERE x.mint=s.mint AND x.pair_address=s.pair_address) AND s.id=(SELECT MAX(x.id) FROM scanner_snapshots x WHERE x.mint=s.mint AND x.pair_address=s.pair_address AND x.observed_at=s.observed_at) ORDER BY s.observed_at DESC,s.id DESC LIMIT 50`,
@@ -6,8 +14,10 @@ export async function researchData(db){
  `SELECT c.id,c.mint,c.pair_address,c.observed_at,c.decision,c.ai_score,c.model,c.risk_verified,c.reason,e.entry_price,e.exit_price,e.roi_pct,e.observed_at evaluation_observed_at,e.evaluated_at,e.window_seconds,CASE WHEN e.id IS NOT NULL THEN e.status WHEN julianday('now')>julianday(c.observed_at)+90.0/1440 THEN 'MISSING_OBSERVATION' ELSE 'PENDING' END evaluation_status FROM prediction_candidates c LEFT JOIN candidate_evaluations e ON e.candidate_id=c.id ORDER BY c.observed_at DESC,c.id DESC LIMIT 50`,
  `SELECT e.*,c.mint,c.pair_address FROM candidate_evaluations e JOIN prediction_candidates c ON c.id=e.candidate_id ORDER BY e.evaluated_at DESC,e.id DESC LIMIT 50`
  ];
- const rows=await db.batch(queries.map(q=>db.prepare(q)));
- return {items:rows[0].results,runs:rows[1].results,counts:rows[2].results[0],candidates:rows[3].results,evaluations:rows[4].results,modelCalibrated:false,evaluationDefinition:'First same-pool price observed 30–90 minutes after candidate; point-in-time return, not trade P&L or win rate',source:'research-d1',generatedAt:new Date().toISOString()};
+ const aggregate=await aggregateCache('research-counts',async()=>{const [counts]=await db.batch([db.prepare(queries[2])]);return counts});
+ const rest=await db.batch(queries.filter((_,i)=>i!==2).map(q=>db.prepare(q)));
+ const rows=[rest[0],rest[1],aggregate,rest[2],rest[3]];
+ return {items:rows[0].results,runs:rows[1].results,counts:rows[2].results[0],candidates:rows[3].results,evaluations:rows[4].results,modelCalibrated:false,countsAsOf:aggregate.countsAsOf||null,evaluationDefinition:'First same-pool price observed 30–90 minutes after candidate; point-in-time return, not trade P&L or win rate',source:'research-d1',generatedAt:new Date().toISOString()};
 }
 
 /**
@@ -18,11 +28,11 @@ export async function researchData(db){
 export async function unifiedHistory(db,{limit=25,offset=0}={}){
  const lm=Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25));
  const of=Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0));
- const [page,total]=await db.batch([
+ const [page]=await db.batch([
   db.prepare(`SELECT record_key,record_source,source_id,mint,symbol,decision,ai_score,observed_at,pair_address,model,evaluation_status,roi_pct
    FROM nebula_unified_records_v1
-   ORDER BY REPLACE(observed_at,' ','T') DESC,record_key DESC LIMIT ? OFFSET ?`).bind(lm,of),
-  db.prepare('SELECT COUNT(*) AS total FROM nebula_unified_records_v1')
+   ORDER BY REPLACE(observed_at,' ','T') DESC,record_key DESC LIMIT ? OFFSET ?`).bind(lm,of)
  ]);
- return {items:page.results||[],total:Number(total.results?.[0]?.total||0),limit:lm,offset:of,source:'nebula-db',recordModel:'legacy-plus-scanner-v1'};
+ const total=await aggregateCache('unified-total',async()=>{const [result]=await db.batch([db.prepare('SELECT COUNT(*) AS total FROM nebula_unified_records_v1')]);return result});
+ return {items:page.results||[],total:Number(total.results?.[0]?.total||0),limit:lm,offset:of,countsAsOf:total.countsAsOf||null,source:'nebula-db',recordModel:'legacy-plus-scanner-v1'};
 }

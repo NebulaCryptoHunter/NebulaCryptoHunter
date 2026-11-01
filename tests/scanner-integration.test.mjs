@@ -5,7 +5,7 @@ import {runScheduledScan} from '../workers/nebula-scanner/worker.mjs';
 const A='So11111111111111111111111111111111111111112';
 const B='EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const pair=mint=>({chainId:'solana',pairAddress:'pair-'+mint.slice(0,5),baseToken:{address:mint,symbol:'TEST'},quoteToken:{address:A,symbol:'SOL'},liquidity:{usd:60000},volume:{h24:210000},priceChange:{h24:11},txns:{h24:{buys:60,sells:40}}});
-function fakeDb(){
+export function fakeDb(){
  const rows={runs:[],snapshots:[],scores:[],diagnostics:[],state:{},batchCalls:0};
  const db={
   prepare(sql){
@@ -81,21 +81,22 @@ test('429 discovery uses historical mints without repeated discovery requests',a
   assert.equal(rows.state.discovery_backoff_level,'1');
  }finally{globalThis.fetch=original;}
 });
-test('429 batch applies backoff and blocks further HTTP calls',async()=>{
- const original=globalThis.fetch,{db,rows}=fakeDb();let calls=0;
+test('Dex 429 pauses only Dex; Gecko keeps scanning and persisting',async()=>{
+ const original=globalThis.fetch,{db,rows}=fakeDb();let dexCalls=0,geckoCalls=0;
  globalThis.fetch=async url=>{
-  calls++;
-  if(String(url).includes('token-profiles'))return Response.json([]);
-  if(String(url).includes('/tokens/v1/solana/'))return new Response('',{status:429});
-  throw Error('unexpected');
+  const u=String(url);
+  if(u.includes('token-profiles'))return Response.json([{chainId:'solana',tokenAddress:A}]);
+  if(u.includes('/tokens/v1/solana/')){dexCalls++;return new Response('',{status:429});}
+  if(u.includes('geckoterminal')){geckoCalls++;return Response.json({data:[{id:'solana_'+B,type:'pool',attributes:{address:B,base_token_price_usd:'1.25',reserve_in_usd:'60000',volume_usd:{h24:'250000'},transactions:{h24:{buys:12,sells:4}}},relationships:{base_token:{data:{id:'solana_'+A}},quote_token:{data:{id:'solana_'+B}}}}]});}
+  throw Error('unexpected '+u);
  };
  try{
   const env={STAGE_DB:db,INTERNAL_TOKEN:'secret',AI_ENGINE:engine};
   const first=await runScheduledScan({scheduledTime:1800000000000},env);
-  assert.equal(first.status,'RATE_LIMITED');assert.equal(first.snapshotCount,0);
+  assert.equal(first.status,'COMPLETED');assert.equal(first.snapshotCount,1);
+  assert.equal(JSON.parse(rows.snapshots[0][6]).source,'geckoterminal');
   assert.ok(Number(rows.state.cooldown_until)>Date.now());
-  const before=calls;
   const second=await runScheduledScan({scheduledTime:1800001800000},env);
-  assert.equal(second.status,'RATE_LIMITED');assert.equal(calls,before,'backoff suppresses upstream requests');
+  assert.equal(second.status,'COMPLETED');assert.equal(dexCalls,1,'limited Dex is not retried');assert.ok(geckoCalls>=2,'independent Gecko still runs');
  }finally{globalThis.fetch=original;}
 });

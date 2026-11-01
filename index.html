@@ -1195,7 +1195,7 @@ const safeValue=v=>typeof v==='number'&&Number.isFinite(v);
 const sigmoid=(x,m=60,s=0.18)=>100/(1+Math.exp(-s*(x-m)));
 const logScore=(x,m=500,s=28)=>x<=0?5:Math.min(100,Math.log10(x+1)*s);
 const median=(arr,field)=>{const vals=arr.map(x=>x[field]||0).filter(v=>safeValue(v)).sort((a,b)=>a-b);const mid=Math.floor(vals.length/2);return vals.length%2!==0?vals[mid]:(vals[mid-1]+vals[mid])/2};
-async function fetchURL(url,opts={},to=10000,retries=2){for(let i=0;i<=retries;i++){const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),to);try{const r=await fetch(url,{...opts,signal:ctrl.signal});clearTimeout(t);if(r.ok||[401,403,404].includes(r.status))return r;if([429,500,503].includes(r.status)&&i<retries){await wait(800*(i+1));continue}throw new Error('HTTP '+r.status)}catch(e){clearTimeout(t);if(i===retries)throw e;await wait(800*(i+1))}}}
+async function fetchURL(url,opts={},to=10000,retries=2){for(let i=0;i<=retries;i++){const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),to);try{const r=await fetch(url,{...opts,signal:ctrl.signal});clearTimeout(t);if(r.ok||[401,403,404].includes(r.status))return r;if(r.status===429)return r;if([500,503].includes(r.status)&&i<retries){await wait(800*(i+1));continue}throw new Error('HTTP '+r.status)}catch(e){clearTimeout(t);if(i===retries)throw e;await wait(800*(i+1))}}}
 
 const S = {
   isAuto:false,nextScan:0,needsSort:false,hero:null,heroSince:0,heroScore:0,heroEMA:0,heroStable:0,heroPromotionCounter:0,
@@ -1289,11 +1289,11 @@ async function refreshProviderIndicators(){
     const aliases={DexScreener:'DEX',Helius:'HELIUS',Jupiter:'JUPITER',
       GeckoTerminal:'GECKO',Birdeye:'BIRDEYE',CoinGecko:'COINGECKO',
       Rugcheck:'RUGCHECK',CoinPaprika:'COINPAPRIKA',Ankr:'ANKR',
-      'PumpPortal WebSocket':'PUMP_WS'};
+      'PumpPortal WebSocket':'PUMP_WS','Pump.fun':'PUMP','Solana RPC':'SOLANA_RPC'};
     for(const item of data.providers){
       const name=aliases[item.name];if(!name)continue;
       const next=item.status==='HEALTHY'?'on':item.status==='RATE_LIMITED'?'limited':
-        item.status==='DISABLED'?'disabled':item.status==='NOT_TESTED'?'pending':
+        ['DISABLED','FREE_PLAN_UNAVAILABLE'].includes(item.status)?'disabled':item.status==='NOT_TESTED'?'pending':
         ['AUTH_ERROR','CONFIG_ERROR','UNAVAILABLE'].includes(item.status)?'off':'pending';
       window.setEp(name,next,item.latencyMs);
     }
@@ -1305,7 +1305,7 @@ async function refreshProviderIndicators(){
 // Provider indicators: check real upstream data; no artificial green status.
 async function checkNewProviderHealth(ca){if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca))return;await Promise.all([['JUPITER','jupiter'],['GECKO','gecko'],['BIRDEYE','birdeye']].map(async ([name,route])=>{try{const res=await fetchURL(CONFIG.WORKER_URL+'/api/v1/providers/'+route+'/'+encodeURIComponent(ca),{},7000,0);const json=await res.json();window.setEp(name,res.ok&&json?.success===true&&json?.data?.token_ca===ca&&Number.isFinite(json.data.price_usd)&&json.data.price_usd>0?'on':res.status===404?'pending':'off');}catch(e){window.setEp(name,'off');}}));updateEpBar();}
 // Staging-only provider checks; never report green without a verified response.
-const OPTIONAL_PROVIDER_STAGE='https://nebula-api-adapters-stage.nebula-crypto-proxy.workers.dev';
+const OPTIONAL_PROVIDER_STAGE=CONFIG.WORKER_URL;
 async function checkOptionalProviderHealth(){
   const solMint='So11111111111111111111111111111111111111112';
   const checks=[['SOLANA_RPC','solana_rpc','',j=>j?.success===true&&j?.verified===true],['COINGECKO','coingecko',solMint,j=>j?.success===true&&j?.data?.token_ca===solMint&&Number(j.data.price_usd)>0],['COINPAPRIKA','coinpaprika',solMint,j=>j?.success===true&&j?.data?.token_ca===solMint],['ANKR','ankr','',j=>j?.success===true&&j?.verified===true]];
@@ -1572,7 +1572,7 @@ const Scanner = (()=>{
       await performScan();
       if(feedback){
         feedback.hidden=false;
-        feedback.textContent='SCAN selesai · '+result.selectedCount+' token diperiksa · '+result.snapshotCount+' snapshot dihasilkan. Status '+result.status+'. '+(result.snapshotCount?'Data tersimpan di server dan disinkronkan.':'Tidak ada snapshot baru dari putaran ini.');
+        feedback.textContent=result.status==='LIVE_ONLY'?'Feed API tetap aktif · '+result.selectedCount+' token · belum tersimpan karena kuota D1 habis.':'SCAN selesai · '+result.selectedCount+' token diperiksa · '+result.snapshotCount+' snapshot dihasilkan. Status '+result.status+'. '+(result.snapshotCount?'Data tersimpan di server dan disinkronkan.':'Tidak ada snapshot baru dari putaran ini.');
       }
       addAILog('Manual SCAN '+result.status+': '+result.snapshotCount+' snapshot; '+result.selectedCount+' mint','success');
     }catch(e){
@@ -2088,12 +2088,15 @@ setTimeout(()=>{
      const badge=el('hunterRadarBadge'),system=el('hunterSystemStatus');
      let label='● DATA '+(latest?.dataStatus==='LIVE'?'BARU':'CACHE'),title='● RESEARCH FEED ONLINE',message='',kind='warning';
      if(quota){
-       label=latest?'● ARSIP D1':'● KUOTA D1 HABIS';
-       title='● DATABASE TERBATAS';
-       message=quota+(latest||history?' Menampilkan data tersimpan yang tersedia, bukan hasil live.':' Tidak ada snapshot lokal untuk ditampilkan.');
+       label=latest?.dataStatus==='LIVE_ONLY'?'● FEED API AKTIF':latest?'● ARSIP D1':'● KUOTA D1 HABIS';
+       title=latest?.dataStatus==='LIVE_ONLY'?'● API AKTIF · D1 TERBATAS':'● DATABASE TERBATAS';
+       message=quota+(latest?.dataStatus==='LIVE_ONLY'?' Feed API tetap aktif. Data sementara belum tersimpan dan belum diberi skor AI.':latest||history?' Menampilkan data tersimpan yang tersedia, bukan hasil live.':' Tidak ada snapshot lokal untuk ditampilkan.');
      }else if(!latest){
        label='● RADAR TERTUNDA';title='● RADAR BELUM TERHUBUNG';
        message='Radar belum dapat membaca API ('+String(errors[0]?.code||errors[0]?.message||'NETWORK_ERROR')+'). Data tersimpan tidak dihapus.';
+     }else if(latest?.dataStatus==='LIVE_ONLY'){
+       label='● FEED API AKTIF';title='● DATA API TERHUBUNG';
+       message='Feed API tetap aktif. Observasi ini belum tersimpan dan belum diberi skor AI; riwayat server tetap terpisah.';
      }else if(!history){
        label='● RADAR OK · HISTORY TERTUNDA';title='● RADAR AKTIF';
        message='Radar tersedia, tetapi history gagal dimuat ('+String(errors[1]?.code||errors[1]?.message||'NETWORK_ERROR')+').';

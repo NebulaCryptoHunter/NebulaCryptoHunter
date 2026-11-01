@@ -285,23 +285,14 @@ test('desktop token card headers and expanded telemetry are unclipped',()=>{
 });
 
 
-test('provider cooldown preflight never consumes manual 15-minute slot',async()=>{
+test('manual scanner no longer stops at a global provider cooldown',async()=>{
  const {default:worker}=await import('../workers/nebula-scanner.mjs');
- const future=Date.now()+12*60000;
  const sqls=[];
- const STAGE_DB={prepare(sql){sqls.push(sql);return {async first(){return {value:String(future)}},bind(){return this},async run(){throw Error('must not write during cooldown')}}}};
- const env={MANUAL_SCAN_TOKEN:'manual-only-secret',INTERNAL_TOKEN:'cron-only-secret',STAGE_DB,AI_ENGINE:{}};
- const res=await worker.fetch(new Request('https://scanner.internal/run',{method:'POST',headers:{Authorization:'Bearer manual-only-secret'}}),env);
- assert.equal(res.status,429);
- const body=await res.json();
- assert.equal(body.error,'PROVIDER_COOLDOWN');
- assert.equal(body.status,'RATE_LIMITED');
- assert.equal(body.selectedCount,0);
- assert.equal(body.snapshotCount,0);
- assert.equal(Date.parse(body.retryAt),future);
- assert.equal(sqls.length,1);
- assert.match(sqls[0],/SELECT value FROM scanner_state WHERE key='cooldown_until'/);
- assert.ok(!sqls.some(sql=>sql.includes('INSERT OR IGNORE INTO scanner_runs')));
+ const STAGE_DB={prepare(sql){sqls.push(sql);return {bind(){return this},async run(){return {meta:{changes:0}}}}}};
+ const res=await worker.fetch(new Request('https://scanner.internal/run',{method:'POST',headers:{Authorization:'Bearer manual-only-secret'}}),{MANUAL_SCAN_TOKEN:'manual-only-secret',INTERNAL_TOKEN:'cron-only-secret',STAGE_DB,AI_ENGINE:{}});
+ assert.equal(res.status,429);assert.equal((await res.json()).error,'MANUAL_SCAN_COOLDOWN');
+ assert.ok(sqls.some(sql=>sql.includes('INSERT OR IGNORE INTO scanner_runs')));
+ assert.ok(!sqls.some(sql=>sql.includes("WHERE key='cooldown_until'")));
 });
 test('gateway distinguishes provider cooldown from manual slot and does not reveal secret',async()=>{
  const AUTH_DB={prepare(){return {bind(){return this},async first(){return {id:'admin',role:'SUPER_ADMIN',must_change_password:0}}}}};

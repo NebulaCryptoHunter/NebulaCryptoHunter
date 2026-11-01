@@ -1,5 +1,5 @@
 import {researchData,unifiedHistory} from './research-api.mjs';
-import {cachedResearch,invalidateResearchCache,quotaResponse} from './research-cache.mjs';
+import {cachedResearch,invalidateResearchCache,quotaResponse,d1DailyLimitError,resetUTC} from './research-cache.mjs';
 import {authenticate,validMutationOrigin} from '../auth-v1.mjs';
 import {handleAuth} from '../auth-routes-v1.mjs';
 import {activateAdmin} from '../auth-activation-v1.mjs';
@@ -35,7 +35,24 @@ export default {async fetch(request,env){
  if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API,adminEnabled:!adminDisabled,manualScanAvailable:!adminDisabled&&!!env.SCANNER&&!!env.MANUAL_SCAN_TOKEN});
  if(path==='/api/research/latest'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
-  return await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:180000});
+  let archived=null,fallbackReason='D1_DAILY_READ_LIMIT';
+  try{
+   const response=await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:180000});
+   archived=await response.clone().json();
+   const newest=Math.max(0,...(archived.items||[]).map(x=>Date.parse(x.observed_at)||0));
+   const observationsOld=newest>0&&Date.now()-newest>60*60*1000;
+   if(archived.warning!=='D1_DAILY_READ_LIMIT'&&!observationsOld)return response;
+   if(archived.warning!=='D1_DAILY_READ_LIMIT')fallbackReason='RESEARCH_OBSERVATIONS_OLD';
+  }catch(e){if(!d1DailyLimitError(e))throw e;}
+  // Database quota cannot disable independent upstream market data.
+  if(env.API)try{
+   const r=await env.API.fetch('https://api.internal/api/v1/market-feed');
+   const live=await r.json();
+   if(r.ok&&live.dataStatus==='LIVE_ONLY'&&Array.isArray(live.items)&&live.items.length)
+    return json({...live,counts:archived?.counts||null,runs:archived?.runs||[],warning:fallbackReason,resetAt:fallbackReason==='D1_DAILY_READ_LIMIT'?resetUTC(Date.now()):null,persisted:false});
+  }catch{}
+  if(archived)return json(archived);
+  return quotaResponse(Error('D1_DAILY_READ_LIMIT'));
  }
  if(path==='/api/research/history'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
@@ -52,7 +69,7 @@ export default {async fetch(request,env){
   try{
    const response=await env.SCANNER.fetch('https://scanner.internal/run',{method:'POST',headers:{Authorization:'Bearer '+env.MANUAL_SCAN_TOKEN}});
    const data=await response.json();
-   const status=['COMPLETED','EMPTY','RATE_LIMITED','FAILED','SKIPPED_DUPLICATE'].includes(data?.status)?data.status:'UNKNOWN';
+   const status=['COMPLETED','EMPTY','RATE_LIMITED','FAILED','SKIPPED_DUPLICATE','LIVE_ONLY'].includes(data?.status)?data.status:'UNKNOWN';
    const selectedCount=Number.isSafeInteger(data?.selectedCount)&&data.selectedCount>=0?data.selectedCount:0;
    const snapshotCount=Number.isSafeInteger(data?.snapshotCount)&&data.snapshotCount>=0?data.snapshotCount:0;
    if(response.status===429){
@@ -61,6 +78,7 @@ export default {async fetch(request,env){
     return json({success:false,error,status,selectedCount,snapshotCount,retryAt:Number.isFinite(time)&&time>Date.now()?new Date(time).toISOString():null},429);
    }
    if(!response.ok||data?.success!==true)return json({success:false,error:'SCANNER_FAILED',status,selectedCount,snapshotCount},502);
+   if(status==='LIVE_ONLY')return json({success:true,status,selectedCount,snapshotCount:0,persisted:false,warning:'D1_DAILY_READ_LIMIT',resetAt:data.resetAt||null});
    await invalidateResearchCache(request.url);
    return json({success:true,status,selectedCount,snapshotCount});
   }catch{return json({success:false,error:'SCANNER_UNAVAILABLE'},502);}
