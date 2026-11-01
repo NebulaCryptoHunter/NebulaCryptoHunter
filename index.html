@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#000a14">
   <title>NEBULA CRYPTO HUNTER</title>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -1381,6 +1381,80 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  .hunter-history-panel .hunter-history-row{padding:6px;gap:6px}
 }
 
+/* Android QA 2026-11-01: active-tab visibility wins over legacy grid !important. */
+@media(max-width:1199px){
+ .hunter-layout > .hunter-panel:not(.hunter-tab-active){display:none!important;visibility:hidden!important}
+ .hunter-layout > .hunter-ai-panel.hunter-tab-active,
+ .hunter-layout > .hunter-targets-panel.hunter-tab-active{display:grid!important;visibility:visible!important}
+ .hunter-layout > .hunter-history-panel.hunter-tab-active{display:flex!important;visibility:visible!important}
+}
+@media(max-width:767px){
+ .app{padding:0 5px 0!important}
+ .sticky-nav{padding:0 4px 4px!important}
+ .sticky-nav .endpoint-bar{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:2px!important;margin:2px 0 3px!important}
+ .sticky-nav .ep-mini{height:24px!important;min-height:24px!important;font-size:clamp(7px,2vw,9px)!important;padding:2px 1px!important;overflow:hidden;text-overflow:ellipsis}
+ .sticky-nav .ep-status-btn{min-height:22px!important;padding:3px 4px!important;font-size:9px!important}
+ .sticky-nav .hud-controls{gap:3px!important}
+ .sticky-nav .hud-select{height:34px!important;min-height:34px!important;font-size:11px!important}
+ .sticky-nav .action-row{gap:3px!important}
+ .sticky-nav .action-row button{height:38px!important;min-height:38px!important;font-size:clamp(9px,2.4vw,11px)!important;letter-spacing:0!important}
+ .hunter-kpi-row{gap:4px!important;margin:3px 0 4px!important}
+ .hunter-kpi{min-height:42px!important;padding:3px!important;gap:1px!important}
+ .hunter-kpi-icon{display:none!important}
+ .hunter-kpi-inner{gap:0!important}
+ .hunter-kpi-label{font-size:9px!important}
+ .hunter-kpi-value{font-size:clamp(12px,3.5vw,15px)!important}
+ .hunter-mobile-tabs{gap:4px!important;margin:0 0 4px!important}
+ .hunter-mobile-tabs button{min-height:38px!important;font-size:11px!important}
+ .hunter-panel{padding:7px!important}
+ .hunter-panel-heading{min-height:30px!important;gap:6px!important}
+ .hunter-targets-panel .hunter-radar-zone{height:42px!important;min-height:42px!important;flex-basis:42px!important}
+ .hunter-targets-panel .hunter-radar-scope{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;flex-basis:34px!important}
+ .hunter-targets-panel .hunter-targets-heading{min-height:37px!important}
+ .hunter-targets-panel .radar-grid>.hud-card{padding:7px!important;gap:3px!important}
+ .hunter-targets-panel .radar-grid>.hud-card .token-name{font-size:clamp(12px,3.7vw,17px)!important}
+ .hunter-targets-panel .token-card-head{gap:5px!important}
+ .hunter-targets-panel .token-emblem{width:34px!important;height:40px!important;flex-basis:34px!important}
+ .hunter-targets-panel .token-card-footer{gap:4px!important;padding-top:3px!important}
+ .hunter-targets-panel .token-card-actions{gap:3px!important}
+ .hunter-targets-panel .action-btn-text{min-height:36px!important;font-size:10px!important;padding:3px!important;overflow-wrap:anywhere}
+ .hunter-targets-panel .token-open-details{min-height:36px!important;padding:5px 8px!important;font-size:10px!important}
+ .hunter-ai-panel .hunter-ai-main{gap:6px!important}
+ .hunter-ai-panel .hunter-ai-gauge{width:clamp(62px,11vh,86px)!important;height:clamp(62px,11vh,86px)!important}
+ .hunter-ai-panel #aiHealthDash{gap:3px!important;grid-auto-rows:minmax(0,1fr)!important}
+ .hunter-ai-panel #aiHealthDash .instrument-gauge{grid-template-columns:minmax(34px,40px) minmax(0,1fr)!important;min-height:0!important;gap:3px!important;padding:2px 3px!important}
+ .hunter-ai-panel .instrument-dial{width:100%!important;max-height:48px!important}
+ .hunter-ai-panel .instrument-reading{gap:2px!important;min-width:0}
+ .hunter-ai-panel .instrument-gauge .lbl{font-size:clamp(8px,2.15vw,10px)!important}
+ .hunter-ai-panel .instrument-caption{font-size:8px!important}
+ .hunter-ai-panel .hunter-advanced>summary{min-height:32px}
+ .hunter-history-panel .hunter-history-toolbar{grid-template-columns:minmax(0,1fr) auto;gap:4px}
+ .hunter-history-panel .hunter-history-row{grid-template-columns:40px minmax(0,1fr);padding:7px!important}
+ .hunter-cockpit-footer{height:22px!important;flex-basis:22px!important;min-height:0!important}
+ .hunter-console-wrap .ai-console{max-height:20px!important;min-height:16px!important}
+ .token-dialog{max-width:calc(100vw - 8px)!important}
+ #tokenDetailDialog{width:calc(100vw - 8px)!important;height:calc(100dvh - 8px)!important;max-height:calc(100dvh - 8px)!important}
+ .token-dialog-head{gap:6px!important;padding:9px!important;flex-wrap:wrap}
+ .token-dialog-close{min-height:38px;min-width:68px}
+ .token-dialog-body{flex:1 1 0;min-height:0;overflow-y:auto!important;overscroll-behavior:contain;touch-action:pan-y;padding:9px!important}
+ .token-dialog-foot{padding:8px 9px!important;flex-wrap:wrap}
+ #tokenDetailDialog .hud-gauge{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)!important}
+ #tokenDetailDialog .hud-gauge:has(.gauge-track){grid-template-columns:minmax(0,.8fr) minmax(0,1fr) 35px!important}
+ #overlayPanel .overlay-content{max-width:100%;overflow-wrap:anywhere}
+}
+@media(max-width:767px) and (max-height:720px){
+ .hunter-banner{height:58px!important}
+ .hunter-kpi{min-height:36px!important}
+ .hunter-cockpit-footer{display:none!important}
+ .hunter-console-wrap .ai-console{max-height:16px!important;min-height:14px!important}
+ .hunter-targets-panel .hunter-radar-zone{height:35px!important;min-height:35px!important;flex-basis:35px!important}
+ .hunter-targets-panel .hunter-radar-scope{width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;flex-basis:28px!important}
+}
+@media(max-width:359px){
+ .sticky-nav .ep-mini{font-size:7px!important;letter-spacing:-.3px!important}
+ .hunter-targets-panel .token-card-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+
 </style>
 </head>
 <body>
@@ -1660,8 +1734,8 @@ async function rpc(method,params){for(const r of RPC){try{const st=Date.now();co
 const feedMap=new Map(); let feedBus=[];
 const escapeHTML=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const getName=t=>t.identity?.name||t.name||t.ca?.slice(0,6)||'???';
-function getTokenDexUrl(token){if(token.dexUrl)return token.dexUrl;if(token.pair)return'https://dexscreener.com/solana/'+token.pair;return'https://dexscreener.com/solana/'+token.ca;}
-function openDexLink(token){const url=getTokenDexUrl(token);try{window.open(url,'_blank','noopener,noreferrer')}catch(e){window.location.href=url}}
+function getTokenDexUrl(token){const ca=token?.ca;if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca||''))return null;return 'https://dexscreener.com/solana/'+ca;}
+function openDexLink(token){const url=getTokenDexUrl(token);if(!url){showScanFeedback('Alamat mint Solana tidak valid. Tautan DEX tidak dibuka.');return;}const opened=window.open(url,'_blank','noopener,noreferrer');if(!opened&&window.matchMedia('(display-mode: standalone)').matches)window.location.assign(url);}
 
 function sortFeed(){
   feedBus.sort((a,b)=>{
@@ -1693,9 +1767,12 @@ async function apiPost(path,data){if(!window.NEBULA_CAN_WRITE)return null;try{co
 async function apiGet(path){try{const res=await fetchURL(`${CONFIG.API.baseURL}${path}`,{credentials:'same-origin'},10000,1);if(!res.ok){if(res.status===401||res.status===403)console.warn('NEBULA API access denied',res.status,path);return null;}const json=await res.json();return json?.success===false?null:json;}catch(e){console.warn('NEBULA API request failed',path,e.message);return null;}}
 function sendPredictionToWorker(token){apiPost('/predictions',{token_ca:token.ca,token_name:getName(token),token_symbol:token.identity?.symbol||'',decision:token.decision,confidence:token._conf||0,entry_price:token.price||0,predicted_multiplier:token.multiplier?.expected||0,ai_score:token._finalAIScore||0,quality:token._reasons?.quality||(token._finalAIScore*0.7)||0,opportunity:token._reasons?.opportunity||(token._finalAIScore*0.3)||0,market_regime:S.market.regime,risk_index:token._riskIndex||0,passed_gate:token._passedGate?1:0,dex_verified:!!(token._dexDone&&!token._dexError),helius_verified:!!(token._helDone&&!token._helError),rug_verified:!!(token._rugDone&&!token._rugError),rug_status:token._rugStatus?.status||'UNKNOWN',holder_count:token._hel?.holderCountVerified?token._hel.hc:null,liquidity_usd:token.liq||0,mint_authority_enabled:token._rug?.mint,freeze_authority_enabled:token._rug?.freeze});}
 
-async function addToWatchlist(ca){const existing=S.watchlist.find(w=>w.token_ca===ca);if(existing)return;const token=feedMap.get(ca);await apiPost('/watchlist',{token_ca:ca,token_name:token?getName(token):'',token_symbol:token?.identity?.symbol||'',last_ai_score:token?._finalAIScore||0,last_decision:token?.decision||'WATCH'});await loadWatchlist();}
-async function removeFromWatchlist(ca){S.watchlist=S.watchlist.filter(w=>w.token_ca!==ca);}
-async function loadWatchlist(){const json=await apiGet('/watchlist');if(!json||!json.success)return;S.watchlist=json.data.watchlist||[];}
+const WATCH_LOCAL_KEY='nebula_local_watchlist_v1';
+function localWatched(){try{const rows=JSON.parse(localStorage.getItem(WATCH_LOCAL_KEY)||'[]');return Array.isArray(rows)?rows.filter(w=>/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w?.token_ca||'')).slice(0,500).map(w=>({...w,_local:true})):[]}catch{return []}}
+function persistLocalWatchlist(){try{localStorage.setItem(WATCH_LOCAL_KEY,JSON.stringify(S.watchlist.filter(w=>w._local)))}catch{showScanFeedback('Penyimpanan WATCH di perangkat tidak tersedia.')}}
+async function addToWatchlist(ca){if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca||''))return false;if(S.watchlist.some(w=>w.token_ca===ca))return true;const token=feedMap.get(ca);const payload={token_ca:ca,token_name:token?getName(token):'',token_symbol:token?.identity?.symbol||'',last_ai_score:token?._finalAIScore||0,last_decision:token?.decision||'WATCH'};if(window.NEBULA_CAN_WRITE){const saved=await apiPost('/watchlist',payload);if(saved){await loadWatchlist();return true}}S.watchlist.push({...payload,_local:true});persistLocalWatchlist();showScanFeedback('WATCH disimpan di browser perangkat ini, bukan database server.');return true}
+async function removeFromWatchlist(ca){const record=S.watchlist.find(w=>w.token_ca===ca);if(!record)return true;if(!record._local){showScanFeedback('WATCH dari server bersifat baca saja di halaman ini. Data server tidak diubah.');return false}S.watchlist=S.watchlist.filter(w=>w.token_ca!==ca);persistLocalWatchlist();return true}
+async function loadWatchlist(){const json=await apiGet('/watchlist'),remote=json?.success&&Array.isArray(json.data?.watchlist)?json.data.watchlist:[];S.watchlist=[...remote,...localWatched().filter(w=>!remote.some(r=>r.token_ca===w.token_ca))]}
 
 function normalizeToken(token){
   if(!token.identity)token.identity={name:token.ca?.slice(0,8)||'???',symbol:'',ca:token.ca};
@@ -2046,7 +2123,7 @@ const RenderEngine = (()=>{
       innerHTML+=tokenOrderFlow(t);
       innerHTML+='<div class="token-card-provenance"><span class="token-provenance-dot"></span>'+escapeHTML(time)+' · '+(t.dataStatus==='STALE'?'CACHE':t.persisted===false?'BELUM TERSIMPAN':'OBSERVASI SERVER')+'<span class="token-risk-chip">RISIKO BELUM DIVERIFIKASI</span></div>';
       innerHTML+='<div class="token-card-address" title="'+escapeHTML(t.ca)+'">CA · '+escapeHTML(t.ca.slice(0,8)+'…'+t.ca.slice(-8))+'</div></div><div class="token-card-footer"><div class="token-card-actions">'+
-        '<button class="action-btn-text" data-action="watch" data-ca="'+t.ca+'">WATCH</button>'+
+        '<button class="action-btn-text'+(S.watchlist.some(w=>w.token_ca===t.ca)?' watch-active':'')+'" data-action="watch" data-ca="'+t.ca+'">'+(S.watchlist.some(w=>w.token_ca===t.ca)?'WATCHING':'WATCH')+'</button>'+
         '<button class="action-btn-text" data-action="copyca" data-ca="'+t.ca+'">SALIN CA</button>'+
         '<button class="action-btn-text" data-action="phantom" data-ca="'+t.ca+'">PHANTOM</button>'+
         '<button class="action-btn-text" data-action="pump" data-ca="'+t.ca+'">PUMP</button>'+
@@ -2088,7 +2165,7 @@ const RenderEngine = (()=>{
     });
     if(!dialog.open)dialog.showModal();body.scrollTop=0;$('tokenDetailClose').focus({preventScroll:true});requestAnimationFrame(()=>{body.scrollTop=0});
   }
-  $('tokenDetailJump').addEventListener('change',e=>{const section=document.getElementById(e.target.value);if(section){section.open=true;section.scrollIntoView({block:'start',behavior:'smooth'});$('tokenDetailBody').focus({preventScroll:true})}});
+  $('tokenDetailJump').addEventListener('change',e=>{const section=document.getElementById(e.target.value);if(section){section.open=true;const body=$('tokenDetailBody');body.scrollTo({top:Math.max(0,body.scrollTop+section.getBoundingClientRect().top-body.getBoundingClientRect().top),behavior:'smooth'});body.focus({preventScroll:true})}});
   $('tokenDetailClose').addEventListener('click',()=>$('tokenDetailDialog').close());
   $('tokenDetailDialog').addEventListener('click',e=>{if(e.target===$('tokenDetailDialog'))$('tokenDetailDialog').close()});
   function renderDetail(t){
@@ -2220,7 +2297,7 @@ const RenderEngine = (()=>{
 })();
 
 function addAILog(msg,type='info'){const el=$('aiConsole');if(!el)return;el.style.display='block';const entry=document.createElement('div');entry.className='log-entry log-'+type;entry.textContent=msg;el.prepend(entry);while(el.children.length>300)el.removeChild(el.lastChild);}
-function copyToClipboard(text){try{navigator.clipboard?.writeText(text);}catch(e){}}
+async function copyToClipboard(value){if(typeof value!=='string'||!value)throw Error('Alamat token tidak tersedia');if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);return}const input=document.createElement('textarea');input.value=value;input.setAttribute('readonly','');input.style.cssText='position:fixed;left:-9999px;top:0';document.body.append(input);input.select();const ok=document.execCommand('copy');input.remove();if(!ok)throw Error('Izin menyalin tidak tersedia')}
 function showUnifiedDashboard(){const mem=PerformanceManager.memoryReport();const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const dash=$('unifiedDash');dash.innerHTML='<div class="unified-item"><div class="val" style="color:#0ff">'+S.market.regime+'</div><div class="lbl">REGIME</div></div><div class="unified-item"><div class="val" style="color:#ffd700">'+(acc?Math.round(acc.precision*100)+'%':'-')+'</div><div class="lbl">PRECISION</div></div><div class="unified-item"><div class="val" style="color:#0f6">'+S.learning.shortCalibrationCount+'</div><div class="lbl">CAL CYCLES</div></div><div class="unified-item"><div class="val" style="color:#b0f">'+mem.ramMB+'MB</div><div class="lbl">RAM</div></div>';}
 function showAIHealthDashboard(){renderResearchIndicators();}
 
@@ -2321,11 +2398,11 @@ setTimeout(()=>{
     $('debugBtn').onclick=()=>{const acc=AiEngine.computeAccuracy?AiEngine.computeAccuracy():null;const health=AiEngine.getAIHealth();const mem=PerformanceManager.memoryReport();let html='<div><b>V109.2</b></div>';html+='<div>Tokens:'+feedBus.length+' | Market:'+S.market.regime+' | Season:'+S.market.season+'</div>';html+='<div>Rotating Offset:'+S.rotatingOffset+' | Smart Memory: ACTIVE</div>';html+='<div>Outcomes:'+S.outcomes.length+' | Cal:'+S.learning.shortCalibrationCount+'</div>';if(health){html+='<div>F1:'+health.f1+'% | Prec:'+health.precision+'% | Rec:'+health.recall+'%</div>';html+='<div>FP:'+health.fp+' | FN:'+health.fn+' | Win:'+health.winRate+'% | ROI:'+health.avgROI+'%</div>';}html+='<div>RAM:'+mem.ramMB+'MB | Dev DB:'+S.learning.developerDB.size+'</div>';html+='<div>API: '+CONFIG.API.baseURL+'</div>';document.getElementById('overlayContent').innerHTML=html;document.getElementById('overlayPanel').style.display='block';};
     $('overlayClose').onclick=()=>{$('overlayPanel').style.display='none';};
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('overlayPanel').style.display==='block'){$('overlayPanel').style.display='none';$('historyBtn')?.focus();}});
-    document.addEventListener('click',function(e){
+    document.addEventListener('click',async function(e){
       const btn=e.target.closest('[data-action]');if(!btn)return;e.stopPropagation();
       const a=btn.dataset.action,ca=btn.dataset.ca;
-      if(a==='watch'){const t=feedMap.get(ca);if(t){const idx=S.watchlist.findIndex(w=>w.token_ca===ca);if(idx>=0){removeFromWatchlist(ca);btn.classList.remove('watch-active');}else{addToWatchlist(ca);btn.classList.add('watch-active');}}}
-      else if(a==='copyca'){copyToClipboard(ca);btn.textContent='OK';setTimeout(()=>btn.textContent='CA',1000);}
+      if(a==='watch'){const t=feedMap.get(ca);if(!t)return;btn.disabled=true;try{const wasWatched=S.watchlist.some(w=>w.token_ca===ca),ok=wasWatched?await removeFromWatchlist(ca):await addToWatchlist(ca);if(ok){const watched=S.watchlist.some(w=>w.token_ca===ca);btn.classList.toggle('watch-active',watched);btn.textContent=watched?'WATCHING':'WATCH';}}finally{btn.disabled=false}}
+      else if(a==='copyca'){const original=btn.textContent;try{await copyToClipboard(ca);btn.textContent='DISALIN';setTimeout(()=>{btn.textContent=original},1200)}catch(err){showScanFeedback('Alamat token gagal disalin: '+err.message)}}
       else if(a==='phantom'){window.open('https://phantom.app/ul/v1/swap/'+ca,'_blank');}
       else if(a==='pump'){window.open('https://pump.fun/coin/'+ca,'_blank');}
       else if(a==='dex'){const t=feedMap.get(ca);if(t)openDexLink(t);}
@@ -2423,7 +2500,7 @@ setTimeout(()=>{
    const target={ai:'hunter-ai-panel',radar:'hunter-targets-panel',history:'hunter-history-panel'}[tab];
    if(!target)return;
    for(const panel of document.querySelectorAll('.hunter-layout > .hunter-panel'))
-     panel.classList.toggle('hunter-tab-active',panel.classList.contains(target));
+     {const active=panel.classList.contains(target);panel.classList.toggle('hunter-tab-active',active);panel.inert=!active;panel.setAttribute('aria-hidden',String(!active));}
    for(const button of document.querySelectorAll('[data-hunter-tab]'))
      button.setAttribute('aria-selected',String(button.dataset.hunterTab===tab));
  };
