@@ -1,7 +1,7 @@
 {
   "name": "nebula-scanner",
-  "main": "workers/nebula-scanner.mjs",
-  "compatibility_date": "2026-10-19",
+  "main": "workers/nebula-scanner/worker.mjs",
+  "compatibility_date": "2026-10-26",
   "workers_dev": false,
   "triggers": {
     "crons": [
@@ -24,5 +24,11 @@
   ],
   "observability": {
     "enabled": true
+  },
+  "secrets": {
+    "required": [
+      "INTERNAL_TOKEN",
+      "MANUAL_SCAN_TOKEN"
+    ]
   }
 }
