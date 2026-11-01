@@ -585,7 +585,6 @@ async function loadHistoricalSummary(){
   }
 }
 
-async function loadStats(){const json=await apiGet('/stats');if(!json||!json.success)return;S.dash=json.data;S.dash.dbTotal=json.data.total_predictions||S.predictionHistory.length;RenderEngine.updateDashboard();}
 async function loadHeroes(){const json=await apiGet('/heroes');if(!json||!json.success||!json.data)return;S.hero=json.data;RenderEngine.patchHeroPanel();}
 async function loadLearning(){const json=await apiGet('/learning');if(!json||!json.success)return;S.learning.weights=json.data.weights||S.learning.weights;}
 
@@ -937,7 +936,7 @@ const RenderEngine = (()=>{
       }
     }
   }
-  function flushRQ(){if(!S.rq.size)return;const batch=[...S.rq].slice(0,10);batch.forEach(ca=>{S.rq.delete(ca);const t=feedMap.get(ca);if(!t)return;let div=rendered.get(ca);if(!div||div.classList.contains('skeleton-card')){div=buildCard(t);}else{patchCard(div,t);}});if(S.needsSort){sortFeed();renderAll();S.needsSort=false;}S.dash={sb:0,buy:0,acc:0,watch:0,wait:0,av:0,sc:0,tot:0,dbTotal:S.dash.dbTotal||0};feedBus.forEach(t=>{S.dash.tot++;const d=t.decision;if(d===DECISION.STRONG_BUY)S.dash.sb++;else if(d===DECISION.BUY)S.dash.buy++;else if(d===DECISION.ACCUMULATE)S.dash.acc++;else if(d===DECISION.WATCH)S.dash.watch++;else if(d===DECISION.WAIT)S.dash.wait++;else if(d===DECISION.AVOID)S.dash.av++;else S.dash.sc++;});updateDashboard();if(S.rq.size)requestAnimationFrame(flushRQ);}
+  function flushRQ(){if(!S.rq.size)return;const batch=[...S.rq].slice(0,10);batch.forEach(ca=>{S.rq.delete(ca);const t=feedMap.get(ca);if(!t)return;let div=rendered.get(ca);if(!div||div.classList.contains('skeleton-card')){div=buildCard(t);}else{patchCard(div,t);}});if(S.needsSort){sortFeed();renderAll();S.needsSort=false;}S.dash={sb:0,buy:0,acc:0,watch:0,wait:0,av:0,sc:0,tot:S.serverResearchCounts?.unique_mints??feedBus.length,dbTotal:S.serverResearchCounts?.total_records??S.dash.dbTotal??0};feedBus.forEach(t=>{const d=t.decision;if(d===DECISION.STRONG_BUY)S.dash.sb++;else if(d===DECISION.BUY)S.dash.buy++;else if(d===DECISION.ACCUMULATE)S.dash.acc++;else if(d===DECISION.WATCH)S.dash.watch++;else if(d===DECISION.WAIT)S.dash.wait++;else if(d===DECISION.AVOID)S.dash.av++;else S.dash.sc++;});updateDashboard();if(S.rq.size)requestAnimationFrame(flushRQ);}
   return{markDirty,removeCard,renderSkeleton,buildCard,patchCard,flushRQ,renderAll,initHeroPanel,initDashboard,updateDashboard,patchHeroPanel};
 })();
 
