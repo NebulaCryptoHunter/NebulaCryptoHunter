@@ -67,7 +67,7 @@ test('legacy predictions and scanner candidates share a single history timeline 
  assert.match(html,/DATABASE NEBULA/);
  assert.match(html,/\/api\/research\/history\?limit=/);
  assert.doesNotMatch(html,/fetch\('\/api\/v1\/predictions\?limit=/);
- assert.match(html,/legacyArchiveCount=n/);
+ assert.match(html,/legacyArchiveCount=c\.total_records/);
  assert.match(html,/function showHistoryPanel\(offset=0\)/);
  assert.match(html,/S\.dash\.dbTotal=json\.counts\?\.database_records/);
  assert.match(html,/S\.dash\.tot=json\.counts\?\.unique_mints/);
@@ -515,7 +515,7 @@ test('Hunter controls remain connected and AUTO controls read-only periodic refr
   "el('hunterRecentRefresh')?.addEventListener('click',refresh)",
   "el('hunterOpenHistory')?.addEventListener('click',()=>el('historyBtn')?.click())",
  ])assert.ok(html.includes(pattern),'Missing click handler: '+pattern);
- assert.ok(html.includes("window.setInterval(()=>{if(el('autoPumpToggleBtn')?.classList.contains('active'))void refresh()},60000)"));
+ assert.ok(html.includes("window.setInterval(()=>{if(el('autoPumpToggleBtn')?.classList.contains('active'))void refresh()},180000)"));
  assert.ok(html.includes("btn.setAttribute('aria-pressed',String(S.isAuto))"));
  assert.ok(html.includes('aria-pressed="true"'));
  assert.ok(html.includes("e.key==='Escape'&&$('overlayPanel').style.display==='block'"));
@@ -548,4 +548,21 @@ test('HD WebP layers replace SVG without losing original controls or static resp
  assert.ok(html.includes('data-hunter-tab="history"'));
  assert.ok(html.includes('class="hunter-cockpit-footer"'));
  assert.ok(html.includes('HUNT BEFORE THE HYPE.'));
+});
+
+test('D1 read-quota audit: frontend does not multiply expensive query polling',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const gatewaySource=fs.readFileSync('backend/workers/frontend-gateway.mjs','utf8');
+ assert.doesNotMatch(html,/Scheduler\.register\('serverRefresh'/);
+ assert.doesNotMatch(html,/setInterval\(loadHistoricalSummary/);
+ const archive=html.slice(html.indexOf('async function loadHistoricalSummary(){'),html.indexOf('async function loadHeroes()'));
+ assert.ok(archive.includes('S.serverResearchCounts'));
+ assert.ok(!archive.includes('fetch('));
+ assert.match(html,/Scheduler\.register\('autoScan',[^\n]*180000/);
+ assert.match(html,/window\.setInterval\([^\n]*180000/);
+ assert.match(html,/latest\.dataStatus==='STALE'\|\|history\.dataStatus==='STALE'/);
+ assert.match(gatewaySource,/cachedResearch\(new Request\(u.origin\+'\/api\/research\/latest'\)/);
+ assert.match(gatewaySource,/cachedResearch\(new Request\(new URL\('\/api\/research\/history/);
+ assert.match(gatewaySource,/invalidateResearchCache\(request.url\)/);
+ assert.match(gatewaySource,/quotaResponse\(e\)/);
 });

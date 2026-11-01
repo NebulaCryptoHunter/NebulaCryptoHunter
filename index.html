@@ -938,28 +938,20 @@ async function loadPredictions(){
  const r=await fetch('/api/research/latest',{signal:AbortSignal.timeout(12000),cache:'no-store'});if(!r.ok)throw Error('Research API '+r.status);const json=await r.json();
  feedBus=[];feedMap.clear();S.predictionHistory=[];
  for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
- S.serverResearchCounts=json.counts||{};S.dash.dbTotal=json.counts?.database_records??null;S.dash.tot=json.counts?.unique_mints??0;S.dash.watch=feedBus.filter(t=>t.decision===DECISION.WATCH).length;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
+ S.serverResearchCounts=json.counts||{};void loadHistoricalSummary();S.dash.dbTotal=json.counts?.database_records??null;S.dash.tot=json.counts?.unique_mints??0;S.dash.watch=feedBus.filter(t=>t.decision===DECISION.WATCH).length;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
  return json;
 }
 
 let legacyArchiveCount=null,legacyArchiveEvaluations=null;
 async function loadHistoricalSummary(){
-  try{
-    // Same D1 nebula-db used for new scanner and historical predictions.
-    const r=await fetch('/api/research/latest',{cache:'no-store',signal:AbortSignal.timeout(12000)});
-    if(!r.ok)throw Error('HTTP '+r.status);
-    const d=await r.json();
-    const n=Number(d.counts?.total_records),e=Number(d.counts?.total_evaluations);
-    if(!Number.isInteger(n)||n<0)throw Error('Missing unified history count');
-    legacyArchiveCount=n;
-    legacyArchiveEvaluations=Number.isInteger(e)&&e>=0?e:null;
-    const count=$('archiveCount'),evals=$('archiveEvalCount');
-    if(count)count.textContent=n.toLocaleString('id-ID')+' catatan';
-    if(evals)evals.textContent='Evaluasi: '+(legacyArchiveEvaluations===null?'—':legacyArchiveEvaluations.toLocaleString('id-ID'));
-  }catch(err){
-    const count=$('archiveCount');if(count)count.textContent='Database sementara tidak terbaca';
-    addAILog('Database terpadu: '+err.message,'warning');
-  }
+  // Reuse the latest API response; no extra network/D1 read for archive counts.
+  const c=S.serverResearchCounts;
+  if(!c||!Number.isSafeInteger(c.total_records)||!Number.isSafeInteger(c.total_evaluations))return;
+  legacyArchiveCount=c.total_records;
+  legacyArchiveEvaluations=c.total_evaluations;
+  const count=$('archiveCount'),evals=$('archiveEvalCount');
+  if(count)count.textContent=legacyArchiveCount.toLocaleString('id-ID')+' catatan';
+  if(evals)evals.textContent='Evaluasi: '+legacyArchiveEvaluations.toLocaleString('id-ID');
 }
 
 async function loadHeroes(){const json=await apiGet('/heroes');if(!json||!json.success||!json.data)return;S.hero=json.data;RenderEngine.patchHeroPanel();}
@@ -1387,12 +1379,12 @@ function startup(){
   try{
     RenderEngine.initDashboard();RenderEngine.initHeroPanel();RenderEngine.updateDashboard();updateEpBar();showUnifiedDashboard();showAIHealthDashboard();
     Scheduler.register('timer',()=>{updateEpBar();Scanner.flushWsBuffer();},1000,'background');
-    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},60000,'background');
+    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},180000,'background');
     // Server research candidates remain WATCH until risk verification.
     Scheduler.register('evalQueue',()=>AiEngine.processEvalQueue(),15000,'background');
 
     // Candidate evaluation is performed on the server from persisted observations.
-    Scheduler.register('serverRefresh',()=>loadPredictions().then(()=>{RenderEngine.renderAll();RenderEngine.updateDashboard()}).catch(()=>addAILog('Server refresh unavailable','error')),60000,'background');
+    // autoScan already refreshes the radar feed; avoid duplicate serverRefresh reads.
     Scheduler.register('correlationUpdate',()=>AiEngine.updateCorrelationMatrix(),300000,'background');
 
     Scheduler.register('autoRefresh',()=>autoRefreshEnrichment(),300000,'background');
@@ -1402,7 +1394,7 @@ function startup(){
     if(S.isAuto)Scanner.requestScan();
     startAutoRefresh();
     void loadHistoricalSummary();
-    setInterval(loadHistoricalSummary,300000);
+    // Archive summary is derived from the latest radar response, without another timer.
     void refreshProviderIndicators();
     setInterval(refreshProviderIndicators,600000);
   }catch(e){console.error('Startup Error:',e);document.getElementById('radarFeed').innerHTML='<div style="color:#f44;padding:20px;text-align:center">INIT ERROR: '+e.message+'</div>';}
@@ -1472,8 +1464,9 @@ setTimeout(()=>{
      const run=Array.isArray(latest.runs)?latest.runs[0]:null;
      set('hunterLastScan',run?('RUN '+String(run.status||'UNKNOWN')+' · '+toTime(run.started_at)):'BELUM ADA PUTARAN');
      const badge=el('hunterRadarBadge'),sys=el('hunterSystemStatus');
-     if(badge){badge.textContent='● DATA LIVE';badge.className='hunter-live-badge online'}
-     if(sys){sys.textContent='● RESEARCH FEED ONLINE';sys.className='hunter-system-status online'}
+     const stale=latest.dataStatus==='STALE'||history.dataStatus==='STALE';
+     if(badge){badge.textContent=stale?'● CACHED / STALE':'● DATA '+(latest.dataStatus==='LIVE'?'UPDATED':'CACHED');badge.className='hunter-live-badge'+(stale?'':' online')}
+     if(sys){sys.textContent=stale?'● DATABASE QUOTA / STALE':'● RESEARCH FEED ONLINE';sys.className='hunter-system-status '+(stale?'offline':'online')}
      const list=el('hunterRecentList');
      if(list){
        list.replaceChildren();
@@ -1505,7 +1498,7 @@ setTimeout(()=>{
  el('hunterRecentRefresh')?.addEventListener('click',refresh);
  el('hunterOpenHistory')?.addEventListener('click',()=>el('historyBtn')?.click());
  refresh();
- window.setInterval(()=>{if(el('autoPumpToggleBtn')?.classList.contains('active'))void refresh()},60000);
+ window.setInterval(()=>{if(el('autoPumpToggleBtn')?.classList.contains('active'))void refresh()},180000);
 })();
 </script>
 </body>

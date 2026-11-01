@@ -1,4 +1,5 @@
 import {researchData,unifiedHistory} from './research-api.mjs';
+import {cachedResearch,invalidateResearchCache,quotaResponse} from './research-cache.mjs';
 import {authenticate,validMutationOrigin} from '../auth-v1.mjs';
 import {handleAuth} from '../auth-routes-v1.mjs';
 import {activateAdmin} from '../auth-activation-v1.mjs';
@@ -34,13 +35,13 @@ export default {async fetch(request,env){
  if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API,adminEnabled:!adminDisabled,manualScanAvailable:!adminDisabled&&!!env.SCANNER&&!!env.MANUAL_SCAN_TOKEN});
  if(path==='/api/research/latest'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
-  return json({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null});
+  return await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:180000});
  }
  if(path==='/api/research/history'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   const limit=Number.parseInt(u.searchParams.get('limit')||'25',10);
   const offset=Number.parseInt(u.searchParams.get('offset')||'0',10);
-  return json(await unifiedHistory(env.RESEARCH_DB,{limit,offset}));
+  return await cachedResearch(new Request(new URL('/api/research/history?limit='+Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25))+'&offset='+Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0)),u.origin)),()=>unifiedHistory(env.RESEARCH_DB,{limit,offset}),{freshMs:600000});
  }
  if(path==='/api/research/scan-now'&&method==='POST'){
   // One-click primary SCAN: private Worker-to-Worker call, never accept mint/pair payload from the browser.
@@ -60,6 +61,7 @@ export default {async fetch(request,env){
     return json({success:false,error,status,selectedCount,snapshotCount,retryAt:Number.isFinite(time)&&time>Date.now()?new Date(time).toISOString():null},429);
    }
    if(!response.ok||data?.success!==true)return json({success:false,error:'SCANNER_FAILED',status,selectedCount,snapshotCount},502);
+   await invalidateResearchCache(request.url);
    return json({success:true,status,selectedCount,snapshotCount});
   }catch{return json({success:false,error:'SCANNER_UNAVAILABLE'},502);}
  }
@@ -83,5 +85,5 @@ export default {async fetch(request,env){
  const response=await env.ASSETS.fetch(request);
  if(!response.headers.get('Content-Type')?.includes('text/html'))return response;
  const html=transformFrontend(await response.text()),headers=new Headers(response.headers);headers.delete('Content-Length');headers.delete('ETag');headers.set('Cache-Control','no-store');headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','no-referrer');return new Response(html,{status:response.status,headers});
- }catch(e){console.error('gateway_request_failed',e?.name);return json({error:'SERVICE_UNAVAILABLE'},503);}
+ }catch(e){console.error('gateway_request_failed',e?.name);return quotaResponse(e)||json({error:'SERVICE_UNAVAILABLE'},503);}
 }};
