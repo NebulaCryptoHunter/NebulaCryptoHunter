@@ -3463,6 +3463,26 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
   .app>.hunter-layout>.hunter-targets-panel.hunter-tab-active{grid-template-rows:32px 42px auto 430px!important}
 }
 
+
+/* V4.4.1 — scale token card to actual Chrome visible height without
+   sacrificing minimum row sizes or the independent 1-token scroll. */
+@media(max-width:767px){
+ .app>.hunter-layout>.hunter-targets-panel.hunter-tab-active{
+  grid-template-rows:32px 42px auto clamp(390px,calc(100dvh - 290px),426px)!important;
+ }
+ .hunter-targets-panel>.radar-grid{
+  height:clamp(390px,calc(100dvh - 290px),426px)!important;
+  min-height:clamp(390px,calc(100dvh - 290px),426px)!important;
+  max-height:clamp(390px,calc(100dvh - 290px),426px)!important;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card{
+  grid-template-rows:46px 61px minmax(146px,1fr) 34px 77px!important;
+ }
+}
+@media(max-width:359px){
+ .app>.hunter-layout>.hunter-targets-panel.hunter-tab-active{grid-template-rows:32px 42px auto 404px!important}
+ .hunter-targets-panel>.radar-grid{height:404px!important;min-height:404px!important;max-height:404px!important}
+}
 </style>
 </head>
 <body>
