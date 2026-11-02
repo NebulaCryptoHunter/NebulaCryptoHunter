@@ -1,0 +1,199 @@
+{
+  "recordedAt": "2026-11-02T23:14:51.239Z",
+  "model": "heuristic-v4.0.0",
+  "pullRequest": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/pull/61",
+  "sourceCommit": "56fe7450cad8a3f93375b870cdd8e360f262969e",
+  "scope": "Research scoring corrections, limited evidence checks, traceable XAI and descriptive prospective validation; no trading or predictive-performance claim",
+  "tests": {
+    "targeted": {
+      "tests": 108,
+      "passed": 108,
+      "failed": 0
+    },
+    "v4New": 19,
+    "full": {
+      "tests": 259,
+      "passed": 251,
+      "failed": 6,
+      "skipped": 2
+    },
+    "limitation": "Six existing UI contract failures and two existing browser skips remain.",
+    "algorithmCi": "success",
+    "algorithmCiUrl": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/41543329720/job/125612643668",
+    "frontendBuild": "success",
+    "scannerBuild": "success"
+  },
+  "production": [
+    {
+      "name": "nebula-ai-engine",
+      "modelV4": true,
+      "modulesMatch": true,
+      "createdOn": "2026-11-02T23:10:54.464851Z",
+      "versions": [
+        {
+          "version_id": "0471ac1b-b34c-4ee4-b7fd-ac7d8e89e7fa",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-api",
+      "modelV4": true,
+      "modulesMatch": true,
+      "createdOn": "2026-11-02T23:10:57.879985Z",
+      "versions": [
+        {
+          "version_id": "9239fc47-22f5-40f9-b5a2-a870179fac1b",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-scanner",
+      "modelV4": true,
+      "modulesMatch": null,
+      "createdOn": "2026-11-02T23:11:24.806855Z",
+      "versions": [
+        {
+          "version_id": "3694d3ef-4aa8-472d-ab8a-91e21c8587c9",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebulacryptohunter",
+      "modelV4": true,
+      "modulesMatch": null,
+      "createdOn": "2026-11-02T23:10:57.348264Z",
+      "versions": [
+        {
+          "version_id": "dab94db5-f2f6-4445-ac24-e14376121d1a",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "staging": [
+    {
+      "name": "nebula-ai-engine-stage",
+      "modelV4": true,
+      "exactModules": true,
+      "createdOn": "2026-11-02T23:10:05.871535Z",
+      "versions": [
+        {
+          "version_id": "8806f2f9-f4c6-4990-9c0b-bbc0c3303786",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-api-adapters-stage",
+      "modelV4": true,
+      "exactModules": true,
+      "createdOn": "2026-11-02T23:10:10.987583Z",
+      "versions": [
+        {
+          "version_id": "77c0b278-897e-4742-9150-669d8e125a15",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "sourceOnlyUpdatesPreservedBindings": true,
+  "schedules": [
+    {
+      "name": "nebula-scanner",
+      "result": {
+        "schedules": [
+          {
+            "cron": "*/30 * * * *",
+            "created_on": "2026-11-01T04:18:01.472253Z",
+            "modified_on": "2026-11-01T04:18:01.472253Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "nebula-evaluation",
+      "result": {
+        "schedules": [
+          {
+            "cron": "*/30 * * * *",
+            "created_on": "2026-08-02T15:18:35.30109Z",
+            "modified_on": "2026-08-02T15:18:35.30109Z"
+          }
+        ]
+      }
+    }
+  ],
+  "liveVerification": {
+    "ui": {
+      "servedHtmlBytes": 402428,
+      "reviewedFunctionsMatch": true,
+      "inlineScriptsCompile": true,
+      "liveRows": 3,
+      "scored": 3,
+      "ledgerRendered": true,
+      "highestFirst": true,
+      "zeroBeforeMissing": true,
+      "syncResetsToHighest": true
+    },
+    "poolFeed": {
+      "items": 3,
+      "scored": 3,
+      "models": [
+        "heuristic-v4.0.0"
+      ],
+      "scores": [
+        {
+          "score": 20,
+          "decision": "WATCH",
+          "riskStatus": "RISK_DETECTED",
+          "stage": "RISK_BLOCKED"
+        },
+        {
+          "score": 20,
+          "decision": "WATCH",
+          "riskStatus": "RISK_DETECTED",
+          "stage": "RISK_BLOCKED"
+        },
+        {
+          "score": 39,
+          "decision": "WATCH",
+          "riskStatus": "RISK_DETECTED",
+          "stage": "RISK_BLOCKED"
+        }
+      ],
+      "requestBudget": {
+        "upstreamRequests": 4,
+        "cacheHits": 0,
+        "remaining": 8
+      }
+    },
+    "discoveryFeed": {
+      "items": 12,
+      "scored": 0,
+      "requestBudget": {
+        "upstreamRequests": 6,
+        "cacheHits": 0,
+        "remaining": 6
+      },
+      "limitation": "Gecko rate limited; these twelve discovery mints had price-only rows during this capture"
+    },
+    "research": {
+      "dataStatus": "LIVE",
+      "source": "research-d1",
+      "models": [
+        "heuristic-v1",
+        "heuristic-v2.0.0",
+        "heuristic-v3.0.0"
+      ],
+      "validationStatus": "PENDING_PROSPECTIVE_OUTCOMES",
+      "measuredV4": 0,
+      "limitation": "Historical records retain original models; V4 applies to new scanner observations. No prospective V4 outcomes existed at this capture."
+    }
+  },
+  "historyRewritten": false,
+  "newUpstreamRequestsOrSqlQueries": 0,
+  "newSubscriptionsOrPlans": 0
+}
