@@ -3483,6 +3483,104 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  .app>.hunter-layout>.hunter-targets-panel.hunter-tab-active{grid-template-rows:32px 42px auto 404px!important}
  .hunter-targets-panel>.radar-grid{height:404px!important;min-height:404px!important;max-height:404px!important}
 }
+
+/* V4.5 — smartphone bottom-rail reachability and safe-area polish.
+   Keep API research data and all HUD animations unchanged. */
+.hunter-mobile-top-actions{display:none}
+.hunter-mobile-server-jump{display:none}
+@media(max-width:767px){
+ html,body{
+   min-height:100%!important;height:auto!important;
+   overflow-x:hidden!important;overflow-y:auto!important;
+   overscroll-behavior-y:auto!important;
+   scroll-padding-bottom:70px!important;
+ }
+ .app{
+   height:auto!important;min-height:100dvh!important;max-height:none!important;
+   overflow:visible!important;
+   padding-bottom:calc(62px + env(safe-area-inset-bottom,0px))!important;
+ }
+ .hunter-mobile-top-actions{
+   display:grid!important;width:100%!important;
+   grid-template-columns:minmax(0,1fr) 78px!important;
+   gap:4px!important;align-items:stretch!important;
+   margin:0!important;padding:0!important;height:29px!important;
+ }
+ .hunter-mobile-tools-trigger{
+   display:flex!important;width:100%!important;min-width:0!important;
+   height:29px!important;min-height:29px!important;
+   font-size:clamp(8px,2.45vw,10px)!important;
+   letter-spacing:0!important;
+ }
+ .hunter-mobile-tools-trigger>span:first-child{
+   min-width:0!important;overflow:hidden!important;
+   white-space:nowrap!important;text-overflow:ellipsis!important;
+ }
+ .hunter-mobile-server-jump{
+   display:flex!important;align-items:center!important;justify-content:center!important;
+   gap:4px!important;width:100%!important;min-width:0!important;
+   height:29px!important;min-height:29px!important;
+   margin:0!important;padding:2px 3px!important;
+   border:1px solid #48d8ec!important;border-radius:5px!important;
+   background:linear-gradient(95deg,#053347ed,#08253def)!important;
+   color:#b6faff!important;font:800 9px/1.1 'Share Tech Mono',monospace!important;
+   letter-spacing:0!important;cursor:pointer!important;
+ }
+ .hunter-mobile-server-jump:focus-visible{
+   outline:2px solid #a8faff!important;outline-offset:1px!important;
+ }
+ .hunter-banner .hunter-login.is-admin-on{
+   width:58px!important;min-width:58px!important;max-width:58px!important;
+   right:5px!important;top:3px!important;
+   padding:2px 2px!important;gap:3px!important;
+   font-size:7px!important;letter-spacing:0!important;
+   line-height:1.05!important;white-space:nowrap!important;
+ }
+ .hunter-banner .hunter-login.is-admin-on .hunter-login-text{
+   white-space:nowrap!important;
+   font-size:7px!important;letter-spacing:0!important;
+ }
+ .hunter-targets-panel>.radar-grid,
+ .hunter-history-panel #hunterRecentList{
+   overscroll-behavior-y:auto!important;
+   -webkit-overflow-scrolling:touch;
+ }
+ .app>.hunter-console-wrap{
+   flex:0 0 auto!important;
+   min-height:28px!important;
+   margin-top:6px!important;
+   margin-bottom:3px!important;
+   overflow:visible!important;
+ }
+ .app>.nebula-server-dock{
+   position:relative!important;order:20!important;z-index:5!important;
+   display:block!important;flex:0 0 auto!important;
+   width:100%!important;max-width:100%!important;
+   height:auto!important;min-height:36px!important;max-height:none!important;
+   margin:4px 0 12px!important;padding:0!important;
+   overflow:visible!important;
+   scroll-margin-block:18px calc(60px + env(safe-area-inset-bottom,0px));
+ }
+ .app>.nebula-server-dock>details>summary{
+   display:grid!important;
+   grid-template-columns:auto minmax(0,1fr) auto!important;
+   align-items:center!important;
+   min-width:0!important;min-height:35px!important;height:auto!important;
+   gap:6px!important;padding:6px 8px!important;
+   white-space:normal!important;
+ }
+ .app>.nebula-server-dock>details>summary .led,
+ .app>.nebula-server-dock>details>summary .expand{
+   min-width:0!important;white-space:nowrap!important;
+ }
+ .app>.nebula-server-dock>details>summary .status{
+   min-width:0!important;max-width:100%!important;
+   white-space:nowrap!important;overflow:hidden!important;
+   text-overflow:ellipsis!important;
+ }
+ .app>.hunter-cockpit-footer{pointer-events:none!important;z-index:0!important}
+}
+
 </style>
 </head>
 <body>
@@ -3499,7 +3597,7 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
       <span class="hunter-system-status" id="hunterSystemStatus" role="status">CONNECTING · RESEARCH</span>
       <a class="hunter-login" id="hunterLoginLink" href="/account" title="Login atau kelola akun Admin NEBULA" aria-live="polite"><span class="hunter-login-dot" aria-hidden="true"></span><span class="hunter-login-text">LOGIN</span></a>
     </header>
-    <button id="hunterMobileToolsBtn" class="hunter-mobile-tools-trigger" type="button" aria-expanded="false" aria-controls="endpointBar" aria-label="Tampilkan atau sembunyikan kontrol dan status API NEBULA"><span>⚙ KONTROL & STATUS API</span><span class="hunter-mobile-tools-state" aria-hidden="true">BUKA ▾</span></button>
+    <div class="hunter-mobile-top-actions" role="group" aria-label="Kontrol Android NEBULA"><button id="hunterMobileToolsBtn" class="hunter-mobile-tools-trigger" type="button" aria-expanded="false" aria-controls="endpointBar" aria-label="Tampilkan atau sembunyikan kontrol dan status API NEBULA"><span>⚙ KONTROL & STATUS API</span><span class="hunter-mobile-tools-state" aria-hidden="true">BUKA ▾</span></button><button type="button" id="hunterMobileServerJump" class="hunter-mobile-server-jump" aria-label="Lihat status SERVER di bagian bawah">SERVER <span aria-hidden="true">↓</span></button></div>
     <div class="endpoint-bar" id="endpointBar"></div>
     <div class="hud-controls">
       <select class="hud-select" id="modeSelect" aria-label="Mode pemindaian HUD"><option value="auto" selected>AUTO</option><option value="sniper">SNIPER</option><option value="hunter">HUNTER</option></select>
@@ -4777,6 +4875,19 @@ setTimeout(()=>{
  trigger.addEventListener('click',()=>setOpen(trigger.getAttribute('aria-expanded')!=='true'));
  setOpen(false);
  nav.classList.add('mobile-tools-ready');
+})();
+</script>
+
+<script>
+/* Android: a direct, accessible jump to the real SERVER rail, not mock data. */
+(()=>{
+ const trigger=document.getElementById('hunterMobileServerJump');
+ if(!trigger)return;
+ trigger.addEventListener('click',()=>{
+   const dock=document.getElementById('nebulaResearchDock')||document.querySelector('.nebula-server-dock');
+   if(!dock)return;
+   dock.scrollIntoView({block:'center',behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});
+ });
 })();
 </script>
 
