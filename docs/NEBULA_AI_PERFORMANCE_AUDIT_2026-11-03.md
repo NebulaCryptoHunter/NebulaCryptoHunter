@@ -26,6 +26,7 @@ Timestamp expiry descriptors let the open frontend expire fresh-price and risk-c
 - Main subtitle now identifies DATA QUALITY & MODEL READINESS.
 - EVAL V4 shows measured outcomes for the current model, rather than the all-model database total.
 - The decorative orbit displays V4 and an explicit uncalibrated state. Rotation is not a validation percentage.
+- The main token risk caption uses the same limited-check status as the AI panel and details; a detected risk is no longer labeled only unverified.
 - The snapshot time is visible in WIB. Captions wrap instead of truncating the numerator/denominator or risk warning.
 - DETAIL, AUDIT, DBG, advanced telemetry and the exported AI report use the same data definitions. They do not reuse legacy in-browser learning accuracy or classify every WATCH as a negative trade.
 - Precision/Recall/F1 and trading win rate are explained as unavailable/not applicable in the detailed catalogue instead of occupying four empty primary instruments.
