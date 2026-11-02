@@ -1861,6 +1861,109 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  .hunter-targets-panel .radar-grid>.hud-card>.token-card-footer{height:75px!important;min-height:75px!important;max-height:75px!important;flex:0 0 75px!important;overflow:hidden!important}
 }
 
+
+/* NEBULA V3.1 — SERVER is a reserved bottom status rail, never a floating overlay.
+   Desktop: full-width horizontal footer. Android: compact footer with contained detail scroll.
+   This overrides the legacy fixed-position dock and preserves the locked HUD layout. */
+.app > .nebula-server-dock{
+  order:20;
+  position:relative!important;
+  inset:auto!important;
+  top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;
+  transform:none!important;
+  display:block;
+  flex:0 0 auto;
+  width:100%!important;
+  min-width:0;
+  max-width:100%!important;
+  height:auto;
+  margin:0!important;
+  z-index:2!important;
+  font-size:10px;
+}
+.app > .nebula-server-dock > details{
+  max-height:min(32dvh,260px);
+  min-width:0;
+  border:1px solid rgba(61,215,236,.45);
+  border-radius:9px 9px 0 0;
+  background:linear-gradient(100deg,rgba(4,26,44,.98),rgba(8,42,63,.98),rgba(5,22,43,.98));
+  box-shadow:0 -4px 18px rgba(4,151,185,.13),inset 0 1px rgba(122,245,255,.14);
+  overflow:hidden;
+}
+.app > .nebula-server-dock > details > summary{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:center;
+  min-height:36px!important;
+  gap:12px!important;
+  padding:6px 16px!important;
+  list-style:none;
+}
+.app > .nebula-server-dock > details > summary .led{
+  flex:0 0 auto;
+  font-size:11px;
+  letter-spacing:1px;
+  color:#65f9ff;
+}
+.app > .nebula-server-dock > details > summary .status{
+  flex:1 1 0;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:#c5e7f2;
+  font-size:10px;
+}
+.app > .nebula-server-dock > details > summary .expand{
+  flex:0 0 auto;
+  white-space:nowrap;
+  color:#91d2e3;
+}
+.app > .nebula-server-dock > details[open]{
+  max-height:min(32dvh,260px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#228bb4 #071d31;
+}
+.app > .nebula-server-dock > details[open] > .detail{
+  padding:9px 15px;
+  background:rgba(2,13,30,.96);
+}
+.app > .nebula-server-dock .stats{margin:5px 0 7px}
+@media(max-width:1199px){
+  .app > .nebula-server-dock > details > summary{min-height:34px!important;padding:5px 10px!important;gap:7px!important}
+}
+@media(max-width:767px){
+  .app{padding-bottom:env(safe-area-inset-bottom,0px)!important}
+  .app > .nebula-server-dock{width:100%!important;max-width:100%!important;margin:0!important;font-size:9px}
+  .app > .nebula-server-dock > details{
+    max-height:min(27dvh,188px);
+    border-radius:7px 7px 0 0;
+  }
+  .app > .nebula-server-dock > details > summary{
+    min-height:34px!important;
+    padding:5px 8px!important;
+    gap:6px!important;
+  }
+  .app > .nebula-server-dock > details > summary .led{font-size:9px;letter-spacing:0}
+  .app > .nebula-server-dock > details > summary .status{font-size:9px}
+  .app > .nebula-server-dock > details > summary .expand{font-size:9px}
+  .app > .nebula-server-dock > details[open]{
+    max-height:min(27dvh,188px)!important;
+  }
+  .app > .nebula-server-dock > details[open] > .detail{padding:7px 9px}
+  .app > .nebula-server-dock .stats{gap:4px}
+  .app > .nebula-server-dock .stat{padding:4px 2px}
+}
+@media(max-width:359px){
+  .app > .nebula-server-dock > details > summary{gap:4px!important;padding:4px 5px!important}
+  .app > .nebula-server-dock > details > summary .led{font-size:8px}
+  .app > .nebula-server-dock > details > summary .status,
+  .app > .nebula-server-dock > details > summary .expand{font-size:8px}
+}
+
 </style>
 </head>
 <body>
