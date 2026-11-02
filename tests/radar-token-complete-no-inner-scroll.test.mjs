@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const v=html.indexOf('/* V3.8 — one token = one complete tactical readout.');
+const v=html.indexOf('/* V3.8 — complete per-token telemetry, no nested scroll.');
 const css=html.slice(v,html.indexOf('</style>',v));
 const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
 
