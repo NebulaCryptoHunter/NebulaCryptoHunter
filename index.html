@@ -2268,6 +2268,86 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
 }
 /* No star motion when reduced motion is requested; stars are static for all. */
 
+
+/* V3.8: optical/header centering is based on banner bounds, never on
+   the asymmetric left spaceship or right-side Admin/status controls.
+   Matched neon brackets share the same vertical and horizontal origin. */
+.hunter-banner .hunter-brand{
+ position:absolute!important;
+ left:50%!important;top:50%!important;
+ transform:translate(-50%,-50%)!important;
+ box-sizing:border-box!important;
+ width:max-content!important;
+ max-width:calc(100% - 280px)!important;
+ margin:0!important;
+ padding:3px 36px!important;
+ display:flex!important;flex-direction:column!important;
+ justify-content:center!important;align-items:center!important;
+ text-align:center!important;z-index:2!important;
+}
+.hunter-banner .hunter-brand .header-row-2,
+.hunter-banner .hunter-brand .header-row-1{
+ display:block;min-width:0;max-width:100%;
+ margin-left:auto!important;margin-right:auto!important;
+ padding-left:0!important;padding-right:0!important;
+ text-align:center!important;
+}
+.hunter-banner .hunter-brand .header-row-2{
+ white-space:nowrap!important;
+}
+.hunter-banner .hunter-brand::before,
+.hunter-banner .hunter-brand::after{
+ content:""!important;position:absolute!important;
+ width:19px!important;height:42px!important;
+ top:50%!important;bottom:auto!important;
+ transform:translateY(-50%)!important;
+ box-sizing:border-box!important;
+ border-color:#22ecff!important;border-style:solid!important;
+ pointer-events:none!important;
+ filter:drop-shadow(0 0 5px rgba(0,224,255,.60))!important;
+}
+.hunter-banner .hunter-brand::before{
+ left:0!important;right:auto!important;
+ border-width:2px 0 2px 2px!important;
+}
+.hunter-banner .hunter-brand::after{
+ right:0!important;left:auto!important;
+ border-width:2px 2px 2px 0!important;
+}
+@media(max-width:1199px){
+ .hunter-banner .hunter-brand{
+  max-width:calc(100% - 155px)!important;
+  padding:3px 23px!important;
+ }
+ .hunter-banner .hunter-brand::before,
+ .hunter-banner .hunter-brand::after{
+  width:14px!important;height:35px!important;
+ }
+}
+@media(max-width:767px){
+ .hunter-banner .hunter-brand{
+  max-width:calc(100% - 106px)!important;
+  padding:2px 15px!important;
+ }
+ .hunter-banner .hunter-brand .header-row-2{
+  font-size:clamp(9px,2.9vw,15px)!important;
+  line-height:1.2!important;
+  letter-spacing:clamp(.3px,.2vw,1px)!important;
+  white-space:normal!important;
+ }
+ .hunter-banner .hunter-brand .header-row-1{
+  font-size:clamp(6px,1.45vw,8px)!important;
+  line-height:1.2!important;
+  letter-spacing:0!important;
+  margin-top:3px!important;
+  overflow-wrap:normal;
+ }
+ .hunter-banner .hunter-brand::before,
+ .hunter-banner .hunter-brand::after{
+  height:30px!important;width:11px!important;
+ }
+}
+
 </style>
 </head>
 <body>
