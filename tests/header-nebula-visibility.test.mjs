@@ -28,7 +28,8 @@ test('pinpoint starfield is a static noninteractive overlay behind content',()=>
  assert.match(css,/\.hunter-banner::before\{/);
  assert.match(css,/pointer-events:none/);
  assert.match(css,/radial-gradient\(circle,rgba\(230,253,255,\.89\)/);
- assert.match(css,/\.hunter-banner \.hunter-ship,\.hunter-banner \.hunter-planet\{[\s\S]*?z-index:1!important/);
+ assert.match(css,/\.hunter-banner \.hunter-ship\{[\s\S]*?z-index:1!important/);
+ assert.doesNotMatch(css,/\.hunter-banner \.hunter-planet\{/);
  assert.match(css,/\.hunter-banner \.hunter-brand\{z-index:2!important\}/);
  assert.doesNotMatch(css,/animation:/);
 });
