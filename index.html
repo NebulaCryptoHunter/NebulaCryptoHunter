@@ -2196,6 +2196,69 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
 .app>.nebula-server-dock>details[open]::-webkit-scrollbar-thumb{background:#26aed1;border-radius:8px}
 @media(max-width:767px){.hunter-console-open{padding:1px 6px;font-size:8px}}
 
+/* V3.6 — reveal original NEBULA space art and starfield, do not replace image.
+   The dark header and backdrop used to hide the nebula behind the ship/title.
+   These are presentation-only changes, no data, controls or animations touched. */
+.bg-nebula{
+ background-image:
+  linear-gradient(180deg,rgba(0,3,17,.23) 0%,rgba(0,5,21,.51) 48%,rgba(0,5,20,.76) 100%),
+  url("https://raw.githubusercontent.com/NebulaCryptoHunter/NebulaCryptoHunter/main/assets/nebula-hunter-v2/01_background_nebula_hd.webp")!important;
+ background-size:cover,cover!important;
+ background-position:center top,center top!important;
+ filter:none!important;
+}
+.sticky-nav{
+ background:linear-gradient(180deg,rgba(2,10,29,.42),rgba(3,12,30,.72) 72%)!important;
+ backdrop-filter:blur(2px)!important;
+ -webkit-backdrop-filter:blur(2px)!important;
+}
+/* Reuse the SAME original HD nebula as a visible local header background.
+   No new image request or artwork replacement; browser can cache that asset. */
+.hunter-banner{
+ background-image:
+  radial-gradient(ellipse 32% 90% at 50% 50%,rgba(0,6,24,.49) 0%,rgba(0,7,25,.18) 65%,transparent 100%),
+  linear-gradient(90deg,rgba(2,9,27,.33) 0%,rgba(0,6,23,.10) 27%,rgba(0,6,23,.13) 74%,rgba(2,8,27,.35) 100%),
+  url("https://raw.githubusercontent.com/NebulaCryptoHunter/NebulaCryptoHunter/main/assets/nebula-hunter-v2/01_background_nebula_hd.webp")!important;
+ background-size:cover,cover,cover!important;
+ background-position:center,center,center 24%!important;
+ background-repeat:no-repeat!important;
+ filter:none!important;
+}
+/* Sparse pinpoint stars: sharp radial points, not an image blur/glow sheet. */
+.hunter-banner::before{
+ content:"";position:absolute;inset:0;display:block;pointer-events:none;
+ z-index:0;opacity:.72;
+ background-image:
+  radial-gradient(circle,rgba(230,253,255,.89) 0 1px,transparent 1.5px),
+  radial-gradient(circle,rgba(137,217,255,.73) 0 .8px,transparent 1.45px),
+  radial-gradient(circle,rgba(235,219,255,.57) 0 .75px,transparent 1.5px);
+ background-size:137px 109px,211px 131px,317px 167px;
+ background-position:27px 18px,96px 51px,184px 29px;
+ background-repeat:repeat;
+}
+.hunter-banner .hunter-ship,.hunter-banner .hunter-planet{
+ z-index:1!important;
+ filter:drop-shadow(0 0 13px rgba(51,195,255,.23))!important;
+}
+.hunter-banner .hunter-brand{z-index:2!important}
+.hunter-banner .hunter-brand .header-row-2{
+ text-shadow:0 1px 9px #000c,0 0 24px rgba(65,211,246,.48)!important;
+}
+.hunter-banner .hunter-brand .header-row-1{
+ text-shadow:0 2px 8px rgba(0,3,15,.96)!important;
+}
+.hunter-banner .hunter-system-status,.hunter-banner .hunter-login{z-index:3!important}
+@media(max-width:767px){
+ .hunter-banner{
+  background-position:center,center,center 18%!important;
+ }
+ .hunter-banner::before{opacity:.52}
+ .hunter-banner .hunter-brand .header-row-2{
+  text-shadow:0 1px 10px #000,0 0 19px rgba(65,211,246,.35)!important;
+ }
+}
+/* No star motion when reduced motion is requested; stars are static for all. */
+
 </style>
 </head>
 <body>
