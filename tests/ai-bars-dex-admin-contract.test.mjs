@@ -7,10 +7,10 @@ test('Eight accessible AI bars use different colors without simulated calibratio
   assert.match(script,/function instrumentBar\(/);
   assert.doesNotMatch(script,/function instrumentGauge\(/);
   assert.match(html,/class="hunter-model-validation"/);
-  const start=script.indexOf('const bars=[');
+  const start=script.indexOf('const defs=[');
   assert.ok(start>=0);
   const data=script.slice(start,script.indexOf('];',start));
-  const colors=[...data.matchAll(/,'(#[0-9a-f]{6})',/g)].map(x=>x[1]);
+  const colors=[...data.matchAll(/,'(#[0-9a-f]{6})'/g)].map(x=>x[1]);
   assert.equal(colors.length,8);
   assert.equal(new Set(colors).size,8);
   assert.match(script,/known\?Math\.round\(pct\)\+'%'\:'—'/);

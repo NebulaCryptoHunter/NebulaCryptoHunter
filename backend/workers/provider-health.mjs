@@ -30,14 +30,14 @@ export async function providerHealth(request,env,namespace){
  ['Ankr','ankr',env.ANKR_RPC_URL||null,rpcOptions,j=>j.result==='ok'],
  ['Solana RPC','solana_rpc','https://api.mainnet.solana.com',rpcOptions,j=>j.result==='ok'],
  ['CoinGecko','coingecko','https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd',{headers:env.COINGECKO_API_KEY?{'x-cg-demo-api-key':env.COINGECKO_API_KEY}:{}},j=>Number(j.solana?.usd)>0],
- ['Rugcheck','rugcheck','https://api.rugcheck.xyz/v1/tokens/'+mint+'/report',{},j=>!!j.token],
+ ['Rugcheck','rugcheck','https://api.rugcheck.xyz/v1/tokens/'+mint+'/report',{},j=>j.mint===mint&&!!j.token],
  ['CoinPaprika','coinpaprika','https://api.coinpaprika.com/v1/tickers/sol-solana?quotes=USD',{},j=>j.id==='sol-solana'&&Number(j.quotes?.USD?.price)>0]
  ];
  const probe=async([name,provider,url,options,valid])=>{
   const start=Date.now();
   if(!url)return {name,status:'CONFIG_ERROR',httpStatus:null,detail:'Free API credential not configured; other providers continue'};
   const r=await providerJSON(provider,url,options,{ttl:provider==='rugcheck'?300:60,timeout:2500});
-  return {name,status:r.error==='RATE_LIMIT'?'RATE_LIMITED':r.error==='FREE_PLAN_UNAVAILABLE'?'FREE_PLAN_UNAVAILABLE':r.error==='AUTH_ERROR'?'AUTH_ERROR':r.ok&&valid(r.data||{})?'HEALTHY':'UNAVAILABLE',httpStatus:r.status||null,latencyMs:Date.now()-start,retryAt:r.retryAt||null,detail:r.error||(r.ok&&!valid(r.data||{})?'Unexpected probe data':null)};
+  return {name,status:r.error==='RATE_LIMIT'?'RATE_LIMITED':r.error==='FREE_PLAN_UNAVAILABLE'?'FREE_PLAN_UNAVAILABLE':r.error==='AUTH_ERROR'?'AUTH_ERROR':r.ok&&valid(r.data||{})?'HEALTHY':'UNAVAILABLE',httpStatus:r.status||null,latencyMs:Date.now()-start,observedAt:r.fetchedAt||new Date(start).toISOString(),retryAt:r.retryAt||null,detail:r.error||(r.ok&&!valid(r.data||{})?'Unexpected probe data':null)};
  };
  const results=[];
  // Independent batches, at most four simultaneous connections; no fail-fast Promise.all.

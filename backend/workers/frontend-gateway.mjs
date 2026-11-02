@@ -1,3 +1,4 @@
+import {withPerformance} from './performance-metrics.mjs';
 import {researchData,unifiedHistory} from './research-api.mjs';
 import {cachedResearch,invalidateResearchCache,quotaResponse,d1DailyLimitError,resetUTC} from './research-cache.mjs';
 import {authenticate,validMutationOrigin} from '../auth-v1.mjs';
@@ -38,21 +39,20 @@ export default {async fetch(request,env){
   let archived=null,fallbackReason='D1_DAILY_READ_LIMIT';
   try{
    const response=await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:600000});
-   archived=await response.clone().json();
-   const newest=Math.max(0,...(archived.items||[]).map(x=>Date.parse(x.observed_at)||0));
-   const observationsOld=newest>0&&Date.now()-newest>60*60*1000;
-   if(archived.warning!=='D1_DAILY_READ_LIMIT'&&!observationsOld)return response;
+   archived=withPerformance(await response.json());
+   const observationsOld=(archived.items||[]).length>0&&archived.aiPerformance.metrics.fresh.numerator===0;
+   if(archived.warning!=='D1_DAILY_READ_LIMIT'&&!observationsOld)return json(archived);
    if(archived.warning!=='D1_DAILY_READ_LIMIT')fallbackReason='RESEARCH_OBSERVATIONS_OLD';
-  }catch(e){if(!d1DailyLimitError(e))throw e;}
+  }catch(e){fallbackReason=d1DailyLimitError(e)?'D1_DAILY_READ_LIMIT':'RESEARCH_READ_UNAVAILABLE';console.warn('research_read_failed',e?.name);}
   // Database quota cannot disable independent upstream market data.
   if(env.API)try{
    const r=await env.API.fetch('https://api.internal/api/v1/market-feed');
    const live=await r.json();
    if(r.ok&&live.dataStatus==='LIVE_ONLY'&&Array.isArray(live.items)&&live.items.length)
-    return json({...live,counts:archived?.counts||null,runs:archived?.runs||[],warning:fallbackReason,resetAt:fallbackReason==='D1_DAILY_READ_LIMIT'?resetUTC(Date.now()):null,persisted:false});
+    return json(withPerformance({...live,counts:archived?.counts||null,runs:archived?.runs||[],candidates:archived?.candidates||[],evaluations:archived?.evaluations||[],warning:fallbackReason,resetAt:fallbackReason==='D1_DAILY_READ_LIMIT'?resetUTC(Date.now()):null,persisted:false}));
   }catch{}
-  if(archived)return json(archived);
-  return quotaResponse(Error('D1_DAILY_READ_LIMIT'));
+  if(archived)return json(withPerformance({...archived,dataStatus:'STALE',warning:fallbackReason}));
+  return fallbackReason==='D1_DAILY_READ_LIMIT'?quotaResponse(Error('D1_DAILY_READ_LIMIT')):json({error:'RESEARCH_READ_UNAVAILABLE',dataStatus:'UNAVAILABLE'},503);
  }
  if(path==='/api/research/history'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);

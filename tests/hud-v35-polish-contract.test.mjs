@@ -36,8 +36,8 @@ test('Radar keeps token paging and metrics scroll while hiding extra visible scr
 });
 
 test('eight AI bars use larger legible labels without removing animation',()=>{
- for(const name of ['DATA POOL','HARGA','DINILAI','API AKTIF','PRECISION','RECALL','F1 SCORE','WIN RATE'])
-  assert.ok(html.includes("['"+name+"'"),name);
+ for(const name of ['DATA POOL','HARGA','SKOR V4','API AKTIF','DATA SEGAR','CEK RISIKO','EVALUASI V4','RETURN POSITIF'])
+  assert.ok(html.includes("'"+name+"'"),name);
  assert.match(polished,/\.instrument-bar \.lbl\{font-size:clamp\(11px,\.75vw,12px\)!important/);
  assert.match(polished,/\.instrument-bar-track\{min-height:7px!important/);
  assert.ok(html.includes('hunter-validation-orbit'));

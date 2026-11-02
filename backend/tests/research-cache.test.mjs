@@ -37,7 +37,7 @@ test('public D1 cache serves repeat requests with no repeated query',async()=>{
  }finally{if(old===undefined)delete globalThis.caches;else globalThis.caches=old}
 });
 
-test('concurrent cache requests share one D1 producer per isolate',async()=>{
+test('concurrent requests own independently consumable responses; subsequent reads reuse cache',async()=>{
  const old=globalThis.caches,cache=fakeCache();
  try{
   globalThis.caches={default:cache};
@@ -45,8 +45,11 @@ test('concurrent cache requests share one D1 producer per isolate',async()=>{
   let queries=0;
   const producer=async()=>{queries++;await new Promise(resolve=>setTimeout(resolve,10));return {counts:{total_records:7}}};
   const responses=await Promise.all(Array.from({length:7},()=>cachedResearch(request,producer)));
-  assert.equal(queries,1);
+  assert.equal(new Set(responses).size,7);
   assert.ok(responses.every(x=>x.ok));
+  const bodies=await Promise.all(responses.map(r=>r.json()));
+  assert.ok(bodies.every(x=>x.counts.total_records===7));
+  const before=queries;assert.equal((await (await cachedResearch(request,producer)).json()).counts.total_records,7);assert.equal(queries,before);
  }finally{if(old===undefined)delete globalThis.caches;else globalThis.caches=old}
 });
 

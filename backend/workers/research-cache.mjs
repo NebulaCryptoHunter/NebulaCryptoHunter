@@ -2,7 +2,6 @@
 // Cloudflare Cache API is colo-local. This cache never stores credentials or writes.
 // Refresh TTL is short; stale data is explicitly labelled, not mistaken for live data.
 const MAX_STALE_MS=24*60*60*1000;
-const inflight=new Map();
 let quotaPauseUntil=0;
 export const d1DailyLimitError=error=>/daily row read limit|exceeded d1.*free tier|D1.*row.?read.?limit|code.?\D?7500|D1_QUOTA_EXCEEDED|D1_DAILY_READ_LIMIT/i.test(String(error?.message||error||''));
 export const resetUTC=now=>new Date(Math.ceil((now+1)/86400000)*86400000).toISOString();
@@ -37,8 +36,6 @@ export async function cachedResearch(request,producer,{freshMs=180000}={}){
  const age=existing?now-existing.timestamp:Infinity;
  if(existing&&age<freshMs)return response(existing.payload,'CACHED',existing.timestamp);
  if(quotaPauseUntil>now){if(existing)return response(existing.payload,'STALE',existing.timestamp,'D1_DAILY_READ_LIMIT');throw Error('D1_DAILY_READ_LIMIT')}
- if(inflight.has(key.url))return inflight.get(key.url);
- const work=(async()=>{
   try{
    const payload=await producer();
    if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Error('INVALID_RESEARCH_PAYLOAD');
@@ -52,10 +49,7 @@ export async function cachedResearch(request,producer,{freshMs=180000}={}){
    backoff(e,Date.now());
    if(existing)return response(existing.payload,'STALE',existing.timestamp,d1DailyLimitError(e)?'D1_DAILY_READ_LIMIT':'RESEARCH_REFRESH_UNAVAILABLE');
    throw e;
-  }finally{inflight.delete(key.url)}
- })();
- inflight.set(key.url,work);
- return work;
+  }
 }
 export async function invalidateResearchCache(url){
  const store=findCache();

@@ -28,4 +28,4 @@ jobs:
           node scripts/restore-nebula-api.mjs
           node scripts/bundle-nebula-scanner.mjs
       - name: Algorithm and data integrity regression
-        run: node --test tests/algorithm-v4.test.mjs tests/algorithm-v3.test.mjs tests/algorithm-v2.test.mjs tests/free-provider-resilience.test.mjs tests/api-utilization.test.mjs tests/d1-read-budget.test.mjs tests/research-evaluation.test.mjs tests/scanner-integration.test.mjs
+        run: node --test tests/ai-performance.test.mjs backend/tests/research-cache.test.mjs backend/tests/hud-instruments.test.mjs tests/algorithm-v4.test.mjs tests/algorithm-v3.test.mjs tests/algorithm-v2.test.mjs tests/free-provider-resilience.test.mjs tests/api-utilization.test.mjs tests/d1-read-budget.test.mjs tests/research-evaluation.test.mjs tests/scanner-integration.test.mjs

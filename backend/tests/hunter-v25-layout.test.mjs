@@ -38,8 +38,8 @@ test('login is an actual accessible navigation to existing /account, all buttons
 test('AI model validation uses a compact status instead of a radial gauge',()=>{
  ok('class="hunter-model-validation"');
  ok('id="hunterCalibratedValue"');
- ok("calibrated?'READY':'PENDING'");
- ok("calibrated?'CALIBRATED':'NOT CALIBRATED'");
+ ok("set('hunterCalibratedValue',view.model?.startsWith('heuristic-v4.')?'V4'");
+ ok("set('hunterCalibrationStatus','BELUM')");
  ok("function instrumentBar(");
  assert.doesNotMatch(html,/function instrumentGauge\(/);
  assert.match(css,/\.hunter-model-validation\{/);
