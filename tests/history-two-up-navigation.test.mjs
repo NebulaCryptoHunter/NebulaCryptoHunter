@@ -24,7 +24,7 @@ test('history navigation, keyboard and mouse wheel all move one pair, other pane
  assert.match(html,/rows\.filter\(\(_,index\)=>index%2===0\)/);
  assert.match(html,/list\.scrollTo\(\{top:pageStarts\[next\],behavior:'smooth'\}\)/);
  assert.match(html,/id==='hunterRecentList'&&historyDesktop\(\)\)advanceHistory\(list,Math\.sign\(move\[e\.key\]\)\)/);
- assert.match(html,/id==='hunterRecentList'&&historyDesktop\(\)\)advanceHistory\(list,Number\(btn\.dataset\.scrollDirection\)\)/);
+ assert.match(html,/btn\.dataset\.scrollTarget==='hunterRecentList'&&historyDesktop\(\)\)advanceHistory\(list,Number\(btn\.dataset\.scrollDirection\)\)/);
  assert.match(html,/if\(id==='hunterRecentList'\)\{[\s\S]*?list\.addEventListener\('wheel'/);
  assert.match(html,/if\(id==='radarFeed'\)advanceToken\(list,Number\(btn\.dataset\.scrollDirection\)\)/);
 });
