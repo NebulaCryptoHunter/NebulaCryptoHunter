@@ -1,0 +1,31 @@
+name: NEBULA algorithm regression
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'workers/**'
+      - 'tests/**'
+      - '.github/workflows/nebula-algorithm.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'workers/**'
+      - 'tests/**'
+      - '.github/workflows/nebula-algorithm.yml'
+jobs:
+  algorithm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore scanner and API entry points
+        run: |
+          node scripts/restore-nebula-api.mjs
+          node scripts/bundle-nebula-scanner.mjs
+      - name: Algorithm and data integrity regression
+        run: node --test tests/algorithm-v3.test.mjs tests/algorithm-v2.test.mjs tests/free-provider-resilience.test.mjs tests/d1-read-budget.test.mjs tests/research-evaluation.test.mjs tests/scanner-integration.test.mjs

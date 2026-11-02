@@ -7,6 +7,15 @@ export function retryDeadline(value,now=Date.now()){
  const seconds=Number(value),date=Date.parse(value||'');
  return Math.max(now+60000,Math.min(now+86400000,Number.isFinite(seconds)&&seconds>0?now+seconds*1000:Number.isFinite(date)?date:now+60000));
 }
+// HTTP cache timing is a conservative transport bound, not an on-chain trade timestamp.
+export function upstreamTiming(headers,now=Date.now()){
+ const rawAge=headers.get('Age'),date=Date.parse(headers.get('Date')||'');
+ const age=rawAge!==null&&/^\d+(\.\d+)?$/.test(rawAge.trim())?Number(rawAge)*1000:null;
+ const candidates=[...(Number.isFinite(date)?[date]:[]),...(age!==null&&Number.isFinite(age)?[now-age]:[])];
+ const asOf=candidates.length?Math.min(...candidates):NaN;
+ return {sourceAsOf:Number.isFinite(asOf)&&Math.abs(asOf)<=8640000000000000?new Date(asOf).toISOString():null,
+  sourceTimeBasis:age!==null?'HTTP_CACHE_AGE':Number.isFinite(date)?'HTTP_RESPONSE_DATE':'FETCH_ONLY'};
+}
 async function digest(value){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('')}
 export async function providerJSON(provider,url,options={},settings={}){
  const {ttl=60,timeout=4000}=settings,now=Date.now();
@@ -16,7 +25,7 @@ export async function providerJSON(provider,url,options={},settings={}){
  const key='https://nebula.internal/free-provider-v1/'+provider+'/'+identity;
  const guard='https://nebula.internal/free-provider-v1/cooldown/'+provider+'/'+credential;
  const hit=ttl>0?await read(key):null;
- if(hit){try{const value=await hit.json();if(value.ok&&value.fetchedAt&&now-Date.parse(value.fetchedAt)<ttl*1000)return {...value,cached:true}}catch{}}
+ if(hit){try{const value=await hit.json(),age=now-Date.parse(value.fetchedAt);if(value.ok&&Number.isFinite(age)&&age>=0&&age<ttl*1000)return {...value,cached:true}}catch{}}
  const endpointGuard=guard+'/endpoint/'+identity;
  for(const guardKey of [guard,endpointGuard]){const paused=await read(guardKey);if(paused){try{const p=await paused.json();if(p.retryAt>now&&(p.status!==402||guardKey===endpointGuard))return {ok:false,provider,status:p.status,error:p.error,retryAt:new Date(p.retryAt).toISOString()}}catch{}}}
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),timeout);
@@ -34,7 +43,7 @@ export async function providerJSON(provider,url,options={},settings={}){
   const dataBytes=new Uint8Array(bytes);let offset=0;for(const c of chunks){dataBytes.set(c,offset);offset+=c.length}
   const data=JSON.parse(new TextDecoder().decode(dataBytes));
   if(data?.error){const code=Number(data.error.code),status=[429,-32429,-32005].includes(code)?429:502,error=status===429?'RATE_LIMIT':'RPC_ERROR';const retryAt=retryDeadline(null,now);await save(guard,{status,error,retryAt},60);return {ok:false,provider,status,error,retryAt:new Date(retryAt).toISOString()}}
-  const value={ok:true,provider,status:r.status,data,fetchedAt:new Date(now).toISOString()};
+  const value={ok:true,provider,status:r.status,data,fetchedAt:new Date(now).toISOString(),...upstreamTiming(r.headers,now)};
   if(ttl>0)await save(key,value,ttl);
   return value;
  }catch(e){return {ok:false,provider,status:0,error:ctrl.signal.aborted?'TIMEOUT':e?.message==='PAYLOAD_LIMIT'?'PAYLOAD_LIMIT':'UNAVAILABLE'}}

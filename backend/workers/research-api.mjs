@@ -9,7 +9,7 @@ async function aggregateCache(key,produce){
 }
 export async function researchData(db){
  const queries=[
- `SELECT s.id,s.mint,s.pair_address,s.observed_at,s.liquidity_usd,s.volume_24h,s.change_24h,json_extract(s.payload_json,'$.priceUsd') price_usd,json_extract(s.payload_json,'$.base.symbol') symbol,json_extract(s.payload_json,'$.source') source,e.decision,e.score,e.model,json_extract(e.payload_json,'$.reasons') reasons,json_extract(e.payload_json,'$.components') components,json_extract(e.payload_json,'$.metrics') metrics,json_extract(e.payload_json,'$.dataCoverage') dataCoverage,json_extract(s.payload_json,'$.timeframes') timeframes
+ `SELECT s.id,s.mint,s.pair_address,s.observed_at,s.liquidity_usd,s.volume_24h,s.change_24h,json_extract(s.payload_json,'$.priceUsd') price_usd,json_extract(s.payload_json,'$.base.symbol') symbol,json_extract(s.payload_json,'$.source') source,e.decision,e.score,e.model,json_extract(e.payload_json,'$.reasons') reasons,json_extract(e.payload_json,'$.components') components,json_extract(e.payload_json,'$.metrics') metrics,json_extract(e.payload_json,'$.dataCoverage') dataCoverage,json_extract(s.payload_json,'$.timeframes') timeframes,json_extract(e.payload_json,'$.riskFlags') riskFlags,json_extract(e.payload_json,'$.setupStage') setupStage
  FROM (SELECT * FROM scanner_snapshots ORDER BY id DESC LIMIT 800) s
  LEFT JOIN engine_scores e ON e.id=(SELECT x.id FROM engine_scores x
  WHERE x.mint=s.mint AND x.pair_address=s.pair_address AND x.observed_at=s.observed_at
