@@ -2152,6 +2152,50 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  }
 }
 
+
+/* HUD V3.5 — restrained neon polish: one visible scroll per list, no lost data. */
+@media(min-width:1200px){
+ .hunter-history-panel #hunterRecentList{overflow-y:auto!important;scrollbar-gutter:auto!important;scrollbar-width:thin!important;scrollbar-color:#329fb8 #091e30!important}
+ .hunter-history-panel #hunterRecentList::-webkit-scrollbar{width:5px!important}
+ .hunter-history-panel #hunterRecentList::-webkit-scrollbar-thumb{background:linear-gradient(#48e8f0,#3279ab)!important;border:0!important;border-radius:8px!important}
+ .hunter-history-panel #hunterRecentList::-webkit-scrollbar-track{background:rgba(5,30,45,.35)!important}
+ .hunter-history-panel #hunterRecentList>.hunter-history-row{border-color:rgba(63,178,211,.53)!important;background:linear-gradient(110deg,#12364bba,#071b2ec9)!important;transition:border-color .15s,box-shadow .15s}
+ .hunter-history-panel #hunterRecentList>.hunter-history-row:hover{border-color:#46d9ef!important;box-shadow:inset 2px 0 #39dce8,0 0 12px #0abacc24}
+ .hunter-history-panel #hunterRecentList>.hunter-history-row .history-record-content{overflow:visible!important}
+ .hunter-history-panel #hunterRecentList>.hunter-history-row .hunter-history-meta{line-height:1.16!important;color:#acd1e5!important}
+ .hunter-history-panel #hunterRecentList>.hunter-history-row .hunter-history-symbol{color:#e8faff!important}
+ .hunter-history-panel .hunter-history-scroll-bar .hunter-scroll-controls{gap:4px!important;align-items:center}
+ .hunter-history-position{font:700 9px/1 'Share Tech Mono',monospace;white-space:nowrap;min-width:43px;color:#7addf1;text-align:right}
+ .hunter-targets-panel .radar-grid{overflow-y:auto!important;scrollbar-gutter:auto!important;scrollbar-width:thin!important;scrollbar-color:#36bede #092139!important}
+ .hunter-targets-panel .radar-grid::-webkit-scrollbar{width:6px!important}
+ .hunter-targets-panel .radar-grid::-webkit-scrollbar-thumb{background:linear-gradient(#2af2ee,#337fac)!important;border:0!important;border-radius:6px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-body{scrollbar-width:none!important;scrollbar-gutter:auto!important;scrollbar-color:transparent transparent!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-body::-webkit-scrollbar{display:none!important;width:0!important}
+ .hunter-ai-panel .instrument-bar .lbl{font-size:clamp(11px,.75vw,12px)!important;line-height:1.13!important}
+ .hunter-ai-panel .instrument-bar-number{font-size:clamp(11px,.76vw,13px)!important}
+ .hunter-ai-panel #aiHealthDash .instrument-bar{padding:2px 6px!important;gap:2px!important;transition:filter .18s ease}
+ .hunter-ai-panel .instrument-bar:hover{filter:brightness(1.13)}
+ .hunter-ai-panel .instrument-bar-head{min-height:14px!important}
+ .hunter-ai-panel .instrument-bar-track{min-height:7px!important;height:7px!important;flex-basis:7px!important}
+ .hunter-ai-panel .instrument-bar-caption{font-size:9px!important;line-height:1.05!important;color:#b1cde0!important}
+}
+@media(max-width:1199px){.hunter-history-position{display:none}}
+/* Event log shows the freshest line. The LOG control opens full session history. */
+.app>.hunter-console-wrap{display:flex!important;align-items:stretch!important;gap:5px!important;min-width:0!important;margin:3px 0 2px!important;padding:1px 3px 1px 7px!important;border:1px solid #2c829e99;border-radius:5px;background:linear-gradient(100deg,#031e32dd,#072439d9);box-shadow:inset 0 1px #8ddffd16}
+.app>.hunter-console-wrap .ai-console{display:flex!important;align-items:center!important;flex:1 1 0!important;min-width:0!important;height:22px!important;min-height:22px!important;max-height:22px!important;overflow:hidden!important;white-space:nowrap!important;margin:0!important;padding:1px 0!important;scrollbar-width:none!important}
+.app>.hunter-console-wrap .ai-console::-webkit-scrollbar{display:none!important}
+.app>.hunter-console-wrap .ai-console>.log-entry{display:block;flex:1;min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;line-height:18px!important;margin:0!important;padding:0!important}
+.app>.hunter-console-wrap .ai-console>.log-entry:not(:first-child){display:none!important}
+.hunter-console-open{flex:0 0 auto;align-self:center;min-height:20px;height:20px;padding:1px 9px;color:#80ebf3;border:1px solid #3de0f87d;border-radius:4px;background:linear-gradient(105deg,#06425799,#062338cc);font:700 9px/1 'Share Tech Mono',monospace;letter-spacing:.6px;cursor:pointer;transition:background .18s,box-shadow .18s}
+.hunter-console-open:hover,.hunter-console-open:focus-visible{background:#0d5f7add;box-shadow:0 0 12px #13daf83f;outline:2px solid #90efff;outline-offset:1px}
+.app>.nebula-server-dock>details{border-top-color:#48f5facb!important}
+.app>.nebula-server-dock>details>summary{cursor:pointer!important;transition:background .18s!important;background:linear-gradient(100deg,#032d437d,#02192c39)!important}
+.app>.nebula-server-dock>details>summary:hover,.app>.nebula-server-dock>details>summary:focus-visible{background:linear-gradient(100deg,#07515fc0,#08223fc0)!important;outline:1px solid #39eaf4a6}
+.app>.nebula-server-dock>details[open]{scrollbar-width:thin!important;scrollbar-color:#31acc8 #08243a!important}
+.app>.nebula-server-dock>details[open]::-webkit-scrollbar{width:6px}
+.app>.nebula-server-dock>details[open]::-webkit-scrollbar-thumb{background:#26aed1;border-radius:8px}
+@media(max-width:767px){.hunter-console-open{padding:1px 6px;font-size:8px}}
+
 </style>
 </head>
 <body>
@@ -2186,15 +2230,15 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
   </div>
   <div id="heroPanel" class="hero-panel" style="display:none"></div>
   <section class="hunter-kpi-row" aria-label="Indikator utama database riset">
-    <div class="hunter-kpi" title="DATABASE: seluruh baris riset utama di nebula-db">
+    <div class="hunter-kpi" title="DATABASE: total baris di tabel riset utama, mencakup prediksi, kandidat, snapshot, skor, evaluasi, dan putaran scanner.">
       <div class="hunter-kpi-icon" aria-hidden="true">▤</div>
-      <div class="hunter-kpi-inner"><span class="hunter-kpi-label">DATABASE</span><strong class="hunter-kpi-value" id="hunterDatabaseValue">—</strong><span class="hunter-kpi-caption">TOTAL RESEARCH RECORDS</span></div>
+      <div class="hunter-kpi-inner"><span class="hunter-kpi-label">DATABASE</span><strong class="hunter-kpi-value" id="hunterDatabaseValue">—</strong><span class="hunter-kpi-caption">MULTI-TABLE RECORDS</span></div>
     </div>
-    <div class="hunter-kpi" title="PREDICTION: historis plus kandidat scanner">
+    <div class="hunter-kpi" title="PREDICTION: total prediksi historis dan kandidat scanner, bukan seluruh catatan database.">
       <div class="hunter-kpi-icon" aria-hidden="true">⌖</div>
-      <div class="hunter-kpi-inner"><span class="hunter-kpi-label">PREDICTION</span><strong class="hunter-kpi-value" id="hunterPredictionValue">—</strong><span class="hunter-kpi-caption">PERSISTED DECISIONS</span></div>
+      <div class="hunter-kpi-inner"><span class="hunter-kpi-label">PREDICTION</span><strong class="hunter-kpi-value" id="hunterPredictionValue">—</strong><span class="hunter-kpi-caption">LEGACY + CANDIDATES</span></div>
     </div>
-    <div class="hunter-kpi" title="UNIQUE: koin berbeda berdasarkan mint Solana">
+    <div class="hunter-kpi" title="UNIQUE: mint berbeda dari gabungan prediksi historis dan kandidat scanner.">
       <div class="hunter-kpi-icon" aria-hidden="true">◈</div>
       <div class="hunter-kpi-inner"><span class="hunter-kpi-label">UNIQUE</span><strong class="hunter-kpi-value" id="hunterUniqueValue">—</strong><span class="hunter-kpi-caption">DISTINCT SOLANA MINTS</span></div>
     </div>
@@ -2238,11 +2282,11 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
     </section>
     <aside class="hunter-panel hunter-history-panel" aria-labelledby="hunterHistoryTitle">
       <header class="hunter-panel-heading"><span class="hunter-panel-icon" aria-hidden="true">▱</span><div><h2 id="hunterHistoryTitle">DATABASE / HISTORY</h2><small>RESEARCH RECORDS · NEBULA DB</small></div></header>
-      <button id="archiveStatus" class="archive-status" type="button" aria-label="Lihat database terpadu prediksi dan kandidat NEBULA">
-        <span class="archive-heading">◈ DATABASE NEBULA</span><span class="archive-open">OPEN ↗</span><strong id="archiveCount">Memuat…</strong><span id="archiveEvalCount">Evaluasi: —</span>
+      <button id="archiveStatus" class="archive-status" type="button" aria-label="Lihat arsip prediksi historis dan kandidat scanner" title="Arsip ini menghitung PREDICTION, bukan semua tabel DATABASE.">
+        <span class="archive-heading">◈ PREDICTION ARCHIVE</span><span class="archive-open">OPEN ↗</span><strong id="archiveCount">Memuat…</strong><span id="archiveEvalCount">Evaluasi: —</span>
       </button>
       <div class="hunter-history-toolbar"><div class="hunter-history-tabs"><button id="hunterRecentRefresh" type="button">LATEST</button><button id="hunterOpenHistory" type="button">HISTORY</button></div>
-      <div class="hunter-history-scroll-bar"><span class="hunter-scroll-controls"><span class="hunter-scroll-hint">GULIR HISTORY</span><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="-1" aria-label="Gulir history ke atas">↑</button><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="1" aria-label="Gulir history ke bawah">↓</button></span></div></div>
+      <div class="hunter-history-scroll-bar"><span class="hunter-scroll-controls"><span class="hunter-scroll-hint">GULIR HISTORY</span><span id="hunterHistoryPosition" class="hunter-history-position" aria-live="polite">— / —</span><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="-1" aria-label="Gulir history ke atas">↑</button><button type="button" data-scroll-target="hunterRecentList" data-scroll-direction="1" aria-label="Gulir history ke bawah">↓</button></span></div></div>
       <p id="hunterHistoryNotice" class="hunter-history-notice" role="status" aria-live="polite" hidden></p>
       <div id="hunterRecentList" class="hunter-history-list hunter-scrollable" role="list" tabindex="0" aria-label="Riwayat dapat digulir vertikal" aria-live="polite"><p class="hunter-history-empty">Memuat catatan dari nebula-db…</p></div>
       <p class="hunter-history-note" title="Sumber data: nebula-db. HISTORIS dan SCANNER dibedakan; hasil belum berarti transaksi atau sinyal beli tervalidasi."><span>◈ NEBULA-DB</span><span>RESEARCH · NOT TRADE RESULTS</span></p>
@@ -2252,7 +2296,7 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
   <!-- RESEARCH_PANEL -->
   <section class="hunter-console-wrap" aria-label="NEBULA system console">
     <div class="hunter-console-head"><span>● NEBULA CRYPTO HUNTER SYSTEM</span><span>LIVE EVENT LOG</span></div>
-    <div id="aiConsole" class="ai-console"></div>
+    <div id="aiConsole" class="ai-console" aria-label="Pesan sistem terbaru"></div><button id="hunterConsoleOpen" class="hunter-console-open" type="button" aria-label="Buka semua log sistem NEBULA">LOG ↗</button>
   </section>
   <footer class="hunter-cockpit-footer" aria-hidden="true"><img src="https://raw.githubusercontent.com/NebulaCryptoHunter/NebulaCryptoHunter/main/assets/nebula-hunter-v2/04_cockpit_console_hd.webp" alt="" decoding="async" loading="lazy"><span class="hunter-footer-glow"></span></footer>
 </div>
@@ -2517,7 +2561,7 @@ function researchIndicatorGroups(data=S.serverResearch){
  const market=[['TOKEN AKTIF',data?num(items.length):'—','Token pada feed yang tersedia'],['SUDAH DINILAI',data?num(scored)+' / '+items.length:'—','Skor heuristik, bukan peluang untung'],['HARGA TERSEDIA',data?num(known('price_usd'))+' / '+items.length:'—','Observasi harga dari sumber API'],['DATA LIKUIDITAS',data?num(known('liquidity_usd'))+' / '+items.length:'—','Harga saja belum cukup untuk skor'],['EVALUASI TERSIMPAN',num(counts.total_evaluations),'Jumlah terakhir yang dapat dibaca'],['MODEL',models.length?'V2 / HEURISTIK':'BELUM DINILAI',models.length?models.join(', '):'Menunggu data pool yang memadai'],['KALIBRASI',data?.modelCalibrated===true?'READY':'BELUM','Skor bukan probabilitas terkalibrasi'],['PENYIMPANAN',data?.persisted===false?'SEMENTARA':data?'SERVER':'—',data?.persisted===false?'Feed API aktif; belum tersimpan':'Mengikuti status data server']];
  const performance=[['PRECISION','—',unavailable],['RECALL','—',unavailable],['F1 SCORE','—','Menunggu evaluasi dengan definisi yang sah'],['FALSE POSITIVE','—','Belum ada confusion matrix terverifikasi'],['FALSE NEGATIVE','—','Belum ada confusion matrix terverifikasi'],['TRUE POSITIVE','—','Belum ada confusion matrix terverifikasi'],['TRUE NEGATIVE','—','Belum ada confusion matrix terverifikasi'],['WIN RATE','—','Belum ada pengukuran yang sah'],['AVG ROI','—','Return pengamatan bukan laba transaksi'],['AVG CONFIDENCE','—','Model belum terkalibrasi'],['OUTCOMES',Array.isArray(data?.evaluations)?num(data.evaluations.length):'—','Baris evaluasi pada respons; bukan seluruh transaksi'],['ACCURACY','—',unavailable],['MAE','—',unavailable]];
  const trading=[['STRONG BUY',countDecision('STRONG_BUY'),'Jumlah keputusan pada feed ini'],['BUY',countDecision('BUY'),'Jumlah keputusan pada feed ini'],['ACCUMULATE',countDecision('ACCUMULATE'),'Jumlah keputusan pada feed ini'],['WATCH',countDecision('WATCH'),'Jumlah keputusan pada feed ini'],['WAIT',countDecision('WAIT'),'Jumlah keputusan pada feed ini'],['AVOID',countDecision('AVOID'),'Jumlah keputusan pada feed ini'],['SCAM','—','Tidak disimpulkan tanpa bukti risiko'],['HERO','—','Belum ada pilihan terverifikasi']];
- const database=[['DATABASE',num(counts.database_records),'Seluruh baris riset utama'],['PREDICTION',num(counts.total_records),'Historis dan kandidat scanner'],['UNIQUE',num(counts.unique_mints),'Mint Solana berbeda'],['SNAPSHOTS',num(counts.snapshots),'Observasi yang tersimpan'],['CANDIDATES',num(counts.candidates),'Kandidat scanner yang tersimpan'],['ENGINE SCORES',num(counts.scores),'Skor yang tersimpan']];
+ const database=[['DATABASE',num(counts.database_records),'Total baris tabel riset: prediksi, kandidat, snapshot, skor, evaluasi, putaran scanner'],['PREDICTION',num(counts.total_records),'Prediksi historis dan kandidat scanner; bukan seluruh baris database'],['UNIQUE',num(counts.unique_mints),'Mint Solana berbeda dalam gabungan prediksi historis dan kandidat scanner'],['SNAPSHOTS',num(counts.snapshots),'Observasi yang tersimpan'],['CANDIDATES',num(counts.candidates),'Kandidat scanner yang tersimpan'],['ENGINE SCORES',num(counts.scores),'Skor yang tersimpan']];
  const system=[['MARKET REGIME','—','Belum ada regime yang terverifikasi'],['CALIBRATION CYCLES','—','Tidak diisi dari angka bawaan'],['RAM','—','Pengukuran memori tidak tersedia pada respons'],['LAST SCAN',data?.runs?.[0]?.status||'—','Status putaran terakhir yang dapat dibaca'],['MODEL VALIDATION',data?.modelCalibrated===true?'READY':'NOT CALIBRATED','Status validasi, bukan persentase ilustrasi']];
  const labels={on:'AKTIF',off:'GAGAL',limited:'LIMIT',disabled:'NONAKTIF',pending:'BELUM DIUJI'};
  const providers=CONFIG.ENDPOINTS.map(name=>[name,labels[ep[name]||'pending'],(eph[name]?.rt?eph[name].rt+' ms · ':'')+'Status pemeriksaan terakhir, bukan indikator transaksi']);
@@ -3136,6 +3180,16 @@ setTimeout(()=>{
  const update=id=>{
    const list=document.getElementById(id);if(!list)return;
    const max=Math.max(0,list.scrollHeight-list.clientHeight);
+   if(id==='hunterRecentList'){
+     const rows=[...list.querySelectorAll(':scope > .hunter-history-row')];
+     const count=rows.length,target=document.getElementById('hunterHistoryPosition');
+     if(target){
+       const starts=rows.filter((_,index)=>index%2===0).map(row=>row.offsetTop-(rows[0]?.offsetTop||0));
+       const current=starts.reduce((best,top,index)=>
+         Math.abs(top-list.scrollTop)<Math.abs(starts[best]-list.scrollTop)?index:best,0);
+       target.textContent=count?(Math.min(count,current*2+1)+'–'+Math.min(count,current*2+2)+' / '+count):'0 / 0';
+     }
+   }
    if(id==='radarFeed'){
      const cards=list.querySelectorAll('.hud-card[data-ca]');
      const index=cards.length?Math.max(0,Math.min(cards.length-1,Math.round(list.scrollTop/Math.max(1,list.clientHeight)))):0;
@@ -3215,6 +3269,23 @@ setTimeout(()=>{
    else list.scrollBy({top:Number(btn.dataset.scrollDirection)*Math.max(180,list.clientHeight*.78),behavior:'smooth'});
    list.focus({preventScroll:true});
  }));
+ document.getElementById('hunterConsoleOpen')?.addEventListener('click',()=>{
+   const overlay=document.getElementById('overlayPanel'),root=document.getElementById('overlayContent');
+   const consoleRoot=document.getElementById('aiConsole');
+   if(!overlay||!root||!consoleRoot)return;
+   const heading=document.createElement('h2');heading.className='section-title';heading.textContent='NEBULA · SYSTEM EVENT LOG';
+   const hint=document.createElement('p');hint.className='hud-module-subtext';
+   hint.textContent='Log antarmuka pada sesi ini · terbaru di atas · tidak menjalankan scanner.';
+   const entries=document.createElement('div');entries.className='hunter-console-log-archive';
+   entries.style.cssText='display:grid;gap:7px;padding:7px 0;max-height:65dvh;overflow-y:auto;scrollbar-color:#32cbdf #081f35';
+   const current=[...consoleRoot.querySelectorAll('.log-entry')].slice(0,200);
+   if(!current.length){const empty=document.createElement('p');empty.textContent='Belum ada pesan sistem.';entries.append(empty)}
+   for(const line of current){
+     const copy=document.createElement('div');copy.className=line.className;copy.textContent=line.textContent||'';
+     copy.style.cssText='white-space:normal;overflow-wrap:anywhere;line-height:1.4';entries.append(copy);
+   }
+   root.replaceChildren(heading,hint,entries);overlay.style.display='block';
+ });
 })();
 
 // Responsive full-viewport panel switching; no page scrolling, no duplicate network calls.
