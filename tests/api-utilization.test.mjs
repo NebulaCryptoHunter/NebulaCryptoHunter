@@ -183,7 +183,7 @@ test('actual scanner -> API binding -> upstreams -> AI -> SQLite persists one ge
    const env={STAGE_DB:db,INTERNAL_TOKEN:'test',AI_ENGINE:{fetch:(url,init)=>engine.fetch(new Request(url,init),{INTERNAL_TOKEN:'test'})},MARKET_API:{fetch:(url,init)=>api.fetch(new Request(url,init),{}, {})}};
    const result=await runScheduledScan({scheduledTime:Date.now()},env);assert.equal(result.status,'COMPLETED');assert.equal(result.snapshotCount,1);
    const saved=JSON.parse(sqlite.prepare('SELECT payload_json FROM scanner_snapshots').get().payload_json);assert.equal(saved.tokenMetadata.holderCount,30);assert.equal(saved.risk.rugCheck,'UNKNOWN');
-   assert.equal(sqlite.prepare('SELECT model FROM engine_scores').get().model,'heuristic-v3.0.0');
+   assert.equal(sqlite.prepare('SELECT model FROM engine_scores').get().model,'heuristic-v4.0.0');
   }finally{sqlite.close();}
  });
 });
