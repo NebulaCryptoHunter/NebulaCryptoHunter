@@ -33,7 +33,7 @@ test('Locked frontend navigation, HUD and server refresh remain intact',()=>{
   for(const id of ['hunterTabAi','hunterTabRadar','hunterTabHistory','radarFeed','hunterRecentList','aiHealthDash']){
     assert.ok(html.includes('id="'+id+'"'),id);
   }
-  assert.match(html,/panel\.inert=!active/);
+  assert.match(html,/panel\.inert=singlePanel&&!active/);
   assert.ok(dock.includes('setInterval(refresh,60000)'));
   assert.ok(html.includes('id="hunterLoginLink"'));
 });
