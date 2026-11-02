@@ -1,0 +1,316 @@
+{
+  "recordedAt": "2026-11-02T16:30:04.549Z",
+  "coreMergeCommit": "5512d90e3483d843258da10fb2485fe78fc7864e",
+  "pullRequest": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/pull/59",
+  "mode": "Existing provider access only; no subscription/credential purchase, paid streams or trades",
+  "changes": {
+    "maxFeedExternalHttpAttempts": 12,
+    "feedStartBudgetMs": 12000,
+    "scannerDiscoveryIntervalMinutes": 30,
+    "scannerOwnBackoffMinSeconds": 60,
+    "scannerOwnBackoffCapSeconds": 900,
+    "respectsLongerServerRetryAfter": true,
+    "maxBirdeyePriceRequests": 2,
+    "maxDexTokenFallbackRequests": 2,
+    "maxGeckoTokenPoolRequests": 3,
+    "maxMintsInRpcBatch": 12,
+    "maxPoolsPerMintInScannerBridge": 3
+  },
+  "tests": {
+    "targeted": {
+      "tests": 89,
+      "passed": 89,
+      "failed": 0
+    },
+    "newApiCases": 24,
+    "full": {
+      "tests": 240,
+      "passed": 232,
+      "failed": 6,
+      "skipped": 2
+    },
+    "preexistingUiFailuresUnchanged": true,
+    "coreAlgorithmCi": "success",
+    "coreAlgorithmCiUrl": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/41480487877/job/125397168333"
+  },
+  "staging": {
+    "name": "nebula-api-adapters-stage",
+    "success": true,
+    "version": "cb3e6adf85b8457ca9da1cc5c5e9c2e8",
+    "handlers": [
+      "fetch",
+      "scheduled"
+    ],
+    "errors": []
+  },
+  "productionAsOf": [
+    {
+      "name": "nebula-api",
+      "versions": [
+        {
+          "version_id": "0d5ac9a5-d628-45f4-89f7-405659c148f4",
+          "percentage": 100
+        }
+      ],
+      "createdOn": "2026-11-02T16:28:16.362452Z"
+    },
+    {
+      "name": "nebula-scanner",
+      "versions": [
+        {
+          "version_id": "7211b500-bec4-4e10-8589-f9e72a209762",
+          "percentage": 100
+        }
+      ],
+      "createdOn": "2026-11-02T16:26:31.596412Z"
+    },
+    {
+      "name": "nebula-evaluation",
+      "versions": [
+        {
+          "version_id": "89aebceb-7d3a-470b-a59c-e98905c91ea6",
+          "percentage": 100
+        }
+      ],
+      "createdOn": "2026-11-02T16:22:59.29769Z"
+    }
+  ],
+  "rollback": [
+    {
+      "name": "nebula-api",
+      "versions": [
+        {
+          "version_id": "0f9464b6-224c-4dc8-95e3-af1e30901323",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-scanner",
+      "versions": [
+        {
+          "version_id": "bc328cb3-bb5c-49b4-b383-e0d888c3dbc5",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-evaluation",
+      "versions": [
+        {
+          "version_id": "c5b75ccb-5e88-4834-a5e5-8850c8cebdfd",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "configurationVerification": [
+    {
+      "name": "nebula-api",
+      "versions": [
+        {
+          "version_id": "5b9a4d4b-1ebb-476e-b59f-d87835050309",
+          "percentage": 100
+        }
+      ],
+      "existingBindingsPreserved": true,
+      "secretNamesPreserved": true,
+      "centralApiBinding": null,
+      "compatibilityDatePreserved": true,
+      "schedules": []
+    },
+    {
+      "name": "nebula-scanner",
+      "versions": [
+        {
+          "version_id": "e4bd008d-feb9-4743-b4bf-b5717c581a50",
+          "percentage": 100
+        }
+      ],
+      "existingBindingsPreserved": true,
+      "secretNamesPreserved": true,
+      "centralApiBinding": "nebula-api",
+      "compatibilityDatePreserved": true,
+      "schedules": [
+        "*/30 * * * *"
+      ]
+    },
+    {
+      "name": "nebula-evaluation",
+      "versions": [
+        {
+          "version_id": "89aebceb-7d3a-470b-a59c-e98905c91ea6",
+          "percentage": 100
+        }
+      ],
+      "existingBindingsPreserved": true,
+      "secretNamesPreserved": true,
+      "centralApiBinding": "nebula-api",
+      "compatibilityDatePreserved": true,
+      "schedules": [
+        "*/30 * * * *"
+      ]
+    }
+  ],
+  "liveMarketFeedProbes": [
+    {
+      "generatedAt": "2026-11-02T16:23:45.354Z",
+      "httpStatus": 200,
+      "items": 12,
+      "scored": 5,
+      "poolRows": 5,
+      "priceOnly": 7,
+      "metadataRows": 12,
+      "evidenceRows": 12,
+      "requestBudget": {
+        "upstreamRequests": 6,
+        "cacheHits": 0,
+        "remaining": 6
+      },
+      "providerAttempts": [
+        {
+          "provider": "dexscreener",
+          "ok": true,
+          "error": null,
+          "retryAt": null,
+          "cached": false,
+          "fromCooldown": false
+        },
+        {
+          "provider": "geckoterminal",
+          "ok": false,
+          "error": "RATE_LIMIT",
+          "retryAt": "2026-11-02T16:23:45.852Z",
+          "cached": false,
+          "fromCooldown": false
+        },
+        {
+          "provider": "dexscreener",
+          "ok": true,
+          "error": null,
+          "retryAt": null,
+          "cached": false,
+          "fromCooldown": false
+        },
+        {
+          "provider": "geckoterminal",
+          "ok": false,
+          "error": "RATE_LIMIT",
+          "retryAt": "2026-11-02T16:23:45.852Z",
+          "cached": false,
+          "fromCooldown": true,
+          "mint": "3sgovieKsadmp18nLu4rVNmddDKscBJX32Lg4TkxbChZ"
+        },
+        {
+          "provider": "rugcheck",
+          "ok": true,
+          "error": null,
+          "cached": false
+        },
+        {
+          "provider": "helius",
+          "ok": true,
+          "error": null,
+          "cached": false
+        },
+        {
+          "provider": "jupiter",
+          "ok": true,
+          "error": null,
+          "retryAt": null,
+          "cached": false,
+          "fromCooldown": false
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-11-02T16:25:34.367Z",
+      "httpStatus": 200,
+      "items": 12,
+      "scored": 0,
+      "poolRows": 0,
+      "priceOnly": 12,
+      "metadataRows": 12,
+      "evidenceRows": 12,
+      "requestBudget": {
+        "upstreamRequests": 5,
+        "cacheHits": 2,
+        "remaining": 7
+      },
+      "providerAttempts": [
+        {
+          "provider": "dexscreener",
+          "ok": true,
+          "error": null,
+          "retryAt": null,
+          "cached": true,
+          "fromCooldown": false
+        },
+        {
+          "provider": "geckoterminal",
+          "ok": false,
+          "error": "RATE_LIMIT",
+          "retryAt": "2026-11-02T16:25:35.037Z",
+          "cached": false,
+          "fromCooldown": false
+        },
+        {
+          "provider": "dexscreener",
+          "ok": false,
+          "error": "RATE_LIMIT",
+          "retryAt": "2026-11-02T16:25:38.067Z",
+          "cached": false,
+          "fromCooldown": false
+        },
+        {
+          "provider": "dexscreener",
+          "ok": false,
+          "error": "RATE_LIMIT",
+          "retryAt": "2026-11-02T16:25:38.096Z",
+          "cached": false,
+          "fromCooldown": false,
+          "mint": "3sgovieKsadmp18nLu4rVNmddDKscBJX32Lg4TkxbChZ",
+          "endpoint": "token-pairs"
+        },
+        {
+          "provider": "geckoterminal",
+          "ok": false,
+          "error": "RATE_LIMIT",
+          "retryAt": "2026-11-02T16:25:35.037Z",
+          "cached": false,
+          "fromCooldown": true,
+          "mint": "3sgovieKsadmp18nLu4rVNmddDKscBJX32Lg4TkxbChZ"
+        },
+        {
+          "provider": "rugcheck",
+          "ok": true,
+          "error": null,
+          "cached": false
+        },
+        {
+          "provider": "helius",
+          "ok": true,
+          "error": null,
+          "cached": true
+        },
+        {
+          "provider": "jupiter",
+          "ok": true,
+          "error": null,
+          "retryAt": null,
+          "cached": false,
+          "fromCooldown": false
+        }
+      ]
+    }
+  ],
+  "interpretation": "The two captures differ because provider availability, candidate lists and cache state change over time. The first had 5 scored pool rows; the second had 0 scored rows. Both provided 12 real prices and source-labelled metadata/evidence. This is not a controlled performance comparison or proof of higher prediction accuracy.",
+  "poolCoverageFollowup": "The same change set preserves up to three genuine pools per mint for scanner observations while showing one canonical token in the public feed.",
+  "limits": [
+    "Ankr endpoint remains unconfigured. No credentials were invented or copied.",
+    "GeckoTerminal 429 remains visible and its cooldown is honored. Public RPC/Pump.fun/CoinPaprika access depends on their actual responses and plan availability.",
+    "PumpPortal remains a bounded free-discovery health probe, not a continuous collector. No metered token/account trade subscription is enabled.",
+    "No global distributed quota coordinator was introduced. Cache/coalescing behavior is best-effort and invocation/colo scoped.",
+    "No post-deployment scheduled D1 persistence or model precision/win rate is claimed by this record."
+  ]
+}

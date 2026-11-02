@@ -97,6 +97,15 @@ test('dust-pool responses do not prevent trying an independent pool source',asyn
   await marketPairs([A]);assert.equal(gecko,1);
  });
 });
+test('the scanner bridge preserves multiple genuine pools while the public feed shows one token',async()=>{
+ await mocked(async url=>{
+  const u=String(url);if(u.includes('/tokens/v1/'))return Response.json([pair(),{...pair(),pairAddress:C,liquidity:{usd:200000}}]);
+  if(u.includes('jup.ag'))return Response.json([{id:A,usdPrice:1}]);return Response.json({});
+ },async()=>{
+  const r=await marketFeed({}, {mints:[A],includeObservations:true});assert.equal(r.items.length,1);assert.equal(r.observations.length,2);
+  assert.equal(r.items[0].pair_address,B);assert.deepEqual(new Set(r.observations.map(x=>x.pairAddress)),new Set([B,C]));
+ });
+});
 test('limited Dex batch is not retried while a bounded documented token-pairs fallback may succeed',async()=>{
  let batches=0,singles=0;await mocked(async url=>{
   if(String(url).includes('/tokens/v1/')){batches++;return new Response('',{status:429,headers:{'Retry-After':'120'}});}

@@ -93,9 +93,10 @@ export async function freeQuotes(mints,env={}, {context=createProviderContext(),
 export async function marketFeed(env={}, {mints=null,includeObservations=false,context=createProviderContext()}={}){
  const discovery=mints===null?await discoverMints({context}):{mints:unique(mints),pairs:[],attempts:[]};
  const selected=unique(discovery.mints),market=await marketPairs(selected,{context,seedPairs:discovery.pairs});
- const seen=new Set(),items=[],observations=[];
+ const seen=new Set(),items=[],observations=[],poolCounts=new Map();
  for(const c of scanPairs(market.pairs)){
-  if(seen.has(c.base.mint)||!positive(c.priceUsd))continue;seen.add(c.base.mint);observations.push(c);
+  if(!positive(c.priceUsd)||(poolCounts.get(c.base.mint)||0)>=3)continue;
+  seen.add(c.base.mint);poolCounts.set(c.base.mint,(poolCounts.get(c.base.mint)||0)+1);observations.push(c);
  }
  const metadata=await jupiterBatch(selected,env,context);
  for(const c of observations)c.tokenMetadata=metadataSummary(metadata.tokens.get(c.base.mint),metadata.fetchedAt);
@@ -110,7 +111,8 @@ export async function marketFeed(env={}, {mints=null,includeObservations=false,c
   for(const mint of selected)if(mintAccounts.evidence.has(mint))evidenceByMint.set(mint,{...evidenceByMint.get(mint),mintAccount:mintAccounts.evidence.get(mint)});
  }
  for(const c of observations)c.verificationEvidence=evidenceByMint.get(c.base.mint)||null;
- for(const c of observations)items.push({mint:c.base.mint,symbol:c.base.symbol,pair_address:c.pairAddress,observed_at:c.observedAt,price_usd:c.priceUsd,liquidity_usd:c.liquidityUsd,volume_24h:c.volume24h,change_24h:c.change24h,source:c.source,timeframes:c.timeframes,tokenMetadata:c.tokenMetadata,verificationEvidence:c.verificationEvidence||null,...scoreCandidate(c),risk_verified:false,evaluation_status:'NOT_PERSISTED'});
+ const displayed=new Set();
+ for(const c of observations){if(displayed.has(c.base.mint))continue;displayed.add(c.base.mint);items.push({mint:c.base.mint,symbol:c.base.symbol,pair_address:c.pairAddress,observed_at:c.observedAt,price_usd:c.priceUsd,liquidity_usd:c.liquidityUsd,volume_24h:c.volume24h,change_24h:c.change24h,source:c.source,timeframes:c.timeframes,tokenMetadata:c.tokenMetadata,verificationEvidence:c.verificationEvidence||null,...scoreCandidate(c),risk_verified:false,evaluation_status:'NOT_PERSISTED'});}
  for(const item of quotes.items){item.tokenMetadata=metadataSummary(metadata.tokens.get(item.mint),metadata.fetchedAt);item.verificationEvidence=evidenceByMint.get(item.mint)||null;}
  items.push(...quotes.items);
  const feed={items,source:'live-provider-fallback',dataStatus:'LIVE_ONLY',persisted:false,modelCalibrated:false,automaticScanning:false,counts:null,runs:[],candidates:[],evaluations:[],providerAttempts:[...discovery.attempts,...market.attempts,attempt(metadata),...quotes.attempts.filter(x=>x.provider!=='jupiter')],requestBudget:{upstreamRequests:context.attempts,cacheHits:context.cacheHits,remaining:context.remaining},generatedAt:new Date().toISOString()};

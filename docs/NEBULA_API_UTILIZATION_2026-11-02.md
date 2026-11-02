@@ -40,8 +40,8 @@ These are timestamped probe results, not an assertion that every endpoint or tok
 
 ## Validation
 
-- 88 relevant tests pass, including 23 API-utilization tests and the existing scoring, source, evaluator, scanner, SQLite persistence and read-budget cases.
-- Full suite: 239 tests; 231 pass, the same 6 pre-existing UI contract tests fail, and 2 Chrome-dependent tests are skipped. No new failure relative to the recorded V3 baseline.
+- 89 relevant tests pass, including 24 API-utilization tests and the existing scoring, source, evaluator, scanner, SQLite persistence and read-budget cases.
+- Full suite: 240 tests; 232 pass, the same 6 pre-existing UI contract tests fail, and 2 Chrome-dependent tests are skipped. No new failure relative to the recorded V3 baseline.
 - Tests cover in-flight coalescing, credential-safe cache reuse, bounded deadlines/budgets, isolated provider failures, partial quote coverage, price-vs-pool separation, bounded route fallback, batched RPC order, identity mismatch, quota fallback, server Retry-After and an actual scanner -> API binding -> AI -> SQLite flow.
 - No schema migration, extra scanner D1 query or historical-data rewrite is required. Existing scanner/evaluator cron intervals remain 30 minutes.
 - On-platform deployment and current feed observations are recorded in the companion API-utilization deployment record. Technical checks do not establish pump-prediction accuracy.
