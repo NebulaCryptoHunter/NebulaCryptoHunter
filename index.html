@@ -3189,6 +3189,21 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
   .hunter-targets-panel .radar-grid>.hud-card .token-pulse-row{grid-template-columns:20px minmax(0,1fr) 46px!important}
 }
 
+
+/* V4.3.1 — mobile specificity fix for in-flow panel height. */
+@media(max-width:767px){
+  .app > .hunter-layout{
+    display:block!important;flex:0 0 auto!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    overflow:visible!important;
+  }
+  .app > .hunter-layout > .hunter-targets-panel.hunter-tab-active,
+  .app > .hunter-layout > .hunter-ai-panel.hunter-tab-active,
+  .app > .hunter-layout > .hunter-history-panel.hunter-tab-active{
+    height:auto!important;max-height:none!important;
+  }
+}
+
 </style>
 </head>
 <body>
