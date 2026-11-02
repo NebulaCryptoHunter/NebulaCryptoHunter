@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const v=html.indexOf('/* V3.8 — complete per-token telemetry, no nested scroll.');
+const v=html.indexOf('/* V3.9 — RADAR CARD GEOMETRY FIX.');
 const css=html.slice(v,html.indexOf('</style>',v));
 const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
 
@@ -22,12 +22,12 @@ test('BUY-SELL 1-hour comparison is permanently visible, not part of a modal',()
  assert.match(html,/flow-labels/);
  assert.match(html,/ORDER FLOW · 1 JAM/);
  assert.match(html,/innerHTML\+=tokenOrderFlow\(t\);/);
- assert.match(css,/\.radar-grid>\.hud-card \.token-order-flow\{[\s\S]*?display:flex!important/);
+ assert.match(css,/\.radar-grid>\.hud-card \.token-order-flow\{[\s\S]*?display:grid!important/);
  assert.match(css,/\.radar-grid>\.hud-card \.flow-labels\{[\s\S]*?grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)!important/);
- assert.match(css,/\.radar-grid>\.hud-card \.flow-track\{height:7px!important/);
+ assert.match(css,/\.radar-grid>\.hud-card \.flow-track\{[\s\S]*?height:6px!important/);
 });
 test('no inner scroll; wheel pages one token; full details remain available via existing dialog',()=>{
- assert.match(css,/height:auto!important;min-height:0!important;flex:1 1 auto!important/);
+ assert.match(css,/flex:1 1 0!important;height:auto!important;min-height:0!important/);
  assert.match(css,/overflow:visible!important;overscroll-behavior:auto!important/);
  assert.doesNotMatch(html,/const detail=e\.target\.closest\('\.token-card-body'\)/);
  assert.match(html,/const detail=e\.target\.closest\('\.card-detail-section'\);/);
