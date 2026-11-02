@@ -1,3 +1,4 @@
+import {modelValidation} from './model-validation.mjs';
 // Cache aggregate scans separately: exact totals need not rescan legacy tables every HUD refresh.
 async function aggregateCache(key,produce){
  const url='https://nebula.internal/canonical-d1-aggregate-v2/'+key;
@@ -9,7 +10,7 @@ async function aggregateCache(key,produce){
 }
 export async function researchData(db){
  const queries=[
- `SELECT s.id,s.mint,s.pair_address,s.observed_at,s.liquidity_usd,s.volume_24h,s.change_24h,json_extract(s.payload_json,'$.priceUsd') price_usd,json_extract(s.payload_json,'$.base.symbol') symbol,json_extract(s.payload_json,'$.source') source,e.decision,e.score,e.model,json_extract(e.payload_json,'$.reasons') reasons,json_extract(e.payload_json,'$.components') components,json_extract(e.payload_json,'$.metrics') metrics,json_extract(e.payload_json,'$.dataCoverage') dataCoverage,json_extract(s.payload_json,'$.timeframes') timeframes,json_extract(e.payload_json,'$.riskFlags') riskFlags,json_extract(e.payload_json,'$.setupStage') setupStage
+ `SELECT s.id,s.mint,s.pair_address,s.observed_at,s.liquidity_usd,s.volume_24h,s.change_24h,json_extract(s.payload_json,'$.priceUsd') price_usd,json_extract(s.payload_json,'$.base.symbol') symbol,json_extract(s.payload_json,'$.source') source,e.decision,e.score,e.model,json_extract(e.payload_json,'$.reasons') reasons,json_extract(e.payload_json,'$.components') components,json_extract(e.payload_json,'$.metrics') metrics,json_extract(e.payload_json,'$.dataCoverage') dataCoverage,json_extract(s.payload_json,'$.timeframes') timeframes,json_extract(e.payload_json,'$.riskFlags') riskFlags,json_extract(e.payload_json,'$.setupStage') setupStage,json_extract(e.payload_json,'$.scoreBreakdown') scoreBreakdown,json_extract(e.payload_json,'$.riskAssessment') riskAssessment,json_extract(s.payload_json,'$.tokenMetadata') tokenMetadata,json_extract(s.payload_json,'$.verificationEvidence') verificationEvidence
  FROM (SELECT * FROM scanner_snapshots ORDER BY id DESC LIMIT 800) s
  LEFT JOIN engine_scores e ON e.id=(SELECT x.id FROM engine_scores x
  WHERE x.mint=s.mint AND x.pair_address=s.pair_address AND x.observed_at=s.observed_at
@@ -32,7 +33,7 @@ export async function researchData(db){
   if(items.length>=50)break;
  }
  items.sort((a,b)=>String(b.observed_at||'').localeCompare(String(a.observed_at||''))||Number(b.id||0)-Number(a.id||0));
- return {items,runs:rows[1].results,counts:rows[2].results[0],candidates:rows[3].results,evaluations:rows[4].results,modelCalibrated:false,countsAsOf:aggregate.countsAsOf||null,evaluationDefinition:'First same-pool price observed 30–90 minutes after candidate; point-in-time return, not trade P&L or win rate',source:'research-d1',generatedAt:new Date().toISOString()};
+ return {items,scoreValidation:modelValidation(rows[3].results),runs:rows[1].results,counts:rows[2].results[0],candidates:rows[3].results,evaluations:rows[4].results,modelCalibrated:false,countsAsOf:aggregate.countsAsOf||null,evaluationDefinition:'First same-pool price observed 30–90 minutes after candidate; point-in-time return, not trade P&L or win rate',source:'research-d1',generatedAt:new Date().toISOString()};
 }
 
 /**

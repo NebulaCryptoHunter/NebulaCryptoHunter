@@ -1,12 +1,16 @@
-// The entry path is retained for existing Workers. V3 is an uncalibrated research ranker.
+import {assessRisk} from './risk-assessment.mjs';
+// The entry path is retained for existing Workers. V4 is an uncalibrated research ranker.
 // Every threshold below is provisional policy, not a fitted or proven trading rule.
-export const MODEL = 'heuristic-v3.0.0';
+export const MODEL = 'heuristic-v4.0.0';
+export const SCORE_WEIGHTS = Object.freeze({liquidity: .20, activity: .25, momentum: .30, buyPressure: .25});
 export const SCORING_POLICY = Object.freeze({
   minReviewLiquidity: 50000, minPressureTransactions: 20, minRecentTransactions: 10,
   maxObservationAgeMs: 15 * 60000, futureToleranceMs: 60000,
   maxTurnover: 100, maxReviewGain24h: 300, maxReviewGain5m: 30,
   minReviewScore: 60, minReviewPressure: 55, pressurePrior: 10,
   microTradePace: 2, microTradeSizeRatio: 0.25,
+  liquidityHalfSaturation: 50000, hourlyMomentumScale: 10, recentMomentumScale: 3,
+  maxRecoveryDrawdownPct: 50,
 });
 const clamp = (x, a = 0, b = 100) => Math.min(b, Math.max(a, x));
 const number = x => typeof x === 'number' && Number.isFinite(x) ? x : null;
@@ -36,9 +40,10 @@ export function scoreCandidate(c, { now = Date.now() } = {}) {
     model: MODEL, dataCoverageDefinition: 'Available market fields only; not confidence, source accuracy or security verification',
     confidence: null, confidenceReason: 'NOT_CALIBRATED', probabilityOfProfit: null,
     predictedMultiplier: null, autoTrade: false, modelCalibrated: false,
+    validationStatus: 'PENDING_PROSPECTIVE_VALIDATION',
   };
   const incomplete = (reason, flag) => ({ ...base, decision: 'INSUFFICIENT_DATA', score: null,
-    reasons: [reason], riskFlags: [flag], dataCoverage: null, components: null, setupStage: 'INCOMPLETE' });
+    reasons: [reason], riskFlags: [flag], dataCoverage: null, components: null, scoreBreakdown: null, riskAssessment: null, setupStage: 'INCOMPLETE' });
   if (missing.length) return incomplete('Missing valid market data: ' + missing.join(', '), 'INCOMPLETE_MARKET_DATA');
   const ratio = vol / liq;
   if (!Number.isFinite(ratio)) return incomplete('Invalid volume/liquidity ratio', 'INVALID_MARKET_RATIO');
@@ -62,13 +67,27 @@ export function scoreCandidate(c, { now = Date.now() } = {}) {
   const pressureWindow = p1 !== null ? p5 !== null ? 'm5+h1' : 'h1' : p24 !== null ? 'h24' : null;
   const coverage = 50 + (h1 !== null ? 10 : 0) + (m5 !== null ? 10 : 0)
     + (v1 !== null ? 10 : 0) + (v5 !== null ? 10 : 0) + (t1 !== null ? 5 : 0) + (t5 !== null ? 5 : 0);
-  const liquidity = clamp(Math.log10(Math.max(1, liq / 10000)) * 50);
+  // Depth is useful, but a large pool must not dominate four independent market features.
+  const liquidity = 100 / (1 + policy.liquidityHalfSaturation / liq);
   const activity = v1 !== null ? clamp(Math.log1p(v1 / liq) / Math.log(2) * 100) : null;
-  const hourMomentum = h1 !== null ? clamp(50 + h1 * 2) : null;
-  const recentMomentum = m5 !== null ? clamp(50 + m5 * 6) : null;
+  // Smooth bounded curves distinguish +25% from +50%, without rewarding an unlimited spike.
+  const momentumValue = (r, scale) => r !== null ? 50 + 50 * (r / (Math.abs(r) + scale)) : null;
+  const hourMomentum = momentumValue(h1, policy.hourlyMomentumScale);
+  const recentMomentum = momentumValue(m5, policy.recentMomentumScale);
   const momentum = hourMomentum !== null && recentMomentum !== null ? .6 * hourMomentum + .4 * recentMomentum : hourMomentum;
   const components = { liquidity: round(liquidity), activity: round(activity), momentum: round(momentum), buyPressure: round(buyPressure) };
-  let score = .30 * liquidity + .20 * (activity ?? 0) + .25 * (momentum ?? 0) + .25 * (buyPressure ?? 0);
+  const rawComponents = {liquidity, activity, momentum, buyPressure};
+  // Allocate integer hundredths once so displayed contributions add exactly to baseScore.
+  const terms = Object.entries(SCORE_WEIGHTS).map(([key, weight]) => ({key, weight, raw: weight * (rawComponents[key] ?? 0) * 100}));
+  const totalCents = Math.round(terms.reduce((sum, t) => sum + t.raw, 0));
+  const cents = terms.map(t => Math.floor(t.raw));
+  const order = terms.map((t, i) => ({i, fraction: t.raw - cents[i]})).sort((a, b) => b.fraction - a.fraction || a.i - b.i);
+  for (let i = 0, rest = totalCents - cents.reduce((a, b) => a + b, 0); i < rest; i++) cents[order[i].i]++;
+  const contributions = terms.map((t, i) => ({component: t.key, weight: t.weight, value: components[t.key], points: cents[i] / 100}));
+  const baseScore = totalCents / 100, penalties = [], caps = [];
+  let score = baseScore;
+  const penalize = (reason, points) => { const amount = round(points); penalties.push({reason, points: amount}); score = round(score - amount); };
+  const cap = (reason, limit) => { const before = score; score = Math.min(score, limit); caps.push({reason, limit, reduction: round(before - score)}); };
   if (liq < policy.minReviewLiquidity) risks.push('THIN_LIQUIDITY');
   if (t1 === null || t1 < policy.minPressureTransactions) risks.push('INSUFFICIENT_TRANSACTION_SAMPLE');
   if (t5 === null || t5 < policy.minRecentTransactions) risks.push('INSUFFICIENT_RECENT_TRANSACTION_SAMPLE');
@@ -83,14 +102,15 @@ export function scoreCandidate(c, { now = Date.now() } = {}) {
   const inconsistent = volumeExceeds(v5, v1) || volumeExceeds(v1, vol)
     || countsExceed(five, hour) || countsExceed(hour, dayWindow);
   const mismatch = [[v1, t1], [v5, t5]].some(([v, t]) => v !== null && t !== null && ((v === 0 && t > 0) || (v > 0 && t === 0)));
-  if (inconsistent) { risks.push('INCONSISTENT_TIME_WINDOWS'); score -= 20; }
-  if (mismatch) { risks.push('VOLUME_TRANSACTION_MISMATCH'); score -= 20; }
-  if ((h1 !== null && h1 < 0) || day < 0) {
+  if (inconsistent) { risks.push('INCONSISTENT_TIME_WINDOWS'); penalize('INCONSISTENT_TIME_WINDOWS', 20); }
+  if (mismatch) { risks.push('VOLUME_TRANSACTION_MISMATCH'); penalize('VOLUME_TRANSACTION_MISMATCH', 20); }
+  if (h1 !== null && h1 < 0) {
     risks.push('DOWNSIDE_MOMENTUM');
-    score -= Math.min(35, Math.abs(Math.min(h1 ?? 0, 0)) * 1.5 + Math.abs(Math.min(day, 0)) * .15);
+    penalize('DOWNSIDE_MOMENTUM', Math.min(35, Math.abs(h1) * 1.5));
   }
-  if (m5 !== null && m5 < 0) { risks.push('RECENT_REVERSAL'); score -= Math.min(25, Math.abs(m5) * 2); }
-  if (buyPressure !== null && buyPressure < 50) { risks.push('SELL_PRESSURE'); score -= (50 - buyPressure) * .5; }
+  if (day <= -policy.maxRecoveryDrawdownPct) { risks.push('DEEP_DAILY_DRAWDOWN'); penalize('DEEP_DAILY_DRAWDOWN', Math.min(15, Math.abs(day) * .15)); }
+  if (m5 !== null && m5 < 0) { risks.push('RECENT_REVERSAL'); penalize('RECENT_REVERSAL', Math.min(25, Math.abs(m5) * 2)); }
+  if (buyPressure !== null && buyPressure < 50) { risks.push('SELL_PRESSURE'); penalize('SELL_PRESSURE', (50 - buyPressure) * .5); }
   if (p5 !== null && p5 < 50) risks.push('RECENT_SELL_PRESSURE');
   const created = timestamp(c.poolCreatedAt);
   const poolAgeMinutes = Number.isFinite(created) && Number.isFinite(observed) ? (observed - created) / 60000 : null;
@@ -105,24 +125,36 @@ export function scoreCandidate(c, { now = Date.now() } = {}) {
   const avgPrior = disjoint && v1 !== null && v5 !== null && t1 !== null && t5 !== null && t1 > t5 ? (v1 - v5) / (t1 - t5) : null;
   const sizeRatio = avgRecent !== null && avgPrior > 0 ? avgRecent / avgPrior : null;
   const microTrade = t5 >= policy.minRecentTransactions && transactionPace >= policy.microTradePace && sizeRatio !== null && sizeRatio < policy.microTradeSizeRatio;
-  if (microTrade) { risks.push('SMALL_TRADE_COUNT_SPIKE'); score -= 15; }
-  if (ratio > policy.maxTurnover) { risks.push('EXTREME_TURNOVER'); score -= 20; }
-  if (day > policy.maxReviewGain24h || (m5 !== null && m5 > policy.maxReviewGain5m)) { risks.push('OVERHEATED_MOMENTUM'); score -= 20; }
-  if (vol === 0 || t1 === 0 || t5 === 0) { risks.push('NO_OBSERVED_ACTIVITY'); score = Math.min(score, 20); }
+  if (microTrade) { risks.push('SMALL_TRADE_COUNT_SPIKE'); penalize('SMALL_TRADE_COUNT_SPIKE', 15); }
+  if (ratio > policy.maxTurnover) { risks.push('EXTREME_TURNOVER'); penalize('EXTREME_TURNOVER', 20); }
+  if (day > policy.maxReviewGain24h || (m5 !== null && m5 > policy.maxReviewGain5m)) { risks.push('OVERHEATED_MOMENTUM'); penalize('OVERHEATED_MOMENTUM', 20); }
+  if (vol === 0 || t1 === 0 || t5 === 0) { risks.push('NO_OBSERVED_ACTIVITY'); cap('NO_OBSERVED_ACTIVITY', 20); }
   const quarantined = liq <= 1 || ratio > policy.maxTurnover || inconsistent || mismatch;
-  if (quarantined) score = Math.min(score, 20);
-  if (coverage < 100) score = Math.min(score, policy.minReviewScore - 1);
-  if (!fresh) score = Math.min(score, 30);
-  const verified = c.risk?.rugCheck === 'SAFE' && c.risk?.whaleConcentration === 'SAFE';
-  if (!verified) reasons.push('Security or whale concentration unverified');
+  if (quarantined) cap('QUARANTINED', 20);
+  if (liq < policy.minReviewLiquidity) cap('THIN_LIQUIDITY', policy.minReviewScore - 1);
+  if (coverage < 100) cap('INCOMPLETE_MARKET_DATA', policy.minReviewScore - 1);
+  if (!fresh) cap('STALE_MARKET_DATA', 30);
+  const marketScore = round(clamp(score));
+  const riskAssessment = assessRisk(c, {now}), verified = riskAssessment.allChecksPassed;
+  if (!verified) reasons.push(riskAssessment.status === 'RISK_DETECTED' ? 'Security risk detected by limited checks' : 'Security or whale concentration unverified');
+  if (!verified) cap(riskAssessment.status, riskAssessment.scoreCap);
   if (poolAgeMinutes === null) reasons.push('Pool age unknown; disjoint pace baseline unavailable');
   else if (!mature && poolAgeMinutes >= 0) reasons.push('Pool younger than one hour; disjoint pace baseline unavailable');
   if (microTrade) reasons.push('Transaction counts rose while average trade size fell; not proof of wash trading');
   reasons.push(...risks);
-  const marketReady = fresh && risks.length === 0 && h1 > 0 && m5 > 0 && buyPressure >= policy.minReviewPressure && coverage === 100 && score >= policy.minReviewScore;
-  const setupStage = quarantined ? 'QUARANTINED' : !fresh ? 'STALE' : risks.includes('RECENT_REVERSAL') || risks.includes('RECENT_SELL_PRESSURE') ? 'COOLING' : marketReady ? 'CONFIRMED_MARKET_SETUP' : coverage < 100 ? 'INCOMPLETE' : 'OBSERVING';
+  const marketReady = fresh && risks.length === 0 && h1 > 0 && m5 > 0 && buyPressure >= policy.minReviewPressure && coverage === 100 && marketScore >= policy.minReviewScore;
+  const recovery = marketReady && day < 0;
+  if (recovery) reasons.push('Positive 1h and 5m recovery within a negative 24h return; not a confirmed long-term reversal');
+  const setupStage = quarantined ? 'QUARANTINED' : !fresh ? 'STALE' : riskAssessment.status === 'RISK_DETECTED' ? 'RISK_BLOCKED' : risks.includes('RECENT_REVERSAL') || risks.includes('RECENT_SELL_PRESSURE') ? 'COOLING' : recovery ? 'RECOVERY_SETUP' : marketReady ? 'CONFIRMED_MARKET_SETUP' : coverage < 100 ? 'INCOMPLETE' : 'OBSERVING';
+  reasons.push(...riskAssessment.flags);
+  const finalScore = round(clamp(score));
+  const scoreBreakdown = {weights: SCORE_WEIGHTS, contributions, baseScore, penalties, caps, marketScore,
+    penaltyTotal: round(penalties.reduce((sum, p) => sum + p.points, 0)),
+    capReduction: round(caps.reduce((sum, c) => sum + c.reduction, 0)),
+    rangeAdjustment: round(finalScore - score), finalScore,
+    definition: 'Base points minus penalties minus cap reductions plus range adjustment equals finalScore; component values are 0–100 indicators, not probabilities'};
   return { ...base, decision: marketReady && verified ? 'REVIEW' : 'WATCH', score: round(clamp(score)), reasons,
-    riskFlags: risks, dataCoverage: coverage, components, setupStage,
+    riskFlags: [...risks, ...riskAssessment.flags], dataCoverage: coverage, components, setupStage, scoreBreakdown, riskAssessment,
     metrics: {
       volumeLiquidityRatio: round(ratio), pressureTransactions: t1 ?? t24, recentTransactions: t5,
       buyPressureWindow: pressureWindow, buyPressureH1: round(p1), buyPressureM5: round(p5),

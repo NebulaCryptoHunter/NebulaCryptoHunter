@@ -3937,11 +3937,12 @@ async function fetchResearchLatest(){
  researchReadPending=fetch('/api/research/latest',{signal:AbortSignal.timeout(15000),cache:'no-store'});
  try{researchReadResponse=await researchReadPending;researchReadAt=Date.now();return researchReadResponse.clone()}finally{researchReadPending=null}
 }
+function researchRiskLabel(t){const status=t.serverRisk?.status;return status==='CHECKS_PASSED'?'LOLOS PEMERIKSAAN TERBATAS':status==='RISK_DETECTED'?'RISIKO TERDETEKSI':'BELUM DIVERIFIKASI'}
 function recordObject(value){if(value&&typeof value==='object'&&!Array.isArray(value))return value;if(typeof value==='string')try{const parsed=JSON.parse(value);return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:null}catch{}return null}
 function researchIndicatorGroups(data=S.serverResearch){
  const items=Array.isArray(data?.items)?data.items:[],counts=data?.counts||{},finite=v=>typeof v==='number'&&Number.isFinite(v),num=v=>finite(v)?v.toLocaleString('id-ID'):'—',known=field=>items.filter(x=>finite(x[field])).length;
  const scored=known('score'),models=[...new Set(items.map(x=>x.model).filter(Boolean))],countDecision=d=>data?num(items.filter(x=>x.decision===d).length):'—',unavailable='Belum ada nilai terverifikasi pada respons';
- const market=[['TOKEN AKTIF',data?num(items.length):'—','Token pada feed yang tersedia'],['SUDAH DINILAI',data?num(scored)+' / '+items.length:'—','Skor heuristik, bukan peluang untung'],['HARGA TERSEDIA',data?num(known('price_usd'))+' / '+items.length:'—','Observasi harga dari sumber API'],['DATA LIKUIDITAS',data?num(known('liquidity_usd'))+' / '+items.length:'—','Harga saja belum cukup untuk skor'],['EVALUASI TERSIMPAN',num(counts.total_evaluations),'Jumlah terakhir yang dapat dibaca'],['MODEL',models.length?(models.every(model=>model.startsWith('heuristic-v3.'))?'V3 / HEURISTIK':'HEURISTIK'):'BELUM DINILAI',models.length?models.join(', '):'Menunggu data pool yang memadai'],['KALIBRASI',data?.modelCalibrated===true?'READY':'BELUM','Skor bukan probabilitas terkalibrasi'],['PENYIMPANAN',data?.persisted===false?'SEMENTARA':data?'SERVER':'—',data?.persisted===false?'Feed API aktif; belum tersimpan':'Mengikuti status data server']];
+ const market=[['TOKEN AKTIF',data?num(items.length):'—','Token pada feed yang tersedia'],['SUDAH DINILAI',data?num(scored)+' / '+items.length:'—','Skor heuristik, bukan peluang untung'],['HARGA TERSEDIA',data?num(known('price_usd'))+' / '+items.length:'—','Observasi harga dari sumber API'],['DATA LIKUIDITAS',data?num(known('liquidity_usd'))+' / '+items.length:'—','Harga saja belum cukup untuk skor'],['EVALUASI TERSIMPAN',num(counts.total_evaluations),'Jumlah terakhir yang dapat dibaca'],['MODEL',models.length?(models.every(model=>model.startsWith('heuristic-v4.'))?'V4 / HEURISTIK':models.every(model=>model.startsWith('heuristic-v3.'))?'V3 / HEURISTIK':'HEURISTIK'):'BELUM DINILAI',models.length?models.join(', '):'Menunggu data pool yang memadai'],['KALIBRASI',data?.modelCalibrated===true?'READY':'BELUM','Skor bukan probabilitas terkalibrasi'],['PENYIMPANAN',data?.persisted===false?'SEMENTARA':data?'SERVER':'—',data?.persisted===false?'Feed API aktif; belum tersimpan':'Mengikuti status data server']];
  const performance=[['PRECISION','—',unavailable],['RECALL','—',unavailable],['F1 SCORE','—','Menunggu evaluasi dengan definisi yang sah'],['FALSE POSITIVE','—','Belum ada confusion matrix terverifikasi'],['FALSE NEGATIVE','—','Belum ada confusion matrix terverifikasi'],['TRUE POSITIVE','—','Belum ada confusion matrix terverifikasi'],['TRUE NEGATIVE','—','Belum ada confusion matrix terverifikasi'],['WIN RATE','—','Belum ada pengukuran yang sah'],['AVG ROI','—','Return pengamatan bukan laba transaksi'],['AVG CONFIDENCE','—','Model belum terkalibrasi'],['OUTCOMES',Array.isArray(data?.evaluations)?num(data.evaluations.length):'—','Baris evaluasi pada respons; bukan seluruh transaksi'],['ACCURACY','—',unavailable],['MAE','—',unavailable]];
  const trading=[['STRONG BUY',countDecision('STRONG_BUY'),'Jumlah keputusan pada feed ini'],['BUY',countDecision('BUY'),'Jumlah keputusan pada feed ini'],['ACCUMULATE',countDecision('ACCUMULATE'),'Jumlah keputusan pada feed ini'],['WATCH',countDecision('WATCH'),'Jumlah keputusan pada feed ini'],['WAIT',countDecision('WAIT'),'Jumlah keputusan pada feed ini'],['AVOID',countDecision('AVOID'),'Jumlah keputusan pada feed ini'],['SCAM','—','Tidak disimpulkan tanpa bukti risiko'],['HERO','—','Belum ada pilihan terverifikasi']];
  const database=[['DATABASE',num(counts.database_records),'Total baris tabel riset: prediksi, kandidat, snapshot, skor, evaluasi, putaran scanner'],['PREDICTION',num(counts.total_records),'Prediksi historis dan kandidat scanner; bukan seluruh baris database'],['UNIQUE',num(counts.unique_mints),'Mint Solana berbeda dalam gabungan prediksi historis dan kandidat scanner'],['SNAPSHOTS',num(counts.snapshots),'Observasi yang tersimpan'],['CANDIDATES',num(counts.candidates),'Kandidat scanner yang tersimpan'],['ENGINE SCORES',num(counts.scores),'Skor yang tersimpan']];
@@ -3993,7 +3994,7 @@ async function loadPredictions(){
 }
 function applyResearchData(json){
  feedBus=[];feedMap.clear();S.predictionHistory=[];
- for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score??null,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,serverComponents:recordObject(p.components),serverMetrics:recordObject(p.metrics),timeframes:recordObject(p.timeframes),source:p.source||null,dataStatus:json.dataStatus||null,persisted:json.persisted!==false,marketDataCoverage:p.dataCoverage??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
+ for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score??null,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,serverComponents:recordObject(p.components),serverMetrics:recordObject(p.metrics),serverBreakdown:recordObject(p.scoreBreakdown),serverRisk:recordObject(p.riskAssessment),tokenMetadata:recordObject(p.tokenMetadata),verificationEvidence:recordObject(p.verificationEvidence),setupStage:p.setupStage||null,modelValidation:json.scoreValidation?.model===p.model?json.scoreValidation:null,timeframes:recordObject(p.timeframes),source:p.source||null,dataStatus:json.dataStatus||null,persisted:json.persisted!==false,marketDataCoverage:p.dataCoverage??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
  sortFeed();
  const grid=$('radarFeed');if(grid){grid.dataset.activeTokenCa=feedBus[0]?.ca||'';grid.scrollTop=0;}
  S.serverResearch=json;renderResearchIndicators(json);S.serverResearchCounts=json.counts||{};void loadHistoricalSummary();S.dash.dbTotal=json.counts?.database_records??null;S.dash.tot=json.counts?.unique_mints??0;S.dash.watch=feedBus.filter(t=>t.decision===DECISION.WATCH).length;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
@@ -4199,7 +4200,7 @@ const RenderEngine = (()=>{
   function removeCard(ca){const div=rendered.get(ca);if(div){div.remove();rendered.delete(ca);}}
   function renderSkeleton(ca){const grid=$('radarFeed');if(!grid)return;const div=document.createElement('div');div.className='hud-card skeleton-card';div.dataset.ca=ca;grid.prepend(div);rendered.set(ca,div);}
   function createRing(score){if(!Number.isFinite(score))return '<div class="score-ring-container" title="Skor belum tersedia"><div class="score-ring-value" style="color:#b7d2df">—</div></div>';const s=Math.round(score),color=s>=80?'#0f6':s>=60?'#ffd700':s>=40?'#f80':'#f44';const r=12,c=2*Math.PI*r;return'<div class="score-ring-container" style="color:'+color+'"><svg class="score-ring-svg" viewBox="0 0 30 30"><circle cx="15" cy="15" r="'+r+'" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="2"/><circle cx="15" cy="15" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-dasharray="'+c+'" stroke-dashoffset="'+(c-(s/100*c))+'"/></svg><div class="score-ring-value" style="color:'+color+';font-size:0.55rem">'+s+'</div></div>';}
-  function getConfBadge(t){if(t._serverObservation||t.restored)return '<span class="confidence-badge" style="color:#9bb8c7;border:1px solid #32506a;background:#0a192a">UNVERIFIED</span>';const cf=t._aiConf||0,lb=t._aiLabel||'?';return'<span class="confidence-badge confidence-'+lb.toLowerCase()+'">'+cf+'%</span>';}
+  function getConfBadge(t){if(t._serverObservation||t.restored){const label=t.serverRisk?.status==='CHECKS_PASSED'?'CHECKED':t.serverRisk?.status==='RISK_DETECTED'?'RISK':'UNVERIFIED';return '<span class="confidence-badge" style="color:#9bb8c7;border:1px solid #32506a;background:#0a192a">'+label+'</span>';}const cf=t._aiConf||0,lb=t._aiLabel||'?';return'<span class="confidence-badge confidence-'+lb.toLowerCase()+'">'+cf+'%</span>';}
   function getWalletBadge(t){const dna=t._walletDNA||{};return'<span class="wallet-badge '+(dna.class||'wallet-retail')+'">'+(dna.type||'?')+'</span>';}
   function getClusterBadge(t){const cl=t._walletCluster;if(cl===1)return'<span style="background:rgba(255,0,0,.2);color:#f44;border:1px solid #f44;font-size:0.38rem;padding:0 3px;border-radius:2px;margin-left:1px">CL</span>';if(cl===2)return'<span style="background:rgba(255,215,0,.2);color:#ffd700;border:1px solid #ffd700;font-size:0.38rem;padding:0 3px;border-radius:2px;margin-left:1px">LN</span>';return'';}
   function getOBBadge(t){if(t._obSignal==='BULLISH')return'<span class="ob-badge ob-bullish">OB</span>';if(t._obSignal==='BEARISH')return'<span class="ob-badge ob-bearish">OB</span>';return'';}
@@ -4281,7 +4282,7 @@ const RenderEngine = (()=>{
   function openTokenDetails(token){
     if(!token)return;const dialog=$('tokenDetailDialog'),body=$('tokenDetailBody');
     $('tokenDetailTitle').textContent=getName(token);
-    $('tokenDetailSubtitle').textContent=fmtPrice(token.price)+' USD · '+(token.source||'Sumber API')+' · Risiko belum diverifikasi';
+    $('tokenDetailSubtitle').textContent=fmtPrice(token.price)+' USD · '+(token.source||'Sumber API')+' · '+researchRiskLabel(token);
     $('tokenDetailCopy').dataset.ca=token.ca;body.innerHTML=renderDetail(token);body.scrollTop=0;
     const jump=$('tokenDetailJump');jump.replaceChildren();
     body.querySelectorAll('.hud-module').forEach((section,index)=>{
@@ -4315,7 +4316,7 @@ const RenderEngine = (()=>{
       row('HARGA USD',price)+row('LIKUIDITAS USD',liquidity)+row('VOLUME 24J USD',volume)
       +row('PERUBAHAN 24J',validNumber(t.change24h)?t.change24h.toFixed(2)+'%':'—')
       +row('WALLET',isHistorical?'Belum diverifikasi':t._walletDNA?.type||'—')
-      +row('RUGCHECK',isHistorical?'Belum diverifikasi':t._rugStatus?.status||'UNKNOWN')
+      +row('RUGCHECK',isHistorical?t.serverRisk?.checks?.rugcheck?.status||'Belum diverifikasi':t._rugStatus?.status||'UNKNOWN')
       +meta);
     const explanation=isHistorical?t.serverComponents:t._explain;
     let xai=empty;
@@ -4327,6 +4328,17 @@ const RenderEngine = (()=>{
           +'<div class="gauge-track"><div class="gauge-fill" style="width:'+pct+'%;background:#4de8db"></div></div>'
           +'<span class="gauge-value" style="flex:0 0 43px">'+(known?v.toFixed(0)+'%':'—')+'</span></div>';
       }).join('');
+    }
+    const breakdown=isHistorical?t.serverBreakdown:null;
+    if(breakdown&&Array.isArray(breakdown.contributions)){
+      const labels={liquidity:'LIKUIDITAS',activity:'AKTIVITAS',momentum:'MOMENTUM',buyPressure:'TEKANAN BELI'};
+      const points=v=>validNumber(v)?v.toFixed(2)+' poin':'—';
+      xai=breakdown.contributions.slice(0,4).map(c=>row((labels[c.component]||c.component)+' · '+(validNumber(c.weight)?(c.weight*100).toFixed(0)+'%':'—'),points(c.points))).join('')
+        +row('SKOR DASAR',points(breakdown.baseScore));
+      for(const p of Array.isArray(breakdown.penalties)?breakdown.penalties:[])xai+=row('PENALTI · '+p.reason,validNumber(p.points)?'−'+points(p.points):'—');
+      for(const c of Array.isArray(breakdown.caps)?breakdown.caps:[])xai+=row('BATAS · '+c.reason,points(c.limit)+(validNumber(c.reduction)&&c.reduction>0?' (−'+points(c.reduction)+')':''));
+      if(validNumber(breakdown.rangeAdjustment)&&breakdown.rangeAdjustment!==0)xai+=row('PENYESUAIAN RENTANG',points(breakdown.rangeAdjustment));
+      xai+=row('SKOR UTAMA',points(breakdown.finalScore))+'<p class="hud-module-subtext">Kontribusi berbobot − penalti − pengurangan batas + penyesuaian = skor utama. Bobot heuristik; bukan peluang untung.</p>';
     }
     const xaiCard=card('XAI · EXPLAINABLE SCORING',xai);
     const structure=card('STRUCTURE · MARKET',
@@ -4358,7 +4370,7 @@ const RenderEngine = (()=>{
     const prediction=card('AI PREDICTION',
       row('MODEL',t.model||'heuristic / belum dikalibrasi')
       +row('AI SCORE',score)+row('DECISION',decision)
-      +row('RISK STATUS',isHistorical?'BELUM DIVERIFIKASI':(t._passedGate?'LULUS GATE INTERNAL':'BELUM LULUS GATE'))
+      +row('RISK STATUS',isHistorical?researchRiskLabel(t):(t._passedGate?'LULUS GATE INTERNAL':'BELUM LULUS GATE'))+row('SETUP',t.setupStage||'—')
       +row('EXPECTED',multiplier?multiplier.expected+'X':'—')
       +row('MIN',multiplier?.minimum!=null?multiplier.minimum+'X':'—')
       +row('OPTIMISTIC',multiplier?.optimistic!=null?multiplier.optimistic+'X':'—')
@@ -4369,9 +4381,11 @@ const RenderEngine = (()=>{
       +'<p class="hud-module-subtext">Tidak ada katalis terverifikasi berarti tidak ada estimasi tambahan.</p>');
     const frames=t.timeframes||{},hour=frames.h1||{},five=frames.m5||{},metrics=t.serverMetrics||{};
     const pressure=card('VOLUME · BUY / SELL PRESSURE',row('VOLUME 5 MENIT',number(five.volumeUsd))+row('VOLUME 1 JAM',number(hour.volumeUsd))+row('PERUBAHAN 5 MENIT',validNumber(five.changePct)?five.changePct.toFixed(2)+'%':'—')+row('PERUBAHAN 1 JAM',validNumber(hour.changePct)?hour.changePct.toFixed(2)+'%':'—')+row('BUY 1 JAM',number(hour.buys))+row('SELL 1 JAM',number(hour.sells))+row('VOLUME / LIKUIDITAS',validNumber(metrics.volumeLiquidityRatio)?metrics.volumeLiquidityRatio.toFixed(2):'—')+row('SAMPEL TRANSAKSI',number(metrics.pressureTransactions)));
-    const wallet=card('WALLET · HOLDERS · SECURITY',row('HOLDER COUNT',!isHistorical&&t._hel?.holderCountVerified?number(t._hel.hc):'—')+row('TOP 1 / TOP 5 / TOP 10',!isHistorical&&t._hel?.dist?[t._hel.dist.top1,t._hel.dist.top5,t._hel.dist.top10].join(' / '):'—')+row('MINT AUTHORITY',!isHistorical&&typeof t._rug?.mint==='boolean'?String(t._rug.mint):'—')+row('FREEZE AUTHORITY',!isHistorical&&typeof t._rug?.freeze==='boolean'?String(t._rug.freeze):'—')+row('RUG / WHALE CHECK',isHistorical?'Belum diverifikasi':t._rugStatus?.status||'—')+'<p class="hud-module-subtext">Nilai tetap kosong jika belum ada data terverifikasi.</p>');
+    const risk=t.serverRisk,checks=risk?.checks||{},metadata=t.tokenMetadata||{};
+    const checkText=(key)=>{const c=checks[key];return c?c.status+(c.source?' · '+c.source:''):'—'};
+    const wallet=card('WALLET · HOLDERS · SECURITY',row('HOLDER COUNT',isHistorical?number(metadata.holderCount):t._hel?.holderCountVerified?number(t._hel.hc):'—')+row('TOP 1 / TOP 5 / TOP 10',!isHistorical&&t._hel?.dist?[t._hel.dist.top1,t._hel.dist.top5,t._hel.dist.top10].join(' / '):'—')+row('MINT AUTHORITY',!isHistorical&&typeof t._rug?.mint==='boolean'?String(t._rug.mint):'—')+row('FREEZE AUTHORITY',!isHistorical&&typeof t._rug?.freeze==='boolean'?String(t._rug.freeze):'—')+row('RUG / WHALE CHECK',isHistorical?researchRiskLabel(t):t._rugStatus?.status||'—')+(isHistorical?row('CEK MINT AUTHORITY',checkText('mintAuthority'))+row('CEK FREEZE AUTHORITY',checkText('freezeAuthority'))+row('CEK TOKEN PROGRAM',checkText('tokenProgram'))+row('KONSENTRASI HOLDER · JUPITER',checkText('holderConcentration'))+row('CEK RUGCHECK',checkText('rugcheck')):'')+'<p class="hud-module-subtext">Pemeriksaan terbatas, bukan jaminan keamanan. Konsentrasi mengikuti laporan penyedia; bukan audit wallet unik.</p>');
     const evaluation=card('EVALUATION · FOLLOW-UP',
-      row('STATUS',t.evaluationStatus||'Belum dievaluasi')
+      row('STATUS',t.evaluationStatus||'Belum dievaluasi')+row('VALIDASI MODEL',t.modelValidation?.status||'BELUM DIKALIBRASI')+row('SAMPEL TERUKUR · 50 KANDIDAT TERBARU',validNumber(t.modelValidation?.measured)?t.modelValidation.measured:'—')
       +row('PERUBAHAN TERUKUR',validNumber(t.evaluationRoi)?t.evaluationRoi.toFixed(2)+'%':'—')
       +'<p class="hud-module-subtext">Kinerja harus didukung observasi harga lanjutan, bukan estimasi profit.</p>');
     const alert='<p class="hud-not-verified">'+(isHistorical

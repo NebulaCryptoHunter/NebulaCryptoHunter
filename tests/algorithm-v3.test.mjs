@@ -1,3 +1,4 @@
+import {scoringEvidence} from './fixtures/scoring-evidence.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {scoreCandidate, MODEL, SCORING_POLICY} from '../backend/workers/scoring-v2.mjs';
@@ -8,7 +9,7 @@ import engine from '../backend/workers/nebula-ai-engine.mjs';
 const now = Date.parse('2026-11-02T15:00:00Z');
 const A = 'So11111111111111111111111111111111111111112', B = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const candidate = (patch = {}) => ({
-  base: {mint: A}, pairAddress: B, priceUsd: 1, liquidityUsd: 500000, volume24h: 2500000, change24h: 24,
+  ...scoringEvidence(A, new Date(now).toISOString()), base: {mint: A}, pairAddress: B, priceUsd: 1, liquidityUsd: 500000, volume24h: 2500000, change24h: 24,
   observedAt: new Date(now).toISOString(), poolCreatedAt: new Date(now - 2 * 3600000).toISOString(),
   buys24h: 700, sells24h: 300,
   timeframes: {h1: {changePct: 8, volumeUsd: 150000, buys: 80, sells: 20}, m5: {changePct: 2, volumeUsd: 20000, buys: 24, sells: 6}},
@@ -18,7 +19,7 @@ const score = c => scoreCandidate(c, {now});
 function withFive(patch) { const c = candidate(); c.timeframes.m5 = {...c.timeframes.m5, ...patch}; return c; }
 test('V3 requires recent confirmation and preserves the research-only contract', () => {
   const r = score(candidate());
-  assert.equal(r.model, 'heuristic-v3.0.0'); assert.equal(r.model, MODEL); assert.equal(r.decision, 'REVIEW');
+  assert.equal(r.model, 'heuristic-v4.0.0'); assert.equal(r.model, MODEL); assert.equal(r.decision, 'REVIEW');
   assert.equal(r.setupStage, 'CONFIRMED_MARKET_SETUP'); assert.equal(r.metrics.buyPressureWindow, 'm5+h1');
   assert.equal(r.confidence, null); assert.equal(r.probabilityOfProfit, null); assert.equal(r.predictedMultiplier, null);
   assert.equal(r.autoTrade, false); assert.equal(r.modelCalibrated, false); assert.ok(Object.isFrozen(SCORING_POLICY));
@@ -90,7 +91,7 @@ test('invalid direct-call short-window numbers remain missing, not coerced valid
   }
 });
 test('unknown security stays WATCH even when the market setup is confirmed', () => {
-  const r = score(candidate({risk: {}})); assert.equal(r.setupStage, 'CONFIRMED_MARKET_SETUP'); assert.equal(r.decision, 'WATCH');
+  const r = score(candidate({risk: {}, verificationEvidence: null, tokenMetadata: null})); assert.equal(r.setupStage, 'CONFIRMED_MARKET_SETUP'); assert.equal(r.decision, 'WATCH');
   assert.ok(r.reasons.some(s => s.includes('unverified')));
 });
 test('fresh retrieval cannot disguise stale, future or invalid upstream response timing', () => {

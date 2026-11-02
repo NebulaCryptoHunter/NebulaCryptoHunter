@@ -1,3 +1,4 @@
+import {scoringEvidence} from './fixtures/scoring-evidence.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
@@ -8,7 +9,7 @@ import {pointOutcome,classificationMetrics,analyticsSQL} from '../backend/worker
 import {getTokenPrice,evaluatePrediction} from '../backend/workers/nebula-evaluation.mjs';
 const now=Date.parse('2026-11-01T13:00:00Z');
 const A='So11111111111111111111111111111111111111112',B='EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-const observation=(patch={})=>({priceUsd:1,liquidityUsd:500000,volume24h:2500000,change24h:24,observedAt:new Date(now).toISOString(),buys24h:700,sells24h:300,timeframes:{h1:{changePct:8,volumeUsd:150000,buys:80,sells:20},m5:{changePct:2,volumeUsd:20000,buys:24,sells:6}},risk:{rugCheck:'SAFE',whaleConcentration:'SAFE'},...patch});
+const observation=(patch={})=>({base:{mint:A},...scoringEvidence(A,new Date(now).toISOString()),priceUsd:1,liquidityUsd:500000,volume24h:2500000,change24h:24,observedAt:new Date(now).toISOString(),buys24h:700,sells24h:300,timeframes:{h1:{changePct:8,volumeUsd:150000,buys:80,sells:20},m5:{changePct:2,volumeUsd:20000,buys:24,sells:6}},risk:{rugCheck:'SAFE',whaleConcentration:'SAFE'},...patch});
 const score=c=>scoreCandidate(c,{now});
 test('ranking is explainable, bounded and not a probability or BUY',()=>{const r=score(observation());assert.equal(r.model,MODEL);assert.equal(r.decision,'REVIEW');assert.equal(r.confidence,null);assert.equal(r.probabilityOfProfit,null);assert.equal(r.autoTrade,false);assert.equal(r.dataCoverage,100);assert.ok(r.components.buyPressure>50);assert.ok(r.score>=0&&r.score<=100)});
 test('falling price is not rewarded by extreme turnover',()=>{
@@ -24,7 +25,7 @@ test('unknown counts stay unknown and one buy cannot imply robust demand',()=>{
 });
 test('stale and future observations cannot qualify for REVIEW',()=>{for(const time of [now-16*60000,now+2*60000]){const r=score(observation({observedAt:new Date(time).toISOString()}));assert.equal(r.decision,'WATCH');assert.ok(r.score<=30)}});
 test('ranking does not change if future outcomes are appended to input',()=>{const c=observation();assert.deepEqual(score({...c,futurePrice:9999,roi_pct:1e6,outcome:'WIN'}),score(c))});
-test('unknown security never qualifies for REVIEW even when momentum is strong',()=>{const r=score(observation({risk:{}}));assert.equal(r.decision,'WATCH');assert.ok(r.reasons.some(x=>x.includes('unverified')))});
+test('unknown security never qualifies for REVIEW even when momentum is strong',()=>{const r=score(observation({risk:{},verificationEvidence:null,tokenMetadata:null}));assert.equal(r.decision,'WATCH');assert.ok(r.reasons.some(x=>x.includes('unverified')))});
 test('normalization preserves m5/h1/h24 and distinguishes absent counts from zero',()=>{
  const p={chainId:'solana',pairAddress:B,baseToken:{address:A},quoteToken:{address:B},priceUsd:'1',liquidity:{usd:'50000'},volume:{h24:'1000',h1:'100'},priceChange:{h24:'5',h1:'2',m5:'1'}};
  const [missing]=scanPairs([p]);assert.equal(missing.buys24h,null);assert.equal(missing.momentum.transactionBuyRatio,null);assert.equal(missing.timeframes.h1.volumeUsd,100);assert.equal(missing.timeframes.m5.changePct,1);
