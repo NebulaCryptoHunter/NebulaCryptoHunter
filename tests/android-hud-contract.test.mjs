@@ -12,7 +12,7 @@ test('NEBULA HUD JavaScript parses without syntax errors', () => {
 
 test('Android tabs hide inactive AI and radar panels', () => {
   assert.match(html, /@media\(max-width:1199px\)\s*\{\s*\.hunter-layout > \.hunter-panel:not\(\.hunter-tab-active\)\{display:none!important/);
-  assert.match(html, /panel\.inert=!active/);
+  assert.match(html, /panel\.inert=singlePanel&&!active/);
   for (const tab of ['ai', 'radar', 'history']) assert.ok(html.includes('data-hunter-tab="'+tab+'"'));
 });
 
