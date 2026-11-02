@@ -2074,6 +2074,75 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  }
 }
 
+
+/* V3.3: Desktop DATABASE / HISTORY — exactly two complete records per viewport.
+   Scroll-snap and arrows advance a pair, while the remainder stays inside its card. */
+@media(min-width:1200px){
+ .hunter-history-panel #hunterRecentList{
+  display:flex!important;flex-direction:column!important;
+  gap:6px!important;padding:0 3px 0 0!important;
+  min-height:0!important;overflow-y:auto!important;
+  overflow-x:hidden!important;
+  scroll-snap-type:y mandatory!important;
+  scroll-padding-top:0!important;
+  overscroll-behavior-y:contain;
+ }
+ .hunter-history-panel #hunterRecentList>.hunter-history-row{
+  box-sizing:border-box!important;
+  flex:0 0 calc((100% - 6px)/2)!important;
+  height:calc((100% - 6px)/2)!important;
+  min-height:0!important;max-height:calc((100% - 6px)/2)!important;
+  margin:0!important;
+  overflow:hidden!important;
+  display:grid!important;align-items:center!important;
+  grid-template-columns:40px minmax(0,1fr)!important;
+  padding:7px!important;
+ }
+ .hunter-history-panel #hunterRecentList>.hunter-history-row:nth-child(odd){
+  scroll-snap-align:start!important;
+  scroll-snap-stop:always;
+ }
+ .hunter-history-panel #hunterRecentList>.hunter-history-row .history-record-content{
+  min-width:0!important;min-height:0!important;max-height:100%;
+  overflow-x:hidden!important;overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+ }
+ .hunter-history-panel #hunterRecentList>.hunter-history-row .hunter-history-row-line{
+  min-width:0;grid-template-columns:minmax(0,1fr) auto!important;
+ }
+}
+
+
+/* V3.3 radar micro-adjustment: give top identity, symbol and score full vertical room.
+   Keep one token per screen and the existing fixed action strip. */
+@media(min-width:1200px){
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head{
+  height:58px!important;flex:0 0 58px!important;
+  min-height:58px!important;max-height:58px!important;
+  overflow:visible!important;
+  align-items:center!important;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head .token-emblem{
+  height:44px!important;width:44px!important;flex:0 0 44px!important;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head .token-emblem svg{
+  height:100%!important;width:100%!important;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head .token-card-identity{
+  min-width:0;min-height:0;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head .token-name{
+  line-height:1.2!important;
+ }
+}
+@media(min-width:1200px) and (max-height:740px){
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head{
+  height:54px!important;flex-basis:54px!important;
+  min-height:54px!important;max-height:54px!important;
+ }
+}
+
 </style>
 </head>
 <body>
@@ -3043,6 +3112,18 @@ setTimeout(()=>{
   list.scrollTo({top:next*list.clientHeight,behavior:'smooth'});
  };
 
+ // History pages use measured card positions, not estimated pixel scrolling:
+ // one page is rows 1-2, the next 3-4, then 5-6 and so forth.
+ const historyDesktop=()=>window.matchMedia('(min-width:1200px)').matches;
+ const advanceHistory=(list,direction)=>{
+   const rows=[...list.querySelectorAll(':scope > .hunter-history-row')];
+   if(!rows.length||!list.clientHeight)return;
+   const pageStarts=rows.filter((_,index)=>index%2===0).map(row=>row.offsetTop-rows[0].offsetTop);
+   const current=pageStarts.reduce((best,top,index)=>
+     Math.abs(top-list.scrollTop)<Math.abs(pageStarts[best]-list.scrollTop)?index:best,0);
+   const next=Math.max(0,Math.min(pageStarts.length-1,current+direction));
+   list.scrollTo({top:pageStarts[next],behavior:'smooth'});
+ };
  const update=id=>{
    const list=document.getElementById(id);if(!list)return;
    const max=Math.max(0,list.scrollHeight-list.clientHeight);
@@ -3066,6 +3147,7 @@ setTimeout(()=>{
      if(Object.prototype.hasOwnProperty.call(move,e.key)){
        e.preventDefault();
        if(id==='radarFeed')advanceToken(list,Math.sign(move[e.key]));
+       else if(id==='hunterRecentList'&&historyDesktop())advanceHistory(list,Math.sign(move[e.key]));
        else list.scrollBy({top:move[e.key],behavior:'smooth'});
      }
      if(e.key==='Home'||e.key==='End'){e.preventDefault();list.scrollTo({top:e.key==='Home'?0:list.scrollHeight,behavior:'smooth'})}
@@ -3091,11 +3173,31 @@ setTimeout(()=>{
        wheelAccum=0;lastStep=now;
      },{passive:false});
    }
+   if(id==='hunterRecentList'){
+     let lastStep=0;
+     list.addEventListener('wheel',e=>{
+       if(!historyDesktop()||!e.deltaY||!list.querySelector('.hunter-history-row'))return;
+       const inner=e.target.closest('.history-record-content');
+       if(inner&&inner.scrollHeight>inner.clientHeight+2){
+         const roomDown=e.deltaY>0&&inner.scrollTop<inner.scrollHeight-inner.clientHeight-2;
+         const roomUp=e.deltaY<0&&inner.scrollTop>2;
+         if(roomDown||roomUp)return;
+       }
+       e.preventDefault();
+       const now=Date.now();
+       if(now-lastStep<390)return;
+       advanceHistory(list,Math.sign(e.deltaY));
+       lastStep=now;
+     },{passive:false});
+   }
    const panel=list.closest('.hunter-panel');
    panel?.addEventListener('wheel',e=>{
      if(panel.scrollHeight>panel.clientHeight+2)return;
      if(list.contains(e.target)||e.target.closest('button,a,select,input,textarea,summary,.hunter-advanced'))return;
      if(list.scrollHeight<=list.clientHeight||!e.deltaY)return;
+     if(id==='hunterRecentList'&&historyDesktop()){
+       advanceHistory(list,Math.sign(e.deltaY));e.preventDefault();return;
+     }
      const before=list.scrollTop;list.scrollTop+=e.deltaY;
      if(Math.abs(list.scrollTop-before)>.5)e.preventDefault();
    },{passive:false});
@@ -3106,6 +3208,7 @@ setTimeout(()=>{
  document.querySelectorAll('[data-scroll-target]').forEach(btn=>btn.addEventListener('click',()=>{
    const list=document.getElementById(btn.dataset.scrollTarget);if(!list)return;
    if(btn.dataset.scrollTarget==='radarFeed')advanceToken(list,Number(btn.dataset.scrollDirection));
+   else if(btn.dataset.scrollTarget==='hunterRecentList'&&historyDesktop())advanceHistory(list,Number(btn.dataset.scrollDirection));
    else list.scrollBy({top:Number(btn.dataset.scrollDirection)*Math.max(180,list.clientHeight*.78),behavior:'smooth'});
    list.focus({preventScroll:true});
  }));
