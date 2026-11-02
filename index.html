@@ -3864,17 +3864,14 @@ const getName=t=>t.identity?.name||t.name||t.ca?.slice(0,6)||'???';
 function getTokenDexUrl(token){const ca=token?.ca;if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ca||''))return null;return 'https://dexscreener.com/solana/'+ca;}
 function openDexLink(token){const url=getTokenDexUrl(token);if(!url){showScanFeedback('Alamat mint Solana tidak valid. Tautan DEX tidak dibuka.');return;}const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener noreferrer';document.body.append(link);link.click();link.remove();}
 
-function sortFeed(){
-  feedBus.sort((a,b)=>{
-    const rankA=DECISION_RANK[a.decision]||0, rankB=DECISION_RANK[b.decision]||0;
-    if(rankA!==rankB)return rankB-rankA;
-    const scoreA=a._finalAIScore||0, scoreB=b._finalAIScore||0;
-    if(scoreA!==scoreB)return scoreB-scoreA;
-    const confA=a._conf||0, confB=b._conf||0;
-    if(confA!==confB)return confB-confA;
-    return (b._firstSeen||0)-(a._firstSeen||0);
-  });
+function compareTokenScores(a,b){
+  const knownA=Number.isFinite(a._finalAIScore),knownB=Number.isFinite(b._finalAIScore);
+  if(knownA!==knownB)return knownA?-1:1;
+  if(knownA&&a._finalAIScore!==b._finalAIScore)return b._finalAIScore-a._finalAIScore;
+  const caA=String(a.ca||''),caB=String(b.ca||'');
+  return caA<caB?-1:caA>caB?1:0;
 }
+function sortFeed(){feedBus.sort(compareTokenScores);}
 
 function smartMemoryCleanup(){
   if(feedBus.length<=CONFIG.MAX_TOKENS)return;
@@ -3996,7 +3993,9 @@ async function loadPredictions(){
 }
 function applyResearchData(json){
  feedBus=[];feedMap.clear();S.predictionHistory=[];
- for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,serverComponents:recordObject(p.components),serverMetrics:recordObject(p.metrics),timeframes:recordObject(p.timeframes),source:p.source||null,dataStatus:json.dataStatus||null,persisted:json.persisted!==false,marketDataCoverage:p.dataCoverage??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
+ for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score??null,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,serverComponents:recordObject(p.components),serverMetrics:recordObject(p.metrics),timeframes:recordObject(p.timeframes),source:p.source||null,dataStatus:json.dataStatus||null,persisted:json.persisted!==false,marketDataCoverage:p.dataCoverage??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
+ sortFeed();
+ const grid=$('radarFeed');if(grid){grid.dataset.activeTokenCa=feedBus[0]?.ca||'';grid.scrollTop=0;}
  S.serverResearch=json;renderResearchIndicators(json);S.serverResearchCounts=json.counts||{};void loadHistoricalSummary();S.dash.dbTotal=json.counts?.database_records??null;S.dash.tot=json.counts?.unique_mints??0;S.dash.watch=feedBus.filter(t=>t.decision===DECISION.WATCH).length;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
  return json;
 }
@@ -4231,7 +4230,7 @@ const RenderEngine = (()=>{
     try{
       const existing=rendered.get(t.ca);if(existing&&existing.classList.contains('skeleton-card')){existing.remove();rendered.delete(t.ca);}
       const q=t.quad||{},d=t.decision||DECISION.AVOID,hero=S.hero;
-      const allSorted=[...feedBus].sort((a,b)=>(b._finalAIScore||0)-(a._finalAIScore||0));
+      const allSorted=[...feedBus].sort(compareTokenScores);
       const rank=allSorted.findIndex(x=>x.ca===t.ca)+1;
       const div=document.createElement('div');
       const decClass=d.toLowerCase().replace(/\s/g,'-');
@@ -4389,6 +4388,7 @@ const RenderEngine = (()=>{
   function updatePanel(id,val,color){const el=$(id);if(!el)return;const valEl=el.querySelector('.val');if(valEl&&valEl.textContent!==String(val)){valEl.textContent=val;valEl.style.color=color;valEl.classList.add('num-pop');setTimeout(()=>valEl.classList.remove('num-pop'),300);}}
   function renderAll(){
     const grid=$('radarFeed');if(!grid)return;
+    sortFeed();
     const expanded=new Map();
     for(const item of grid.querySelectorAll('.hud-card[data-ca]')){
       const detail=item.querySelector('.card-detail-section');
