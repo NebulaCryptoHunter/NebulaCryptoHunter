@@ -15,8 +15,8 @@ function fixture(){
  +'<div class="token-card-head"><span class="token-emblem">PU</span><div class="token-card-identity"><span class="token-card-eyebrow">TARGET 01 · SOLANA</span><span class="token-name">PUMPP</span><span class="decision-tag">WATCH</span></div><span class="token-score-instrument"><span class="score-ring-container">64</span>AI SCORE</span></div>'
  +'<div class="token-market-hero"><div class="token-price-console"><span class="token-instrument-label">MARKET PRICE · USD</span><div class="token-card-price">$0.004098</div><span class="token-price-venue">DEX</span></div><div class="token-pulse"><span class="token-instrument-label">MOMENTUM · Δ HARGA</span><div class="token-pulse-row">5M <span class="token-pulse-track"></span><b>−0.49%</b></div><div class="token-pulse-row">1J <span class="token-pulse-track"></span><b>+0.11%</b></div><div class="token-pulse-row">24J <span class="token-pulse-track"></span><b>+3.11%</b></div></div></div>'
  +'<div class="token-card-body"><dl class="token-card-metrics">'+metric('LIKUIDITAS','$13.240','liquidity')+metric('VOLUME 24J','$94.682','volume')+metric('Δ 24 JAM','+3.11%','change')+metric('SKOR HEURISTIK','64.0 / 100','score')+'</dl>'
- +'<div class="token-order-flow"><div class="flow-labels"><span>BUY <b>17</b></span><span class="token-instrument-label">ORDER FLOW · 1 JAM</span><span>SELL <b>11</b></span></div><div class="flow-track"><i style="width:61%"></i></div></div>'
  +'<div class="token-card-provenance"><span class="token-provenance-dot"></span>18.20 WIB · OBSERVASI SERVER <span class="token-risk-chip">RISIKO BELUM DIVERIFIKASI</span></div><div class="token-card-address">CA · 7Wfw1p2P…998nBGSQ</div></div>'
+ +'<div class="token-order-flow"><div class="flow-labels"><span>BUY <b>17</b></span><span class="token-instrument-label">ORDER FLOW · 1 JAM</span><span>SELL <b>11</b></span></div><div class="flow-track"><i style="width:61%"></i></div></div>'
  +'<div class="token-card-footer"><div class="token-card-actions">'+['WATCH','SALIN CA','PHANTOM','PUMP','DEX','DETAIL ↗'].map(x=>'<button class="action-btn-text">'+x+'</button>').join('')+'</div></div><div class="card-detail-section"></div></article>';
  const nav='<div class="sticky-nav"><header class="hunter-banner"><div class="hunter-brand"><div class="header-row-2">NEBULA CRYPTO HUNTER</div><div class="header-row-1">HUNT BEFORE THE HYPE.</div></div></header><div class="endpoint-bar">'+Array.from({length:12},(_,i)=>'<span class="ep-mini">API '+i+'</span>').join('')+'</div><div class="hud-controls"><select class="hud-select"><option>AUTO</option></select><select class="hud-select"><option>BALANCED</option></select><div class="action-row">'+['SCAN','SINKRON','AUTO','HIST','WATCH','EXP','AUDIT','DBG'].map(x=>'<button>'+x+'</button>').join('')+'</div></div></div>';
  const kpi='<section class="hunter-kpi-row">'+['DATABASE','PREDICTION','UNIQUE'].map(x=>'<div class="hunter-kpi"><div class="hunter-kpi-inner"><span class="hunter-kpi-label">'+x+'</span><strong class="hunter-kpi-value">8.074</strong></div></div>').join('')+'</section>';
@@ -26,7 +26,7 @@ function fixture(){
  return '<!doctype html><html><head><meta charset="utf-8"><style>'+css+'</style><style>.bg-nebula,.hunter-banner{background-image:none!important}</style></head><body>'+shell+'<pre id="geo"></pre>'+check+'</body></html>';
 }
 test('headless browser checks actual token card geometry at three desktop viewports',{skip:!chrome},()=>{
- assert.ok(css.includes('V3.9 — RADAR CARD GEOMETRY FIX'));
+ assert.ok(css.includes('V4.0 — no-overlap tactical token card'));
  const dir=mkdtempSync(join(tmpdir(),'nebula-radar-'));
  try{
   const path=join(dir,'radar.html');writeFileSync(path,fixture());
@@ -38,8 +38,14 @@ test('headless browser checks actual token card geometry at three desktop viewpo
    const x=JSON.parse(found[1].replace(/&quot;/g,'"'));
    assert.equal(x.buttonCount,6);
    assert.ok(x.visible,'Token content clipped '+JSON.stringify(x));
+   const loc=name=>x.boxes.find(v=>v.name===name);
+   assert.ok(loc('.token-market-hero').bottom<=loc('.token-card-metrics').top+1,'Momentum overlaps LIQ metrics '+JSON.stringify(x));
+   assert.ok(loc('.token-card-metrics').bottom<=loc('.token-card-provenance').top+1,'LIQ metrics overlap source line '+JSON.stringify(x));
+   assert.ok(loc('.token-card-provenance').bottom<=loc('.token-order-flow').top+1,'Source/risk overlaps BUY SELL '+JSON.stringify(x));
+   assert.ok(loc('.token-order-flow').bottom<=loc('.token-card-footer').top+1,'BUY SELL covered by buttons '+JSON.stringify(x));
+   assert.ok(loc('.token-order-flow').h>=28,'BUY SELL too small '+JSON.stringify(x));
    assert.ok(x.bodyScrollHeight<=x.bodyClientHeight+3,'Nested card overflow '+JSON.stringify(x));
-   assert.equal(x.overflow,'visible');
+   assert.equal(x.overflow,'hidden');
    assert.ok(parseFloat(x.metricFont)>=12,'Metric text too small '+JSON.stringify(x));
   }
  }finally{rmSync(dir,{recursive:true,force:true})}
