@@ -12,7 +12,7 @@ test('Model Validation restores the rotating visual without inventing a measured
  assert.match(correction,/@media\(prefers-reduced-motion:reduce\)\{[\s\S]*?\.hunter-validation-orbit:before,\.hunter-validation-orbit:after\{animation:none!important\}/);
  assert.doesNotMatch(script,/function instrumentGauge\(/);
  assert.match(script,/function instrumentBar\(/);
- assert.match(script,/calibrated\?'READY':'PENDING'/);
+ assert.match(script,/model\.classList\.remove\('is-validated'\)/);
 });
 test('Desktop AI panel budgets height and keeps 2 × 4 bars individually legible',()=>{
  assert.match(correction,/@media\(min-width:1200px\)\{/);

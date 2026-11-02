@@ -368,9 +368,9 @@ test('DATABASE counts research rows, PREDICTION counts decisions, UNIQUE counts 
  assert.match(html,/id:'dash-pred',lbl:'PREDICTION'/);
  assert.match(html,/id:'dash-unique',lbl:'UNIQUE'/);
  assert.doesNotMatch(html,/id:'dash-total',lbl:'TOT'/);
- assert.match(html,/updatePanel\('dash-db',S\.dash\.dbTotal\?\?'—'/);
- assert.match(html,/updatePanel\('dash-pred',S\.serverResearchCounts\?\.total_records/);
- assert.match(html,/updatePanel\('dash-unique',S\.dash\.tot/);
+ assert.ok(html.includes("updatePanel('dash-db',data?.counts?.database_records??'—'"));
+ assert.ok(html.includes("updatePanel('dash-pred',data?.counts?.total_records??'—'"));
+ assert.ok(html.includes("updatePanel('dash-unique',data?.counts?.unique_mints??'—'"));
  assert.match(html,/database_records\?\?S\.dash\.dbTotal/);
  assert.match(html,/unique_mints\?\?feedBus\.length/);
 });
@@ -393,7 +393,7 @@ test('DATABASE sums core research records; PREDICTION and UNIQUE retain their di
  assert.match(html,/lbl:'DATABASE'/);
  assert.match(html,/lbl:'PREDICTION'/);
  assert.match(html,/lbl:'UNIQUE'/);
- assert.match(html,/total_records\?\?S\.predictionHistory\.length/);
+ assert.ok(html.includes("data?.counts?.total_records??'—'"));
  assert.match(html,/database_records\?\?S\.dash\.dbTotal/);
 });
 
@@ -442,7 +442,7 @@ test('cinematic Hunter V2 mirrors approved mockup without replacing live researc
  assert.match(companion,/c\.database_records/);
  assert.match(companion,/c\.total_records/);
  assert.match(companion,/c\.unique_mints/);
- assert.match(companion,/modelCalibrated===true/);
+ assert.match(html,/researchPerformanceView/);assert.match(html,/hunterCalibrationStatus','BELUM/);
  assert.doesNotMatch(companion,/\/api\/research\/scan-now|method:'POST'|Math\.random\(\)/);
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
 });
@@ -501,7 +501,7 @@ test('Hunter controls remain connected and AUTO controls read-only periodic refr
   "$('watchlistBtn').onclick=showWatchlistPanel",
   "$('exportBtn').onclick=showExportPanel",
   "$('auditBtn').onclick=showAuditPanel",
-  "$('debugBtn').onclick=()=>",
+  "$('debugBtn').onclick=showAuditPanel",
   "$('overlayClose').onclick=()=>",
   "el('hunterRecentRefresh')?.addEventListener('click',refresh)",
   "el('hunterOpenHistory')?.addEventListener('click',()=>el('historyBtn')?.click())",
@@ -517,7 +517,7 @@ test('Hunter indicators and independent panel scrolling remain intact',()=>{
  const html=fs.readFileSync('index.html','utf8');
  for(const id of ['modeSelect','riskProfile','endpointBar','aiHealthDash','unifiedDash','cockpitDashboard','radarFeed','aiConsole','overlayPanel','overlayContent','overlayClose','heroPanel','archiveStatus','scanFeedback','nebulaServerDetails'])
   if(id!=='nebulaServerDetails')assert.ok(html.includes('id="'+id+'"'),'Missing original subsystem '+id);
- for(const panel of ['TRADING','PERFORMANCE','DATABASE'])assert.ok(html.includes("label:'"+panel+"'"),'Missing advanced metrics group '+panel);
+ for(const panel of ['TRADING','DATA / MODEL READINESS','DATABASE'])assert.ok(html.includes("label:'"+panel+"'"),'Missing advanced metrics group '+panel);
  for(const label of ['DATABASE','PREDICTION','UNIQUE'])assert.ok(html.includes("lbl:'"+label+"'"),'Missing metric '+label);
  const css=html.slice(html.indexOf('/* NEBULA HUNTER V2.1 — fixed single-viewport'));
  assert.match(css,/\.hunter-targets-panel \.radar-grid\{[^}]*overflow-y:auto!important/);
