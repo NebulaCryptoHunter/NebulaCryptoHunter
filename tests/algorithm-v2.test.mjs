@@ -75,6 +75,6 @@ test('actual scanner, AI worker, SQLite persistence and candidate trigger agree 
   const event={scheduledTime:Date.now()};const r=await runScheduledScan(event,env);assert.equal(r.status,'COMPLETED');assert.equal(r.snapshotCount,1);
   const saved=db.prepare('SELECT * FROM engine_scores').get();assert.equal(saved.model,MODEL);assert.equal(JSON.parse(saved.payload_json).confidence,null);assert.ok(saved.score>0);
   const c=db.prepare('SELECT * FROM prediction_candidates').get();assert.equal(c.model,MODEL);assert.equal(c.decision,'WATCH');assert.equal(c.risk_verified,0);
-  assert.equal((await runScheduledScan(event,env)).status,'SKIPPED_DUPLICATE');assert.equal(upstream,2);assert.equal(db.prepare('SELECT COUNT(*) n FROM scanner_snapshots').get().n,1);
+  assert.equal((await runScheduledScan(event,env)).status,'SKIPPED_DUPLICATE');assert.equal(upstream,3);assert.equal(db.prepare('SELECT COUNT(*) n FROM scanner_snapshots').get().n,1);
  }finally{globalThis.fetch=old;db.close()}
 });

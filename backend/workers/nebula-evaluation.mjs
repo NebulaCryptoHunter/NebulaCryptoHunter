@@ -1,5 +1,6 @@
 import {pointOutcome,updateMeasuredAnalytics,EVALUATION_VERSION} from './evaluation-metrics.mjs';
 import {providerJSON} from './provider-runtime.mjs';
+import {marketNumber} from './market-observation.mjs';
 import {evaluateResearch} from './research-evaluation.mjs';
 // =====================================================
 // NEBULA WORKER 2: EVALUATION ENGINE (V110.2.1)
@@ -65,7 +66,7 @@ function bestSolPrice(data, ca) {
   pairs.sort((a,b) => (Number(b.liquidity?.usd)||0)-(Number(a.liquidity?.usd)||0));
   const p = pairs[0];
   if (!p) return 0;
-  const v = p.baseToken?.address === ca ? Number(p.priceUsd) : 0;
+  const v = p.baseToken?.address === ca ? marketNumber(p.priceUsd) : 0;
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
 
@@ -75,11 +76,15 @@ export async function getTokenPrice(ca,budget){
  if(budget.remaining<=0)return null;
  budget.remaining--;
  const work=(async()=>{
+  if(budget.marketAPI)try{
+   const r=await budget.marketAPI.fetch('https://market.internal/api/v1/providers/market/'+ca,{signal:AbortSignal.timeout(12000)}),body=await r.json(),q=body.data;
+   if(r.ok&&body.success===true&&q?.token_ca===ca&&typeof q.price_usd==='number'&&Number.isFinite(q.price_usd)&&q.price_usd>0&&typeof q.checked_at==='string')return {price:q.price_usd,cached:false,source:q.provider,observedAt:q.price_observed_at||q.checked_at};
+  }catch{}
   const dex=await providerJSON('dexscreener','https://api.dexscreener.com/latest/dex/tokens/'+ca,{}, {ttl:60,timeout:2500});
-  if(dex.ok){const price=bestSolPrice(dex.data,ca);if(price>0)return {price,cached:!!dex.cached,source:'dexscreener',observedAt:dex.fetchedAt}}
+  if(dex.ok){const price=bestSolPrice(dex.data,ca);if(price>0)return {price,cached:!!dex.cached,source:'dexscreener',observedAt:dex.sourceAsOf||dex.fetchedAt}}
   const gecko=await providerJSON('geckoterminal','https://api.geckoterminal.com/api/v2/networks/solana/tokens/'+ca,{}, {ttl:60,timeout:2500});
-  const price=Number(gecko.data?.data?.attributes?.price_usd);
-  return gecko.ok&&gecko.data?.data?.id==='solana_'+ca&&Number.isFinite(price)&&price>0?{price,cached:!!gecko.cached,source:'geckoterminal',observedAt:gecko.fetchedAt}:null;
+  const price=marketNumber(gecko.data?.data?.attributes?.price_usd);
+  return gecko.ok&&gecko.data?.data?.id==='solana_'+ca&&Number.isFinite(price)&&price>0?{price,cached:!!gecko.cached,source:'geckoterminal',observedAt:gecko.sourceAsOf||gecko.fetchedAt}:null;
  })();
  budget.pending.set(ca,work);return work;
 }
@@ -155,7 +160,7 @@ export async function handleScheduled(env, ctx) {
   const cronStartTime = Date.now();
   const now = Date.now();
   // Four unique token quotes maximum: at most 8 provider fetches plus bounded Cache API calls.
-  const priceBudget={remaining:4,pending:new Map()};
+  const priceBudget={remaining:4,pending:new Map(),marketAPI:env.MARKET_API};
   
   // Statistik Cron
   const stats = {
