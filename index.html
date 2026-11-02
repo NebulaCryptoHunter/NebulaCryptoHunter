@@ -2113,6 +2113,36 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  }
 }
 
+
+/* V3.3 radar micro-adjustment: give top identity, symbol and score full vertical room.
+   Keep one token per screen and the existing fixed action strip. */
+@media(min-width:1200px){
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head{
+  height:58px!important;flex:0 0 58px!important;
+  min-height:58px!important;max-height:58px!important;
+  overflow:visible!important;
+  align-items:center!important;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head .token-emblem{
+  height:44px!important;width:44px!important;flex:0 0 44px!important;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head .token-emblem svg{
+  height:100%!important;width:100%!important;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head .token-card-identity{
+  min-width:0;min-height:0;
+ }
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head .token-name{
+  line-height:1.2!important;
+ }
+}
+@media(min-width:1200px) and (max-height:740px){
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-head{
+  height:54px!important;flex-basis:54px!important;
+  min-height:54px!important;max-height:54px!important;
+ }
+}
+
 </style>
 </head>
 <body>
