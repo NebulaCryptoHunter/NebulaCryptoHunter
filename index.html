@@ -1964,6 +1964,116 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
   .app > .nebula-server-dock > details > summary .expand{font-size:8px}
 }
 
+
+/* V3.2 — restore click access and content height; SERVER remains an in-flow bottom rail. */
+.app{position:relative!important}
+.app>.hunter-cockpit-footer{
+ position:absolute!important;left:0;right:0;bottom:0;
+ width:100%!important;height:clamp(58px,9dvh,88px)!important;
+ min-height:0!important;flex:none!important;margin:0!important;
+ pointer-events:none!important;z-index:0!important;opacity:.65;
+ overflow:hidden!important
+}
+.app>.hunter-console-wrap{position:relative;z-index:1;flex:0 0 auto!important}
+.app>.hunter-layout{position:relative;z-index:1;flex:1 1 0!important;min-height:0!important}
+.app>.nebula-server-dock{
+ position:relative!important;order:20;z-index:3!important;
+ flex:0 0 auto!important;width:100%!important
+}
+.app>.nebula-server-dock>details>summary{min-height:28px!important;padding:4px 10px!important;gap:8px!important;flex-wrap:nowrap!important}
+.app>.nebula-server-dock>details:not([open]){max-height:30px!important}
+.app>.nebula-server-dock>details[open]{max-height:min(25dvh,220px)!important}
+.hunter-layout>.hunter-panel{min-height:0!important;min-width:0!important}
+/* HISTORY: controls must not be clipped by the narrow third column. */
+.hunter-layout>.hunter-history-panel{display:flex;flex-direction:column;overflow:hidden!important}
+.hunter-history-panel>.hunter-panel-heading{
+ flex:0 0 auto!important;min-height:35px!important;margin:0 0 5px!important;
+ padding:0 0 4px!important;gap:5px!important
+}
+.hunter-history-panel>.hunter-panel-heading>div{min-width:0}
+.hunter-history-panel .hunter-panel-heading h2{
+ font-size:clamp(11px,.8vw,15px)!important;line-height:1.15!important;
+ white-space:normal!important;overflow:visible!important
+}
+.hunter-history-panel .hunter-panel-heading small{font-size:9px!important;line-height:1.2!important}
+.hunter-history-panel #archiveStatus{
+ display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+ gap:5px 6px!important;min-width:0!important;min-height:0!important;
+ padding:7px 8px!important;margin:0 0 6px!important;flex:0 0 auto!important
+}
+.hunter-history-panel #archiveStatus>*{min-width:0!important;max-width:100%;overflow-wrap:anywhere!important}
+.hunter-history-panel #archiveStatus .archive-heading{font-size:10px!important}
+.hunter-history-panel #archiveStatus strong{font-size:12px!important}
+.hunter-history-panel #archiveEvalCount{font-size:9px!important}
+.hunter-history-panel .hunter-history-toolbar{
+ display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+ gap:5px!important;align-items:center!important;
+ flex:0 0 auto!important;min-width:0!important;margin:0 0 5px!important
+}
+.hunter-history-panel .hunter-history-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));min-width:0!important;gap:4px!important;margin:0!important}
+.hunter-history-panel .hunter-history-tabs button{
+ min-height:30px!important;padding:3px 4px!important;font-size:clamp(9px,.68vw,11px)!important;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer!important
+}
+.hunter-history-panel .hunter-history-scroll-bar{margin:0!important;min-width:0!important}
+.hunter-history-panel .hunter-history-toolbar .hunter-scroll-hint{display:none!important}
+.hunter-history-panel .hunter-history-toolbar .hunter-scroll-controls{gap:3px!important}
+.hunter-history-panel .hunter-history-toolbar .hunter-scroll-controls button{
+ min-width:30px!important;width:30px!important;
+ min-height:30px!important;height:30px!important
+}
+.hunter-history-panel #hunterRecentList{
+ flex:1 1 0!important;min-height:0!important;overflow-y:auto!important;
+ overflow-x:hidden!important;overscroll-behavior:contain;touch-action:pan-y
+}
+.hunter-history-panel .hunter-history-row{min-width:0!important;grid-template-columns:40px minmax(0,1fr)!important;padding:7px!important}
+.hunter-history-panel .history-record-content{min-width:0;overflow-wrap:anywhere}
+.hunter-history-panel .hunter-history-row-line{grid-template-columns:minmax(0,1fr) auto!important}
+.hunter-history-panel .hunter-history-symbol{min-width:0;white-space:normal!important;overflow-wrap:anywhere!important}
+.hunter-history-panel .hunter-history-status{min-width:0;max-width:88px;overflow-wrap:anywhere}
+.hunter-history-panel .hunter-history-note{flex:0 0 auto!important;margin:3px 0 0!important;font-size:9px!important}
+/* RADAR: stable token action strip, scroll only the telemetry body. */
+.hunter-layout>.hunter-targets-panel{min-height:0!important;min-width:0!important}
+.hunter-targets-panel>.radar-grid{min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important}
+.hunter-targets-panel .radar-grid>.hud-card{
+ min-height:100%!important;height:100%!important;max-height:100%!important;
+ display:flex!important;flex-direction:column!important;overflow:hidden!important
+}
+.hunter-targets-panel .radar-grid>.hud-card>.token-card-body{
+ flex:1 1 0!important;min-height:0!important;height:0!important;
+ overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain
+}
+.hunter-targets-panel .radar-grid>.hud-card>.token-card-footer{
+ display:block!important;flex:0 0 42px!important;height:42px!important;
+ min-height:42px!important;max-height:42px!important;
+ padding:4px 0!important;overflow:visible!important;position:relative;z-index:2
+}
+.hunter-targets-panel .token-card-footer>.token-card-actions{height:32px!important;grid-template-rows:32px!important}
+.hunter-targets-panel .token-card-footer .action-btn-text{cursor:pointer!important;pointer-events:auto!important}
+@media(min-width:1200px) and (max-height:740px){
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-footer{
+  height:40px!important;flex-basis:40px!important;min-height:40px!important;max-height:40px!important
+ }
+}
+@media(max-width:1199px){
+ .app>.hunter-cockpit-footer{height:56px!important;opacity:.5}
+ .hunter-history-panel .hunter-history-tabs button{font-size:11px!important}
+}
+@media(max-width:767px){
+ .app>.hunter-cockpit-footer{height:42px!important;opacity:.5}
+ .app>.nebula-server-dock>details>summary{min-height:28px!important;padding:4px 7px!important;gap:5px!important}
+ .app>.nebula-server-dock>details[open]{max-height:min(24dvh,172px)!important}
+ .hunter-history-panel .hunter-history-toolbar{gap:4px!important}
+ .hunter-layout>.hunter-history-panel{padding:7px!important}
+ .hunter-targets-panel .radar-grid>.hud-card>.token-card-footer{
+  height:75px!important;flex-basis:75px!important;min-height:75px!important;max-height:75px!important;padding:3px 0!important
+ }
+ .hunter-targets-panel .token-card-footer>.token-card-actions{
+  height:72px!important;grid-template-rows:repeat(2,34px)!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important
+ }
+}
+
 </style>
 </head>
 <body>
@@ -3002,15 +3112,24 @@ setTimeout(()=>{
 })();
 
 // Responsive full-viewport panel switching; no page scrolling, no duplicate network calls.
+ const compactPanels=window.matchMedia('(max-width:1199px)');
  const chooseTab=tab=>{
    const target={ai:'hunter-ai-panel',radar:'hunter-targets-panel',history:'hunter-history-panel'}[tab];
    if(!target)return;
-   for(const panel of document.querySelectorAll('.hunter-layout > .hunter-panel'))
-     {const active=panel.classList.contains(target);panel.classList.toggle('hunter-tab-active',active);panel.inert=!active;panel.setAttribute('aria-hidden',String(!active));}
+   const singlePanel=compactPanels.matches;
+   for(const panel of document.querySelectorAll('.hunter-layout > .hunter-panel')){
+     const active=panel.classList.contains(target);
+     panel.classList.toggle('hunter-tab-active',active);
+     panel.inert=singlePanel&&!active;
+     panel.setAttribute('aria-hidden',String(singlePanel&&!active));
+   }
    for(const button of document.querySelectorAll('[data-hunter-tab]'))
      button.setAttribute('aria-selected',String(button.dataset.hunterTab===tab));
  };
  document.querySelectorAll('[data-hunter-tab]').forEach(button=>button.addEventListener('click',()=>chooseTab(button.dataset.hunterTab)));
+ const restorePanels=()=>chooseTab(document.querySelector('[data-hunter-tab][aria-selected="true"]')?.dataset.hunterTab||'radar');
+ if(compactPanels.addEventListener)compactPanels.addEventListener('change',restorePanels);
+ else compactPanels.addListener(restorePanels);
  chooseTab('radar');
 
 (function(){
