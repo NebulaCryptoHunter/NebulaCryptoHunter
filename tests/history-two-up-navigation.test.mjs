@@ -16,7 +16,8 @@ test('two whole history rows fit per desktop viewport, with pair scroll snapping
  assert.match(historyCSS,/max-height:calc\(\(100% - 6px\)\/2\)!important/);
  assert.match(historyCSS,/#hunterRecentList>\.hunter-history-row:nth-child\(odd\)/);
  assert.match(historyCSS,/scroll-snap-align:start!important/);
- assert.match(historyCSS,/\.history-record-content\{[\s\S]*?overflow-y:auto/);
+ assert.match(historyCSS,/\.history-record-content\{[\s\S]*?overflow:visible!important/);
+ assert.doesNotMatch(historyCSS,/\.history-record-content\{[^}]*overflow-y:auto/);
 });
 
 test('history navigation, keyboard and mouse wheel all move one pair, other panel scrolls unchanged',()=>{
@@ -27,6 +28,7 @@ test('history navigation, keyboard and mouse wheel all move one pair, other pane
  assert.match(html,/btn\.dataset\.scrollTarget==='hunterRecentList'&&historyDesktop\(\)\)advanceHistory\(list,Number\(btn\.dataset\.scrollDirection\)\)/);
  assert.match(html,/if\(id==='hunterRecentList'\)\{[\s\S]*?list\.addEventListener\('wheel'/);
  assert.match(html,/if\(btn\.dataset\.scrollTarget==='radarFeed'\)advanceToken\(list,Number\(btn\.dataset\.scrollDirection\)\)/);
+ assert.doesNotMatch(html,/const inner=e\.target\.closest\('\.history-record-content'\)/);
 });
 
 test('Tactical Radar token header fits its emblem with no clipping; mobile rules untouched',()=>{
