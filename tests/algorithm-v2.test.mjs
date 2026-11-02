@@ -8,7 +8,7 @@ import {pointOutcome,classificationMetrics,analyticsSQL} from '../backend/worker
 import {getTokenPrice,evaluatePrediction} from '../backend/workers/nebula-evaluation.mjs';
 const now=Date.parse('2026-11-01T13:00:00Z');
 const A='So11111111111111111111111111111111111111112',B='EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-const observation=(patch={})=>({priceUsd:1,liquidityUsd:500000,volume24h:2500000,change24h:24,observedAt:new Date(now).toISOString(),buys24h:700,sells24h:300,timeframes:{h1:{changePct:8,buys:80,sells:20},m5:{changePct:2}},risk:{rugCheck:'SAFE',whaleConcentration:'SAFE'},...patch});
+const observation=(patch={})=>({priceUsd:1,liquidityUsd:500000,volume24h:2500000,change24h:24,observedAt:new Date(now).toISOString(),buys24h:700,sells24h:300,timeframes:{h1:{changePct:8,volumeUsd:150000,buys:80,sells:20},m5:{changePct:2,volumeUsd:20000,buys:24,sells:6}},risk:{rugCheck:'SAFE',whaleConcentration:'SAFE'},...patch});
 const score=c=>scoreCandidate(c,{now});
 test('ranking is explainable, bounded and not a probability or BUY',()=>{const r=score(observation());assert.equal(r.model,MODEL);assert.equal(r.decision,'REVIEW');assert.equal(r.confidence,null);assert.equal(r.probabilityOfProfit,null);assert.equal(r.autoTrade,false);assert.equal(r.dataCoverage,100);assert.ok(r.components.buyPressure>50);assert.ok(r.score>=0&&r.score<=100)});
 test('falling price is not rewarded by extreme turnover',()=>{

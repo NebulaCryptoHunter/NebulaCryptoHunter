@@ -3,7 +3,7 @@ import {scoreCandidate} from './scoring-v2.mjs';
 import {providerJSON} from './provider-runtime.mjs';
 export const validMint=x=>typeof x==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(x);
 const positive=x=>x!==null&&x!==''&&Number.isFinite(Number(x))&&Number(x)>0;
-export function geckoPairs(payload,fetchedAt){
+export function geckoPairs(payload,fetchedAt,timing={}){
  const included=new Map((payload?.included||[]).map(t=>[t.id,t.attributes||{}]));
  return (Array.isArray(payload?.data)?payload.data:[]).flatMap(p=>{
   if(p.type!=='pool'||!p.id?.startsWith('solana_'))return [];
@@ -11,7 +11,7 @@ export function geckoPairs(payload,fetchedAt){
   const base=baseId?.startsWith('solana_')?baseId.slice(7):'',quote=quoteId?.startsWith('solana_')?quoteId.slice(7):'';
   if(!validMint(base)||!validMint(quote)||!validMint(a.address)||p.id!=='solana_'+a.address||!positive(a.base_token_price_usd))return [];
   const b=included.get(baseId)||{},q=included.get(quoteId)||{};
-  return [{chainId:'solana',pairAddress:a.address,dexId:rel.dex?.data?.id||null,baseToken:{address:base,name:b.name||base,symbol:b.symbol||null},quoteToken:{address:quote,name:q.name||quote,symbol:q.symbol||null},priceUsd:a.base_token_price_usd,liquidity:{usd:a.reserve_in_usd},volume:a.volume_usd,priceChange:a.price_change_percentage,txns:a.transactions,_source:'geckoterminal',_observedAt:fetchedAt}];
+  return [{chainId:'solana',pairAddress:a.address,dexId:rel.dex?.data?.id||null,baseToken:{address:base,name:b.name||base,symbol:b.symbol||null},quoteToken:{address:quote,name:q.name||quote,symbol:q.symbol||null},priceUsd:a.base_token_price_usd,liquidity:{usd:a.reserve_in_usd},volume:a.volume_usd,priceChange:a.price_change_percentage,txns:a.transactions,pairCreatedAt:typeof a.pool_created_at==='string'?Date.parse(a.pool_created_at):null,_source:'geckoterminal',_observedAt:fetchedAt,_sourceAsOf:timing.sourceAsOf??null,_sourceTimeBasis:timing.sourceTimeBasis||'FETCH_ONLY'}];
  });
 }
 export async function discoverMints(){
@@ -28,13 +28,13 @@ export async function marketPairs(mints,{dexPaused=false}={}){
  if(!selected.length)return {pairs,attempts};
  const dex=dexPaused?{ok:false,error:'COOLDOWN'}:await providerJSON('dexscreener','https://api.dexscreener.com/tokens/v1/solana/'+selected.join(','),{}, {ttl:60});
  attempts.push({provider:'dexscreener',ok:dex.ok,error:dex.error||null,retryAt:dex.retryAt||null});
- if(dex.ok&&Array.isArray(dex.data))pairs.push(...dex.data.filter(p=>p.chainId==='solana'&&selected.includes(p.baseToken?.address)).map(p=>({...p,_source:'dexscreener',_observedAt:dex.fetchedAt})));
+ if(dex.ok&&Array.isArray(dex.data))pairs.push(...dex.data.filter(p=>p.chainId==='solana'&&selected.includes(p.baseToken?.address)).map(p=>({...p,_source:'dexscreener',_observedAt:dex.fetchedAt,_sourceAsOf:dex.sourceAsOf??null,_sourceTimeBasis:dex.sourceTimeBasis||'FETCH_ONLY'})));
  const seen=new Set(pairs.map(x=>x.baseToken.address));
  // Three fallback token-pool requests maximum per run; never 12 unbounded enrichments.
  for(const mint of selected.filter(x=>!seen.has(x)).slice(0,3)){
   const r=await providerJSON('geckoterminal','https://api.geckoterminal.com/api/v2/networks/solana/tokens/'+mint+'/pools?include=base_token,quote_token,dex',{}, {ttl:60});
   attempts.push({provider:'geckoterminal',mint,ok:r.ok,error:r.error||null,retryAt:r.retryAt||null});
-  if(r.ok)pairs.push(...geckoPairs(r.data,r.fetchedAt).filter(p=>p.baseToken.address===mint));
+  if(r.ok)pairs.push(...geckoPairs(r.data,r.fetchedAt,r).filter(p=>p.baseToken.address===mint));
   if(r.error==='RATE_LIMIT'||r.error==='AUTH_ERROR')break;
  }
  return {pairs,attempts};

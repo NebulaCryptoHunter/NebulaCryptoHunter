@@ -28,7 +28,8 @@ export function scanPairs(pairs,{minLiquidityUsd=10000}={}){
    priceUsd:price!==null&&price>0?price:null,liquidityUsd,volume24h:day.volumeUsd,change24h:day.changePct,
    buys24h:day.buys,sells24h:day.sells,timeframes,poolCreatedAt:created!==null&&created>0&&created<=8640000000000000?new Date(created).toISOString():null,
    momentum:{volumeLiquidityRatio:day.volumeUsd!==null&&liquidityUsd>0?day.volumeUsd/liquidityUsd:null,transactionBuyRatio:day.buyRatio},
-   risk:{rugCheck:'UNKNOWN',whaleConcentration:'UNKNOWN'},source:p._source||'dexscreener',observedAt:p._observedAt||new Date().toISOString()});
+   risk:{rugCheck:'UNKNOWN',whaleConcentration:'UNKNOWN'},source:p._source||'dexscreener',observedAt:p._observedAt||null,
+   sourceAsOf:p._sourceAsOf??null,sourceTimeBasis:p._sourceTimeBasis||'FETCH_ONLY'});
  }
  // Canonical pool priority is depth, rather than a large volume/liquidity ratio in a dust pool.
  return results.sort((a,b)=>b.liquidityUsd-a.liquidityUsd||(b.volume24h??-1)-(a.volume24h??-1)||a.pairAddress.localeCompare(b.pairAddress));
