@@ -1,0 +1,283 @@
+{
+  "recordedAt": "2026-11-02T15:45:04.839Z",
+  "model": "heuristic-v3.0.0",
+  "pullRequest": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/pull/58",
+  "sourceCommit": "d8dbc641dfc866e2a9efce1023b4d4311652baa0",
+  "scope": "Research ranking and data integrity; no trading and no predictive-performance claim",
+  "tests": {
+    "targeted": {
+      "tests": 65,
+      "passed": 65,
+      "failed": 0
+    },
+    "v3New": 23,
+    "full": {
+      "tests": 216,
+      "passed": 208,
+      "failed": 6,
+      "skipped": 2
+    },
+    "base": {
+      "commit": "8ff511c7b7e26d9deacdc697ed840a4e11b24219",
+      "tests": 193,
+      "passed": 185,
+      "failed": 6,
+      "skipped": 2
+    },
+    "fullSuiteLimitation": "The same six pre-existing UI contract failures occur on the clean base; two browser geometry tests are skipped without Chrome.",
+    "algorithmCi": "success",
+    "algorithmCiUrl": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/41473932785/job/125374420347"
+  },
+  "production": [
+    {
+      "name": "nebula-ai-engine",
+      "createdOn": "2026-11-02T15:41:11.772349Z",
+      "versions": [
+        {
+          "version_id": "efc04be2-d3b4-4d13-8baf-d7c7a92e8193",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-api",
+      "createdOn": "2026-11-02T15:41:13.548461Z",
+      "versions": [
+        {
+          "version_id": "0f9464b6-224c-4dc8-95e3-af1e30901323",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-scanner",
+      "createdOn": "2026-11-02T15:42:17.802854Z",
+      "versions": [
+        {
+          "version_id": "bc328cb3-bb5c-49b4-b383-e0d888c3dbc5",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebulacryptohunter",
+      "createdOn": "2026-11-02T15:41:53.922595Z",
+      "versions": [
+        {
+          "version_id": "bdc3a67c-018f-431e-a135-ef67a2a9c20a",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "staging": [
+    {
+      "name": "nebula-ai-engine-stage",
+      "modelV3": true,
+      "freshnessGate": true,
+      "version": [
+        {
+          "version_id": "0d53b7c1-06f0-44c2-9010-7764e5320b8d",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-api-adapters-stage",
+      "modelV3": true,
+      "freshnessGate": true,
+      "version": [
+        {
+          "version_id": "2678c110-d5e2-411f-879f-77fb7105bd9f",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "rollback": [
+    {
+      "name": "nebula-ai-engine",
+      "versions": [
+        {
+          "version_id": "18578575-7550-484b-b3ff-7ec03d89431f",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-api",
+      "versions": [
+        {
+          "version_id": "323fdef0-05e5-4e4f-bf21-8c2a09afdc9e",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-scanner",
+      "versions": [
+        {
+          "version_id": "016d8fd6-d6e9-4ff6-90f5-ae746c260b5b",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebulacryptohunter",
+      "versions": [
+        {
+          "version_id": "2cba470c-2e89-446a-a751-228518e42667",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "configuration": {
+    "productionBindingsAndCompatibilityPreserved": true,
+    "scannerCron": "*/30 * * * *",
+    "schemaMigrations": 0,
+    "extraScannerQueries": 0
+  },
+  "verification": {
+    "productionModuleVerification": {
+      "workers": [
+        {
+          "name": "nebula-ai-engine",
+          "sourceMatches": true,
+          "checks": [
+            {
+              "filename": "backend/workers/scoring-v2.mjs",
+              "matches": true
+            }
+          ],
+          "settingsPreserved": true,
+          "versions": [
+            {
+              "version_id": "efc04be2-d3b4-4d13-8baf-d7c7a92e8193",
+              "percentage": 100
+            }
+          ]
+        },
+        {
+          "name": "nebula-api",
+          "sourceMatches": true,
+          "checks": [
+            {
+              "filename": "backend/workers/provider-runtime.mjs",
+              "matches": true
+            },
+            {
+              "filename": "backend/workers/market-observation.mjs",
+              "matches": true
+            },
+            {
+              "filename": "backend/workers/market-sources.mjs",
+              "matches": true
+            },
+            {
+              "filename": "backend/workers/scoring-v2.mjs",
+              "matches": true
+            }
+          ],
+          "settingsPreserved": true,
+          "versions": [
+            {
+              "version_id": "0f9464b6-224c-4dc8-95e3-af1e30901323",
+              "percentage": 100
+            }
+          ]
+        },
+        {
+          "name": "nebula-scanner",
+          "sourceMatches": true,
+          "checks": [
+            {
+              "filename": "backend/workers/provider-runtime.mjs",
+              "matches": true
+            },
+            {
+              "filename": "backend/workers/scoring-v2.mjs",
+              "matches": true
+            },
+            {
+              "filename": "backend/workers/market-observation.mjs",
+              "matches": true
+            },
+            {
+              "filename": "backend/workers/market-sources.mjs",
+              "matches": true
+            }
+          ],
+          "settingsPreserved": true,
+          "versions": [
+            {
+              "version_id": "43723e3d-a44b-4b08-bd42-9999664d9966",
+              "percentage": 100
+            }
+          ]
+        }
+      ],
+      "scannerSchedules": {
+        "schedules": [
+          {
+            "cron": "*/30 * * * *",
+            "created_on": "2026-11-01T04:18:01.472253Z",
+            "modified_on": "2026-11-01T04:18:01.472253Z"
+          }
+        ]
+      }
+    },
+    "postGithubScannerBuild": {
+      "modelV3": true,
+      "recentConfirmation": true,
+      "cacheAgeRetained": true,
+      "scannerSchedules": [
+        "*/30 * * * *"
+      ]
+    },
+    "frontendHttp": 200,
+    "frontendHealthHttp": 200,
+    "frontendModelLabelVerified": true,
+    "frontendRadarContainerRetained": true,
+    "apiMarketFeedHttp": 200,
+    "liveFeed": {
+      "generatedAt": "2026-11-02T15:41:46.745Z",
+      "items": 12,
+      "dataStatus": "LIVE_ONLY",
+      "persisted": false,
+      "scored": 0,
+      "priceOnly": 12,
+      "providerAttempts": [
+        {
+          "provider": "dexscreener",
+          "ok": true,
+          "error": null
+        },
+        {
+          "provider": "dexscreener",
+          "ok": false,
+          "error": "RATE_LIMIT",
+          "retryAt": "2026-11-02T15:42:46.582Z"
+        },
+        {
+          "provider": "geckoterminal",
+          "mint": "Csvus3qiCmjVEdBgVqTgkhSi4U2ogJnh9M6XBm8kpump",
+          "ok": false,
+          "error": "RATE_LIMIT",
+          "retryAt": "2026-11-02T15:42:46.629Z"
+        },
+        {
+          "provider": "jupiter",
+          "ok": true,
+          "error": null
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "DexScreener and GeckoTerminal returned rate limits in the live-feed probe. Jupiter supplied 12 price-only observations with null scores; this is intentional abstention, not a scoring failure.",
+    "No post-upgrade scheduled D1 persistence run or new prospective outcome was claimed. The existing cron remains in place.",
+    "The AI scoring route remains private; staging/prod source and deployment verification plus local handler/SQLite integration are technical validation, not a real-money or pump-precision test.",
+    "Current research R231 has zero valid prospective outcomes; precision, calibrated confidence, profit probability and multiplier predictions remain undefined/null."
+  ]
+}
