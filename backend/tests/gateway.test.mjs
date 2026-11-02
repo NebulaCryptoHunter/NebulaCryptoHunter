@@ -64,7 +64,7 @@ test('legacy predictions and scanner candidates share a single history timeline 
  const html=fs.readFileSync('index.html','utf8');
  assert.match(html,/id="archiveStatus"/);
  assert.match(html,/id="archiveCount"/);
- assert.match(html,/DATABASE NEBULA/);
+ assert.match(html,/PREDICTION ARCHIVE/);
  assert.match(html,/\/api\/research\/history\?limit=/);
  assert.doesNotMatch(html,/fetch\('\/api\/v1\/predictions\?limit=/);
  assert.match(html,/legacyArchiveCount=c\.total_records/);
