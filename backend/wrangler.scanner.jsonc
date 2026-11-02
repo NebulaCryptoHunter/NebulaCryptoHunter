@@ -18,6 +18,10 @@
   ],
   "services": [
     {
+      "binding": "MARKET_API",
+      "service": "nebula-api"
+    },
+    {
       "binding": "AI_ENGINE",
       "service": "nebula-ai-engine"
     }

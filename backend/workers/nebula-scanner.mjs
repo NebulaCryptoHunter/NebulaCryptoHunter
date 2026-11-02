@@ -1,5 +1,6 @@
 import {selectScanMints} from './scanner-selection.mjs';
-import {marketPairs,discoverMints,marketFeed} from './market-sources.mjs';
+import {marketPairs,discoverMints,marketFeed,scannerMarket} from './market-sources.mjs';
+import {retryDeadline,createProviderContext} from './provider-runtime.mjs';
 import {d1DailyLimitError,resetUTC} from './research-cache.mjs';
 // NEBULA scanner: deterministic token identity and pool-specific discovery.
 // Research-only: staging D1 snapshots and scores; no trading.
@@ -10,9 +11,9 @@ export {scanPairs} from './market-observation.mjs';
 async function diagnostic(env,stage,status,detail){try{await env.STAGE_DB.prepare("INSERT INTO scanner_diagnostics (observed_at,stage,status,detail) VALUES (?,?,?,?)").bind(new Date().toISOString(),stage,status,String(detail).slice(0,300)).run()}catch(e){console.error("diagnostic_write_failed",String(e))}}
 
 const BATCH_MAX_MINTS=12;
-const DISCOVERY_INTERVAL_MS=6*60*60*1000;
-const BACKOFF_BASE_MS=60*60*1000;
-const MAX_BACKOFF_MS=12*60*60*1000;
+const DISCOVERY_INTERVAL_MS=30*60*1000;
+const BACKOFF_BASE_MS=60*1000;
+const MAX_BACKOFF_MS=15*60*1000;
 async function getState(env,key){
  const r=await env.STAGE_DB.prepare("SELECT value FROM scanner_state WHERE key=?").bind(key).first();
  return r?.value??null;
@@ -25,9 +26,9 @@ async function providerBackoff(env,kind,response){
  const key=kind==='discovery'?'discovery_backoff_level':'provider_backoff_level';
  const untilKey=kind==='discovery'?'discovery_cooldown_until':'cooldown_until';
  const level=Math.min(5,(Number(await getState(env,key))||0)+1);
- const seconds=response?.headers?.get?.('retry-after');
- const retry=seconds&&/^\d+$/.test(seconds)?Number(seconds)*1000:0;
- const delay=Math.min(MAX_BACKOFF_MS,Math.max(BACKOFF_BASE_MS*Math.pow(2,level-1),retry));
+ const retryAfter=response?.headers?.get?.('retry-after');
+ const retry=retryAfter?Math.max(0,retryDeadline(retryAfter)-Date.now()):0;
+ const delay=Math.max(Math.min(MAX_BACKOFF_MS,BACKOFF_BASE_MS*Math.pow(2,level-1)),retry);
  await putState(env,key,level);
  await putState(env,untilKey,Date.now()+delay);
  return delay;
@@ -51,7 +52,7 @@ async function availablePool(env){
 }
 export async function runScheduledScan(event,env){
  if(!env.STAGE_DB||!env.INTERNAL_TOKEN||!env.AI_ENGINE)throw Error("SCANNER_BINDING_MISSING");
- const now=Date.now(),startISO=new Date(now).toISOString();
+ const now=Date.now(),startISO=new Date(now).toISOString(),context=createProviderContext();
  await env.STAGE_DB.prepare("UPDATE scanner_runs SET status='FAILED',completed_at=?,error='RUN_TIMEOUT_RECOVERED' WHERE status='RUNNING' AND started_at<?").bind(startISO,new Date(now-15*60*1000).toISOString()).run();
  const scheduledTime=Number(event?.scheduledTime)||now;
  // Manual batch scans have a separate 15-minute duplicate key; cron retains its original schedule key.
@@ -66,12 +67,13 @@ export async function runScheduledScan(event,env){
    let cached=[];
    try{cached=JSON.parse(await getState(env,'discovery_cached_mints')||'[]')}catch{}
    if(!Array.isArray(cached))cached=[];
-   const discoveryDue=Number(await getState(env,'discovery_next_at'))<=now;
+   const discoveryNext=Number(await getState(env,'discovery_next_at'));
+   const discoveryDue=!Number.isFinite(discoveryNext)||discoveryNext<=now||discoveryNext>now+DISCOVERY_INTERVAL_MS;
    if(discoveryDue&&Number(await getState(env,'discovery_cooldown_until'))<=now){
-    // Once per six hours, not once per 30-minute run.
+    // One bounded discovery cycle per scanner interval; cached source responses are reused.
     await putState(env,'discovery_next_at',now+DISCOVERY_INTERVAL_MS);
     try{
-     const discovery=await discoverMints();
+     const discovery=await discoverMints({context});
      if(discovery.mints.length){cached=discovery.mints.slice(0,80);await putState(env,'discovery_cached_mints',JSON.stringify(cached));}
      const limited=discovery.attempts.find(x=>x.error==='RATE_LIMIT');
      if(limited){await providerBackoff(env,'discovery');profilesWarning='Discovery HTTP 429; using independent fallback/cached mints';}
@@ -89,15 +91,15 @@ export async function runScheduledScan(event,env){
     const selection=selectScanMints(pool,followups,{cursor,limit:BATCH_MAX_MINTS});
     selected=selection.selected;
     // At most ONE DexScreener price request per run for up to 12 mints.
-    const market=await marketPairs(selected,{dexPaused});
+    const market=await scannerMarket(selected,env,{dexPaused,context});
     const dex=market.attempts.find(x=>x.provider==='dexscreener');
     if(dex?.error==='RATE_LIMIT')await providerBackoff(env,'pairs',{headers:new Headers(dex.retryAt?{'retry-after':dex.retryAt}:{})});
-    if(!market.pairs.length&&market.attempts.every(x=>!x.ok)){
+    if(!market.pairs.length&&!market.observations?.length&&market.attempts.every(x=>!x.ok)){
      status=market.attempts.some(x=>['RATE_LIMIT','COOLDOWN'].includes(x.error))?'RATE_LIMITED':'FAILED';
      error='All pool sources unavailable; '+market.attempts.map(x=>x.provider+':'+x.error).join(',');
     }else{
      const data=market.pairs;
-     const items=scanPairs(data.filter(p=>selected.includes(p?.baseToken?.address)));
+     const items=market.observations??scanPairs(data.filter(p=>selected.includes(p?.baseToken?.address)));
      const grouped=new Map();
      for(const item of items){
       const bucket=grouped.get(item.base.mint)||[];
@@ -136,9 +138,11 @@ export async function runScheduledScan(event,env){
  return {status,selectedCount:selected.length,snapshotCount,error};
 }
 
-export async function liveOnlyScan(){const feed=await marketFeed();return {success:feed.items.length>0,status:'LIVE_ONLY',selectedCount:feed.items.length,snapshotCount:0,persisted:false,warning:'D1_DAILY_READ_LIMIT',resetAt:resetUTC(Date.now()),items:feed.items,providerAttempts:feed.providerAttempts};}
+export async function liveOnlyScan(env={}){let feed;
+ if(env.MARKET_API)try{const r=await env.MARKET_API.fetch('https://market.internal/api/v1/market-feed',{signal:AbortSignal.timeout(15000)});const data=await r.json();if(r.ok&&Array.isArray(data.items))feed=data}catch{}
+ feed=feed||await marketFeed(env);return {success:feed.items.length>0,status:'LIVE_ONLY',selectedCount:feed.items.length,snapshotCount:0,persisted:false,warning:'D1_DAILY_READ_LIMIT',resetAt:resetUTC(Date.now()),items:feed.items,providerAttempts:feed.providerAttempts};}
 const worker={async scheduled(event,env,ctx){
- ctx.waitUntil((async()=>{try{await runScheduledScan(event,env)}catch(e){if(!d1DailyLimitError(e))throw e;const live=await liveOnlyScan();console.warn('scanner_live_only',JSON.stringify({status:live.status,items:live.items.length,persisted:false,resetAt:live.resetAt}));}})());
+ ctx.waitUntil((async()=>{try{await runScheduledScan(event,env)}catch(e){if(!d1DailyLimitError(e))throw e;const live=await liveOnlyScan(env);console.warn('scanner_live_only',JSON.stringify({status:live.status,items:live.items.length,persisted:false,resetAt:live.resetAt}));}})());
 },async fetch(request,env){
  const u=new URL(request.url);
  if(u.pathname==='/run'&&request.method==='POST'){
@@ -162,7 +166,7 @@ const worker={async scheduled(event,env,ctx){
    }
    if(result.status==='FAILED')return reply({success:false,error:'SCANNER_FAILED',...result},502);
    return reply({success:true,...result});
-  }catch(e){if(d1DailyLimitError(e)){const live=await liveOnlyScan();return reply(live,live.success?200:503)}return reply({success:false,error:'SCANNER_UNAVAILABLE'},503);}
+  }catch(e){if(d1DailyLimitError(e)){const live=await liveOnlyScan(env);return reply(live,live.success?200:503)}return reply({success:false,error:'SCANNER_UNAVAILABLE'},503);}
  }
  if(u.pathname==="/health")return reply({service:"nebula-scanner",status:"ok"});
  if(u.pathname==="/discover"&&request.method==="GET"){

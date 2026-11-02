@@ -347,7 +347,7 @@ export default {
       // ==================== LOGS ====================
       if(path===`${API}/logs`) { const lm=Math.min(parseInt(url.searchParams.get('limit'))||50,200); const {results}=await db.prepare(`SELECT * FROM system_log ORDER BY created_at DESC LIMIT ?`).bind(lm).all(); return new Response(JSON.stringify(ok({logs:results})),{headers:h}); }
 
-      if(method==='GET'){const response=await providerRoute(path,env);if(response){const out=new Response(response.body,response);for(const [key,value] of Object.entries(h))out.headers.set(key,value);return out;}}
+      if(method==='GET'){const response=await providerRoute(path,env,request);if(response){const out=new Response(response.body,response);for(const [key,value] of Object.entries(h))out.headers.set(key,value);return out;}}
       // ==================== PROXY ====================
       // Helius RPC
       if(path==='/helius/rpc'&&method==='POST') {

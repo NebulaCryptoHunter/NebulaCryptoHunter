@@ -36,7 +36,7 @@ export async function providerHealth(request,env,namespace){
  const probe=async([name,provider,url,options,valid])=>{
   const start=Date.now();
   if(!url)return {name,status:'CONFIG_ERROR',httpStatus:null,detail:'Free API credential not configured; other providers continue'};
-  const r=await providerJSON(provider,url,options,{ttl:0,timeout:2500});
+  const r=await providerJSON(provider,url,options,{ttl:provider==='rugcheck'?300:60,timeout:2500});
   return {name,status:r.error==='RATE_LIMIT'?'RATE_LIMITED':r.error==='FREE_PLAN_UNAVAILABLE'?'FREE_PLAN_UNAVAILABLE':r.error==='AUTH_ERROR'?'AUTH_ERROR':r.ok&&valid(r.data||{})?'HEALTHY':'UNAVAILABLE',httpStatus:r.status||null,latencyMs:Date.now()-start,retryAt:r.retryAt||null,detail:r.error||(r.ok&&!valid(r.data||{})?'Unexpected probe data':null)};
  };
  const results=[];
