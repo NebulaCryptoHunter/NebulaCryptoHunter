@@ -2103,10 +2103,19 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
   scroll-snap-stop:always;
  }
  .hunter-history-panel #hunterRecentList>.hunter-history-row .history-record-content{
-  min-width:0!important;min-height:0!important;max-height:100%;
-  overflow-x:hidden!important;overflow-y:auto;
-  overscroll-behavior:contain;
-  scrollbar-width:thin;
+  min-width:0!important;min-height:0!important;max-height:none!important;
+  overflow:visible!important; /* no scroll inside a HISTORY token */
+  align-content:center;
+  gap:3px;
+ }
+ .hunter-history-panel #hunterRecentList>.hunter-history-row .hunter-history-symbol{
+  font-size:clamp(9px,.72vw,11px);line-height:1.15!important;
+ }
+ .hunter-history-panel #hunterRecentList>.hunter-history-row .hunter-history-meta{
+  font-size:9px;line-height:1.15!important;
+ }
+ .hunter-history-panel #hunterRecentList>.hunter-history-row .hunter-history-status{
+  font-size:9px;line-height:1.15!important;
  }
  .hunter-history-panel #hunterRecentList>.hunter-history-row .hunter-history-row-line{
   min-width:0;grid-template-columns:minmax(0,1fr) auto!important;
@@ -3177,12 +3186,6 @@ setTimeout(()=>{
      let lastStep=0;
      list.addEventListener('wheel',e=>{
        if(!historyDesktop()||!e.deltaY||!list.querySelector('.hunter-history-row'))return;
-       const inner=e.target.closest('.history-record-content');
-       if(inner&&inner.scrollHeight>inner.clientHeight+2){
-         const roomDown=e.deltaY>0&&inner.scrollTop<inner.scrollHeight-inner.clientHeight-2;
-         const roomUp=e.deltaY<0&&inner.scrollTop>2;
-         if(roomDown||roomUp)return;
-       }
        e.preventDefault();
        const now=Date.now();
        if(now-lastStep<390)return;
