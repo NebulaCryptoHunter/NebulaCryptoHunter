@@ -2203,9 +2203,8 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  background-image:
   linear-gradient(180deg,rgba(0,3,17,.23) 0%,rgba(0,5,21,.51) 48%,rgba(0,5,20,.76) 100%),
   url("https://raw.githubusercontent.com/NebulaCryptoHunter/NebulaCryptoHunter/main/assets/nebula-hunter-v2/01_background_nebula_hd.webp")!important;
- /* Source artwork includes a large Earth on its right side.
-    Crop to the LEFT star/nebula region, leaving one Earth only in the
-    separate 03_planet_hologram header image. Never stretch the artwork. */
+ /* Keep only nebula and stars in this supporting page backdrop.
+    The single prominent Earth comes from the full HD image in the header. */
  background-size:cover,max(165%,180vh) auto!important;
  background-position:center top,left top!important;
  background-repeat:no-repeat!important;
@@ -2224,14 +2223,16 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
   radial-gradient(ellipse 32% 90% at 50% 50%,rgba(0,6,24,.49) 0%,rgba(0,7,25,.18) 65%,transparent 100%),
   linear-gradient(90deg,rgba(2,9,27,.33) 0%,rgba(0,6,23,.10) 27%,rgba(0,6,23,.13) 74%,rgba(2,8,27,.35) 100%),
   url("https://raw.githubusercontent.com/NebulaCryptoHunter/NebulaCryptoHunter/main/assets/nebula-hunter-v2/01_background_nebula_hd.webp")!important;
- /* The original HD art is 1672×941 and Earth starts in the right
-    third. At 165% image width with left alignment, the viewport sees
-    at most 61% of the artwork: galaxy/stars, but not its Earth. */
- background-size:cover,cover,165% auto!important;
- background-position:center,center,left 22%!important;
+ /* Preserve the artwork's largest Earth on the right, at its original proportions.
+    The supporting body backdrop is cropped to nebula/stars so Earth is not doubled. */
+ background-size:cover,cover,cover!important;
+ background-position:center,center,center 24%!important;
  background-repeat:no-repeat!important;
  filter:none!important;
 }
+/* Remove the SMALL, separate hologram Earth. Keep the BIG Earth already
+   baked into the original nebula HD artwork; ship and controls stay untouched. */
+.hunter-banner img.hunter-planet{display:none!important}
 /* Sparse pinpoint stars: sharp radial points, not an image blur/glow sheet. */
 .hunter-banner::before{
  content:"";position:absolute;inset:0;display:block;pointer-events:none;
@@ -2258,7 +2259,7 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
 .hunter-banner .hunter-system-status,.hunter-banner .hunter-login{z-index:3!important}
 @media(max-width:767px){
  .hunter-banner{
-  background-position:center,center,left 18%!important;
+  background-position:center,center,center 18%!important;
  }
  .hunter-banner::before{opacity:.52}
  .hunter-banner .hunter-brand .header-row-2{
