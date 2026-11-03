@@ -1,0 +1,151 @@
+{
+  "verifiedAt": "2026-11-03T00:47:53.747Z",
+  "productionUrl": "https://nebulacryptohunter.space/",
+  "pullRequest": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/pull/63",
+  "sourceMergeCommit": "0f83f06980b5087aedcc80956e6129944aded1d4",
+  "frontend": {
+    "worker": "nebulacryptohunter",
+    "versionId": "7e6ec45a-2b22-44fb-aa02-2e2825416912",
+    "trafficPercentage": 100,
+    "deployedAt": "2026-11-03T00:41:05.861815Z"
+  },
+  "change": {
+    "file": "index.html",
+    "scope": "@media(max-width:767px) and (max-height:700px)",
+    "description": "Reduce instrument minimum height to 62 px, trim internal spacing, reset label margins and align labels with values. Preserve label/caption fonts and all eight readings.",
+    "shortViewportBefore": {
+      "viewport": [
+        360,
+        640
+      ],
+      "lastCardBottom": 658.1875,
+      "lastCaptionBottom": 650.4375
+    },
+    "shortViewportAfter": {
+      "lastCardBottom": 634.1875,
+      "lastCaptionBottom": 628.15625
+    }
+  },
+  "verification": {
+    "method": "Cloudflare Browser Rendering snapshot of the public production HTTPS page with mobile/touch Chromium viewport settings; no injected CSS.",
+    "readiness": "Waited for eight bars, real token count, loaded fonts and provider status, then selected the existing AI tab.",
+    "viewports": [
+      {
+        "viewport": [
+          320,
+          640
+        ],
+        "http": 200,
+        "productionCssPresent": true,
+        "compactRuleApplies": true,
+        "barCount": 8,
+        "allEightVisible": true,
+        "allCaptionsFit": true,
+        "labelsAndNumbersDoNotOverlap": true,
+        "maxBarBottom": 634.1875,
+        "maxCaptionBottom": 628.15625,
+        "labelFontSizes": [
+          "10px"
+        ],
+        "horizontalOverflow": false
+      },
+      {
+        "viewport": [
+          360,
+          640
+        ],
+        "http": 200,
+        "productionCssPresent": true,
+        "compactRuleApplies": true,
+        "barCount": 8,
+        "allEightVisible": true,
+        "allCaptionsFit": true,
+        "labelsAndNumbersDoNotOverlap": true,
+        "maxBarBottom": 634.1875,
+        "maxCaptionBottom": 628.15625,
+        "labelFontSizes": [
+          "10px"
+        ],
+        "horizontalOverflow": false
+      },
+      {
+        "viewport": [
+          390,
+          844
+        ],
+        "http": 200,
+        "productionCssPresent": true,
+        "compactRuleApplies": false,
+        "barCount": 8,
+        "allEightVisible": true,
+        "allCaptionsFit": true,
+        "labelsAndNumbersDoNotOverlap": true,
+        "maxBarBottom": 662.234375,
+        "maxCaptionBottom": 654.484375,
+        "labelFontSizes": [
+          "10px"
+        ],
+        "horizontalOverflow": false
+      },
+      {
+        "viewport": [
+          412,
+          915
+        ],
+        "http": 200,
+        "productionCssPresent": true,
+        "compactRuleApplies": false,
+        "barCount": 8,
+        "allEightVisible": true,
+        "allCaptionsFit": true,
+        "labelsAndNumbersDoNotOverlap": true,
+        "maxBarBottom": 663.359375,
+        "maxCaptionBottom": 655.765625,
+        "labelFontSizes": [
+          "10.3px"
+        ],
+        "horizontalOverflow": false
+      }
+    ],
+    "screenshot": {
+      "viewport": [
+        320,
+        640
+      ],
+      "clip": {
+        "x": 12,
+        "y": 332,
+        "width": 296,
+        "height": 308
+      },
+      "description": "Production crop covering the instruments heading and all eight live cards; not the entire phone screen."
+    },
+    "limitations": [
+      "Chromium viewport simulation, not physical Android device testing.",
+      "Advanced telemetry, system console and server dock can extend below the fold on short screens."
+    ]
+  },
+  "tests": {
+    "targeted": {
+      "tests": 39,
+      "passed": 39,
+      "failed": 0,
+      "command": "node --test tests/android-hud-contract.test.mjs tests/ai-performance.test.mjs backend/tests/hud-instruments.test.mjs tests/ai-bars-dex-admin-contract.test.mjs tests/desktop-hud-geometry-orbit.test.mjs"
+    },
+    "fullSuite": {
+      "tests": 278,
+      "passed": 270,
+      "failed": 6,
+      "skipped": 2,
+      "failures": "Six previously documented baseline UI contract failures; full suite is not green."
+    }
+  },
+  "unchanged": [
+    "Scoring algorithm",
+    "API budgets and data definitions",
+    "Desktop layout",
+    "Animations",
+    "Trading behavior"
+  ],
+  "report": "docs/NEBULA_AI_ANDROID_VERIFY_2026-11-03.md"
+}
