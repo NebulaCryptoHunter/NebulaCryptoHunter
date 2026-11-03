@@ -4009,7 +4009,10 @@ function researchIndicatorGroups(data=S.serverResearch){
  const database=[['DATABASE',num(counts.database_records),'Total baris tabel riset'],['PREDICTION',num(counts.total_records),'Prediksi historis dan kandidat scanner'],['UNIQUE',num(counts.unique_mints),'Mint berbeda pada gabungan histori'],['SNAPSHOTS',num(counts.snapshots),'Observasi tersimpan'],['ENGINE SCORES',num(counts.scores),'Skor tersimpan']];
  const labels={on:'AKTIF',off:'GAGAL',limited:'LIMIT',disabled:'NONAKTIF',plan:'PAKET TIDAK MENDUKUNG',config:'BELUM DIKONFIGURASI',pending:'BELUM DIUJI / KEDALUWARSA'};
  const providers=CONFIG.ENDPOINTS.map(name=>[name,labels[currentProviderState(name)],'Hasil pemeriksaan terakhir maksimal 15 menit; bukan indikator transaksi']);
- return [{name:'AI · INSTRUMENTS',rows:instruments},{name:'AI · MODEL / EVALUASI',rows:performance},{name:'RESEARCH · ACTIVE FEED',rows:trading},{name:'DATABASE',rows:database},{name:'12 API CONNECTIONS',rows:providers}];
+ const track=data?.radarTracking,trackingRows=[['AKTIF',num((track?.counts?.ACTIVE||0)+(track?.counts?.WEAK||0)),'Pantauan menetap; waktu data tetap diperiksa'],['DIARSIPKAN',num(track?.counts?.EXITED),'Keluar dengan alasan yang tersimpan'],['CADANGAN R2',track?.health?.archiveEnabled?'TERHUBUNG':'BELUM AKTIF','Aktivasi R2 diperlukan untuk cadangan lintas penyimpanan']];
+ const outcomes=new Map();for(const r of track?.analytics?.rows||[]){const key=[r.algorithm,r.version,r.horizon_seconds,r.target_pct].join(' · ');if(!outcomes.has(key))outcomes.set(key,{});outcomes.get(key)[r.status]=r.samples;}
+ const resultRows=[...outcomes].map(([key,r])=>[key,(r.SUCCESS||0)+' BERHASIL · '+(r.FAILED_TARGET||0)+' GAGAL · '+(r.PENDING||0)+' MENUNGGU · '+(r.INDETERMINATE||0)+' TANPA DATA','Target return pada horizon tertentu; bukan win rate transaksi. Sampel 2.000 signal-horizon terbaru.']);
+ return [{name:'AI · INSTRUMENTS',rows:instruments},{name:'AI · MODEL / EVALUASI',rows:performance},{name:'PANTAUAN SERVER',rows:trackingRows},{name:'HASIL ALGORITMA · RISET',rows:resultRows.length?resultRows:[['HASIL','BELUM TERUKUR','Menunggu sinyal dan horizon pengamatan yang sah']]},{name:'RESEARCH · ACTIVE FEED',rows:trading},{name:'DATABASE',rows:database},{name:'12 API CONNECTIONS',rows:providers}];
 }
 function instrumentBar(label,value,note,color='#43edec',caption=''){
  const known=typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100,pct=known?value:0;
@@ -4047,9 +4050,9 @@ async function loadPredictions(){
 }
 function applyResearchData(json){
  feedBus=[];feedMap.clear();S.predictionHistory=[];
- for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score??null,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,serverComponents:recordObject(p.components),serverMetrics:recordObject(p.metrics),serverBreakdown:recordObject(p.scoreBreakdown),serverRisk:recordObject(p.riskAssessment),tokenMetadata:recordObject(p.tokenMetadata),verificationEvidence:recordObject(p.verificationEvidence),setupStage:p.setupStage||null,modelValidation:json.scoreValidation?.model===p.model?json.scoreValidation:null,timeframes:recordObject(p.timeframes),source:p.source||null,dataStatus:json.dataStatus||null,persisted:json.persisted!==false,marketDataCoverage:p.dataCoverage??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
+ for(const p of json.items||[]){if(feedMap.has(p.mint))continue;const token={ca:p.mint,identity:{name:p.symbol||p.mint,symbol:p.symbol},decision:p.decision||'WATCH',price:p.price_usd,_conf:null,_finalAIScore:p.score??null,_riskIndex:null,_passedGate:false,_state:'OBSERVED',restored:true,liq:p.liquidity_usd,vol24h:p.volume_24h,pairAddress:p.pair_address,observedAt:p.observed_at,model:p.model||null,change24h:typeof p.change_24h==='number'?p.change_24h:null,serverReasons:p.reasons??null,serverComponents:recordObject(p.components),serverMetrics:recordObject(p.metrics),serverBreakdown:recordObject(p.scoreBreakdown),serverRisk:recordObject(p.riskAssessment),tokenMetadata:recordObject(p.tokenMetadata),verificationEvidence:recordObject(p.verificationEvidence),setupStage:p.setupStage||null,modelValidation:json.scoreValidation?.model===p.model?json.scoreValidation:null,timeframes:recordObject(p.timeframes),source:p.source||null,dataStatus:p.dataStatus||json.dataStatus||null,persisted:typeof p.persisted==='boolean'?p.persisted:json.persisted!==false,tracking:recordObject(p.tracking),marketDataCoverage:p.dataCoverage??null,evaluationStatus:p.evaluation_status||null,evaluationRoi:typeof p.roi_pct==='number'?p.roi_pct:null};normalizeToken(token);token.multiplier=null;token._serverObservation=true;feedBus.push(token);feedMap.set(token.ca,token);S.predictionHistory.push(token);}
  sortFeed();
- const grid=$('radarFeed');if(grid){grid.dataset.activeTokenCa=feedBus[0]?.ca||'';grid.scrollTop=0;}
+ const grid=$('radarFeed');if(grid&&!feedMap.has(grid.dataset.activeTokenCa)){grid.dataset.activeTokenCa=feedBus[0]?.ca||'';grid.scrollTop=0;}
  S.serverResearch=json;if(S.performanceAsOf!==json.aiPerformance?.asOf){S.performanceAsOf=json.aiPerformance?.asOf;S.performanceReceivedAt=Date.now();}renderResearchIndicators(json);S.serverResearchCounts=json.counts||{};void loadHistoricalSummary();S.dash.dbTotal=json.counts?.database_records??null;S.dash.tot=json.counts?.unique_mints??0;S.dash.watch=feedBus.filter(t=>t.decision===DECISION.WATCH).length;S.dash.buy=0;S.dash.sb=0;S.dash.acc=null;
  return json;
 }
@@ -4290,14 +4293,16 @@ const RenderEngine = (()=>{
       const decClass=d.toLowerCase().replace(/\s/g,'-');
       div.className='hud-card card-'+decClass+(hero&&t.ca===hero.ca?' hero-card':'')+(t._enrichError?' enrich-error':'')+(t._fromCache?' cached':'')+(t.restored?' restored':'');
       div.dataset.ca=t.ca;
+      const track=t.tracking,patternName=track?.pattern?.type==='VERTICAL'?'VERTIKAL':track?.patternLabel;
+      const badge=track?.label||d.replaceAll('_',' '),dataBadge=patternName||(track?'POLA —':null);
       const known=Number.isFinite(t._finalAIScore),priceOnly=!Number.isFinite(t.liq)&&!Number.isFinite(t.vol24h);
       const icons={liquidity:'M3 12h4v8H3zm7-6h4v14h-4zm7-4h4v18h-4z',volume:'M2 15l5-7 5 4 5-9 5 3M2 21h20',change:'M3 17l6-6 4 3 8-10M15 4h6v6',score:'M12 2l8 4v7c0 4-8 9-8 9s-8-5-8-9V6zM8 12l3 3 5-6'};
       const metric=(label,value,kind)=>'<div class="token-card-metric metric-'+kind+'"><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+icons[kind]+'"/></svg>'+label+'</dt><dd>'+escapeHTML(value)+'</dd>'+(kind==='score'?'<span class="metric-score-track" aria-hidden="true"><i style="width:'+(known?Math.max(0,Math.min(100,t._finalAIScore)):0)+'%"></i></span>':'')+'</div>';
       const observed=t.observedAt?new Date(t.observedAt):null,time=observed&&!Number.isNaN(observed.getTime())?observed.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'})+' WIB':'—';
-      let innerHTML='<div class="token-card-head">'+tokenEmblem(t)+'<div class="token-card-identity"><div class="token-card-eyebrow"><span class="token-live-dot"></span> TARGET '+String(rank).padStart(2,'0')+' · SOLANA</div><span class="token-name">'+escapeHTML(getName(t))+'</span><span class="decision-tag decision-'+decClass+'">'+escapeHTML(d.replaceAll('_',' '))+'</span><span class="token-data-chip">'+(priceOnly?'PRICE FEED':'POOL DATA')+'</span></div><div class="token-score-instrument">'+createRing(known?t._finalAIScore:null)+'<span>AI SCORE</span></div></div>';
+      let innerHTML='<div class="token-card-head">'+tokenEmblem(t)+'<div class="token-card-identity"><div class="token-card-eyebrow"><span class="token-live-dot"></span> TARGET '+String(rank).padStart(2,'0')+' · SOLANA</div><span class="token-name">'+escapeHTML(getName(t))+'</span><span class="decision-tag decision-'+decClass+'">'+escapeHTML(badge)+'</span><span class="token-data-chip" title="'+escapeHTML(track?.patternLabel||'Data pasar')+'">'+escapeHTML(dataBadge||(priceOnly?'PRICE FEED':'POOL DATA'))+'</span></div><div class="token-score-instrument">'+createRing(known?t._finalAIScore:null)+'<span>'+(track?.dataStatus==='STALE'?'SKOR LAMA':'AI SCORE')+'</span></div></div>';
       innerHTML+='<div class="token-market-hero"><div class="token-price-console"><span class="token-instrument-label">MARKET PRICE · USD</span><div class="token-card-price">'+escapeHTML(fmtPrice(t.price))+'</div><span class="token-price-venue">'+escapeHTML((t.source||'API').toUpperCase())+'</span></div>'+tokenPulse(t)+'</div>';
       innerHTML+='<div class="token-card-body" tabindex="0" role="region" aria-label="Data ringkas token"><dl class="token-card-metrics">'+metric('LIKUIDITAS',Number.isFinite(t.liq)?'$'+fmtNum(t.liq):'—','liquidity')+metric('VOLUME 24J',Number.isFinite(t.vol24h)?'$'+fmtNum(t.vol24h):'—','volume')+metric('Δ 24 JAM',Number.isFinite(t.change24h)?t.change24h.toFixed(2)+'%':'—','change')+metric('SKOR HEURISTIK',known?t._finalAIScore.toFixed(1)+' / 100':'—','score')+'</dl>';
-      innerHTML+='<div class="token-card-provenance"><span class="token-provenance-dot"></span>'+escapeHTML(time)+' · '+(t.dataStatus==='STALE'?'CACHE':t.persisted===false?'BELUM TERSIMPAN':'OBSERVASI SERVER')+'<span class="token-risk-chip" title="Pemeriksaan risiko terbatas, bukan jaminan keamanan">'+escapeHTML(researchRiskLabel(t))+'</span></div>';
+      innerHTML+='<div class="token-card-provenance"><span class="token-provenance-dot"></span>'+escapeHTML(time)+' · '+(track?.dataLabel|| (t.dataStatus==='STALE'?'CACHE':t.persisted===false?'BELUM TERSIMPAN':'OBSERVASI SERVER'))+'<span class="token-risk-chip" title="Pemeriksaan risiko terbatas, bukan jaminan keamanan">'+escapeHTML(researchRiskLabel(t))+'</span></div>';
       innerHTML+='<div class="token-card-address" title="'+escapeHTML(t.ca)+'">CA · '+escapeHTML(t.ca.slice(0,8)+'…'+t.ca.slice(-8))+'</div></div>';
       // BUY / SELL is a full-height, first-class card row, never inside the shrinking metrics body.
       innerHTML+=tokenOrderFlow(t);
@@ -4395,7 +4400,7 @@ const RenderEngine = (()=>{
     }
     const xaiCard=card('XAI · EXPLAINABLE SCORING',xai);
     const structure=card('STRUCTURE · MARKET',
-      row('MARKET',isHistorical?'Belum diverifikasi':t._mktStructure||'—')
+      row('POLA',t.tracking?.patternLabel||(isHistorical?'Belum terukur':t._mktStructure||'—'))
       +row('ORDER BLOCK',isHistorical?'Belum diverifikasi':t._obSignal||'—')
       +row('FVG',isHistorical?'Belum diverifikasi':t._fvgSignal||'—')
       +row('VOLATILITY',isHistorical?'Belum diverifikasi':t._volatility||'—'));
@@ -4438,7 +4443,7 @@ const RenderEngine = (()=>{
     const checkText=(key)=>{const c=checks[key];return c?c.status+(c.source?' · '+c.source:''):'—'};
     const wallet=card('WALLET · HOLDERS · SECURITY',row('HOLDER COUNT',isHistorical?number(metadata.holderCount):t._hel?.holderCountVerified?number(t._hel.hc):'—')+row('TOP 1 / TOP 5 / TOP 10',!isHistorical&&t._hel?.dist?[t._hel.dist.top1,t._hel.dist.top5,t._hel.dist.top10].join(' / '):'—')+row('MINT AUTHORITY',!isHistorical&&typeof t._rug?.mint==='boolean'?String(t._rug.mint):'—')+row('FREEZE AUTHORITY',!isHistorical&&typeof t._rug?.freeze==='boolean'?String(t._rug.freeze):'—')+row('RUG / WHALE CHECK',isHistorical?researchRiskLabel(t):t._rugStatus?.status||'—')+(isHistorical?row('CEK MINT AUTHORITY',checkText('mintAuthority'))+row('CEK FREEZE AUTHORITY',checkText('freezeAuthority'))+row('CEK TOKEN PROGRAM',checkText('tokenProgram'))+row('KONSENTRASI HOLDER · JUPITER',checkText('holderConcentration'))+row('CEK RUGCHECK',checkText('rugcheck')):'')+'<p class="hud-module-subtext">Pemeriksaan terbatas, bukan jaminan keamanan. Konsentrasi mengikuti laporan penyedia; bukan audit wallet unik.</p>');
     const evaluation=card('EVALUATION · FOLLOW-UP',
-      row('STATUS',t.evaluationStatus||'Belum dievaluasi')+row('VALIDASI MODEL',t.modelValidation?.status||'BELUM DIKALIBRASI')+row('SAMPEL TERUKUR · 50 KANDIDAT TERBARU',validNumber(t.modelValidation?.measured)?t.modelValidation.measured:'—')
+      row('PANTAUAN',t.tracking?.label||'—')+row('SEJAK DITEMUKAN',validNumber(t.tracking?.changeSinceFoundPct)?t.tracking.changeSinceFoundPct.toFixed(2)+'%':'—')+row('STATUS',t.evaluationStatus||'Belum dievaluasi')+row('VALIDASI MODEL',t.modelValidation?.status||'BELUM DIKALIBRASI')+row('SAMPEL TERUKUR · 50 KANDIDAT TERBARU',validNumber(t.modelValidation?.measured)?t.modelValidation.measured:'—')
       +row('PERUBAHAN TERUKUR',validNumber(t.evaluationRoi)?t.evaluationRoi.toFixed(2)+'%':'—')
       +'<p class="hud-module-subtext">Kinerja harus didukung observasi harga lanjutan, bukan estimasi profit.</p>');
     const alert='<p class="hud-not-verified">'+(isHistorical
@@ -4503,7 +4508,7 @@ async function showHistoryPanel(offset=0){
   };
   root.replaceChildren();
   append(root,'div','RIWAYAT PREDIKSI NEBULA · DATABASE TERPADU','section-title');
-  append(root,'p','Satu database produksi nebula-db: prediksi historis dan kandidat scanner berada pada satu linimasa. Sumber dan evaluasinya tetap dibedakan; jumlah catatan bukan jumlah sinyal beli yang tervalidasi.','hud-module-subtext');
+  append(root,'p','Satu database produksi nebula-db: prediksi historis, kandidat scanner, dan pantauan menetap berada pada satu linimasa. Sumber dan evaluasinya tetap dibedakan; jumlah catatan bukan jumlah sinyal beli yang tervalidasi.','hud-module-subtext');
   const info=append(root,'p','Memuat data historis…','hud-module-subtext');
   const limit=25;
   try{
@@ -4519,7 +4524,7 @@ async function showHistoryPanel(offset=0){
     for(const row of items){
       const card=append(root,'div','', 'archive-record');card.textContent='';
       const symbol=row.symbol||row.mint?.slice(0,12)||'Tanpa nama';
-      const source=row.record_source==='LEGACY'?'HISTORIS':'SCANNER';
+      const source=row.record_source==='LEGACY'?'HISTORIS':row.record_source==='TRACKING'?'PANTAUAN':'SCANNER';
       append(card,'strong',symbol+' · '+row.record_key);
       append(card,'div','', 'archive-meta').append(
         Object.assign(document.createElement('span'),{textContent:source}),
@@ -4528,6 +4533,7 @@ async function showHistoryPanel(offset=0){
         Object.assign(document.createElement('span'),{textContent:'Evaluasi: '+(row.evaluation_status||'PENDING')}),
         Object.assign(document.createElement('span'),{textContent:row.observed_at||'—'})
       );
+      const tr=recordObject(row.tracking_json);if(tr)append(card,'div',(tr.state==='EXITED'?'KELUAR RADAR':tr.state==='WEAK'?'MELEMAH':'DIPANTAU')+' · '+(tr.pattern||'BELUM TERUKUR')+(Number.isFinite(row.roi_pct)?' · Δ AWAL '+row.roi_pct.toFixed(2)+'%':'')+(tr.exitReason?' · '+tr.exitReason:''),'hud-module-subtext');
       append(card,'div',row.mint||'—','archive-mint');
     }
     const pager=append(root,'div','','archive-pager');pager.textContent='';
@@ -4560,7 +4566,7 @@ function startup(){
   try{
     RenderEngine.initDashboard();RenderEngine.initHeroPanel();RenderEngine.updateDashboard();updateEpBar();showUnifiedDashboard();showAIHealthDashboard();
     Scheduler.register('timer',()=>{updateEpBar();Scanner.flushWsBuffer();},1000,'background');
-    Scheduler.register('autoScan',()=>{if(S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},180000,'background');
+    Scheduler.register('autoScan',()=>{if(!document.hidden&&S.isAuto&&Date.now()>S.nextScan)Scanner.requestScan();},60000,'background');
     // Server research candidates remain WATCH until risk verification.
     Scheduler.register('evalQueue',()=>AiEngine.processEvalQueue(),15000,'background');
 
@@ -4857,7 +4863,7 @@ setTimeout(()=>{
            const second=document.createElement('div');second.className='hunter-history-meta history-record-time';
            const time=document.createElement('time'),stamp=toTime(row.observed_at);time.textContent=stamp==='—'?'—':stamp+' WIB';if(row.observed_at)time.dateTime=String(row.observed_at);second.append(time);
            const third=document.createElement('div');third.className='hunter-history-meta';
-           const source=document.createElement('span');source.className='history-source-chip';source.textContent=row.record_source==='LEGACY'?'HISTORIS':'SCANNER';
+           const source=document.createElement('span');source.className='history-source-chip';source.textContent=row.record_source==='LEGACY'?'HISTORIS':row.record_source==='TRACKING'?'PANTAUAN':'SCANNER';
            const evaluation=document.createElement('span');evaluation.className='history-evaluation-chip';evaluation.textContent=String(row.evaluation_status||'PENDING').replaceAll('_',' ');
            third.append(source,evaluation);content.append(first,second,third);item.append(instrument,content);list.append(item);
          }

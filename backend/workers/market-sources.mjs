@@ -5,7 +5,7 @@ import {providerJSON,createProviderContext} from './provider-runtime.mjs';
 import {jupiterBatch,metadataSummary,tokenEvidence,mintAccountBatch} from './token-evidence.mjs';
 export const validMint=x=>typeof x==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(x);
 const positive=x=>{const n=marketNumber(x);return n!==null&&n>0};
-const unique=mints=>[...new Set((Array.isArray(mints)?mints:[]).filter(validMint))].slice(0,12);
+const unique=(mints,limit=12)=>[...new Set((Array.isArray(mints)?mints:[]).filter(validMint))].slice(0,Math.min(30,limit));
 const attempt=r=>({provider:r.provider,ok:r.ok,error:r.error||null,retryAt:r.retryAt||null,cached:!!r.cached,fromCooldown:!!r.fromCooldown});
 export function geckoPairs(payload,fetchedAt,timing={}){
  const included=new Map((payload?.included||[]).map(t=>[t.id,t.attributes||{}]));
@@ -36,8 +36,8 @@ export async function discoverMints({context=createProviderContext()}={}){
  }
  return {mints:[...new Set(mints)],pairs,attempts};
 }
-export async function marketPairs(mints,{dexPaused=false,context=createProviderContext(),seedPairs=[]}={}){
- const selected=unique(mints).sort(),pairs=seedPairs.filter(p=>selected.includes(p?.baseToken?.address)),attempts=[];
+export async function marketPairs(mints,{dexPaused=false,context=createProviderContext(),seedPairs=[],maxMints=12}={}){
+ const selected=unique(mints,maxMints).sort(),pairs=seedPairs.filter(p=>selected.includes(p?.baseToken?.address)),attempts=[];
  if(!selected.length)return {pairs,attempts};
  const usable=()=>new Set(scanPairs(pairs).filter(c=>positive(c.priceUsd)).map(c=>c.base.mint));
  const appendDex=r=>{if(r.ok&&Array.isArray(r.data))pairs.push(...r.data.filter(p=>p.chainId==='solana'&&selected.includes(p.baseToken?.address)).map(p=>({...p,_source:'dexscreener',_observedAt:r.fetchedAt,_sourceAsOf:r.sourceAsOf??null,_sourceTimeBasis:r.sourceTimeBasis||'FETCH_ONLY'})))};

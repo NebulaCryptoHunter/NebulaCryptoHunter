@@ -549,7 +549,9 @@ test('D1 read-quota audit: frontend does not multiply expensive query polling',(
  const archive=html.slice(html.indexOf('async function loadHistoricalSummary(){'),html.indexOf('async function loadHeroes()'));
  assert.ok(archive.includes('S.serverResearchCounts'));
  assert.ok(!archive.includes('fetch('));
- assert.match(html,/Scheduler\.register\('autoScan',[^\n]*180000/);
+ assert.match(html,/Scheduler\.register\('autoScan',[^\n]*!document\.hidden[^\n]*60000/);
+ assert.match(gatewaySource,/researchData\(env\.RESEARCH_DB\)[\s\S]{0,220}freshMs:600000/);
+ assert.match(gatewaySource,/retained\.items\.some\(x=>x\.tracking\)/);
  assert.match(html,/window\.setInterval\([^\n]*180000/);
  assert.match(html,/\[latest,history\]\.some\(d=>d\?\.dataStatus==='STALE'\)/);
  assert.match(gatewaySource,/cachedResearch\(new Request\(u.origin\+'\/api\/research\/latest'\)/);

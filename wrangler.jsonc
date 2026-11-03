@@ -25,6 +25,10 @@
   ],
   "services": [
     {
+      "binding": "MONITOR",
+      "service": "nebula-monitor"
+    },
+    {
       "binding": "API",
       "service": "nebula-api"
     },

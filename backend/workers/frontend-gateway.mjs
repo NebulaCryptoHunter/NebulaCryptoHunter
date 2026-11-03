@@ -1,5 +1,6 @@
 import {withPerformance} from './performance-metrics.mjs';
-import {researchData,unifiedHistory} from './research-api.mjs';
+import {researchData,unifiedHistory,unifiedRadarHistory} from './research-api.mjs';
+import {mergeRadar} from './radar-policy.mjs';
 import {cachedResearch,invalidateResearchCache,quotaResponse,d1DailyLimitError,resetUTC} from './research-cache.mjs';
 import {authenticate,validMutationOrigin} from '../auth-v1.mjs';
 import {handleAuth} from '../auth-routes-v1.mjs';
@@ -7,6 +8,10 @@ import {activateAdmin} from '../auth-activation-v1.mjs';
 import {transformFrontend} from './frontend-transform.mjs';
 import {accountHTML} from './account-page.mjs';
 const json=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+async function withRadar(env,data){
+ if(env.MONITOR)try{const r=await env.MONITOR.fetch('https://monitor.internal/feed',{signal:AbortSignal.timeout(4000)});if(r.ok)return withPerformance(mergeRadar(data,await r.json()));}catch(e){console.warn('radar_feed_unavailable',e?.name);}
+ return data;
+}
 const disabledAdminHTML='<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>NEBULA · Admin nonaktif</title><style>body{background:#061426;color:#d8f4fc;font:16px system-ui;max-width:540px;margin:10vh auto;padding:24px}h1{color:#54e9f3}a{color:#54e9f3}</style><h1>Admin NEBULA sementara dinonaktifkan</h1><p>Dashboard riset tetap dapat dibuka dalam mode baca. Scanner server tetap mengikuti jadwalnya. Login, aktivasi Admin, dan perubahan data melalui antarmuka dinonaktifkan sementara.</p><p><a href="/">Kembali ke NEBULA Crypto Hunter</a></p></html>';
 const publicReads=new Set(['/api/v1/predictions','/api/v1/evaluations','/api/v1/stats','/api/v1/heroes','/api/v1/watchlist','/api/v1/learning','/api/v1/market-regime','/api/v1/config']);
 export default {async fetch(request,env){
@@ -33,31 +38,44 @@ export default {async fetch(request,env){
  if(path.startsWith('/api/auth/'))return await handleAuth(request,authEnv,{frontendOrigin:u.origin});
  if(path==='/account'&&method==='GET')return new Response(accountHTML,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'}});
  if(path==='/api/research/providers'&&method==='GET'){if(!env.API)return json({error:'API_BINDING_MISSING',providers:[]},503);const r=await env.API.fetch('https://api.internal/provider-health');const out=new Response(r.body,r);out.headers.set('Cache-Control','no-store');return out;}
+ if(path==='/api/research/tracking'&&method==='GET'){
+  if(!env.MONITOR)return json({error:'MONITOR_NOT_CONFIGURED'},503);
+  const r=await env.MONITOR.fetch('https://monitor.internal/status');return new Response(r.body,r);
+ }
  if(path==='/health')return json({service:'frontend-gateway',research:!!env.RESEARCH_DB,api:!!env.API,adminEnabled:!adminDisabled,manualScanAvailable:!adminDisabled&&!!env.SCANNER&&!!env.MANUAL_SCAN_TOKEN});
  if(path==='/api/research/latest'&&method==='GET'){
+  // One persisted monitor snapshot serves all viewers; browser polling does not rerun discovery or legacy aggregates.
+  if(env.MONITOR)try{
+   const r=await env.MONITOR.fetch('https://monitor.internal/feed',{signal:AbortSignal.timeout(4000)}),monitor=r.ok?await r.json():null;
+   if(monitor?.items?.length&&monitor.version==='radar-v1.0.0')return json(withPerformance(mergeRadar(monitor.legacy||{items:[],counts:null,runs:[],candidates:[],evaluations:[],dataStatus:'TRACKING_ONLY'},monitor)));
+  }catch(e){console.warn('radar_snapshot_read_failed',e?.name);}
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   let archived=null,fallbackReason='D1_DAILY_READ_LIMIT';
   try{
    const response=await cachedResearch(new Request(u.origin+'/api/research/latest'),async()=>({...await researchData(env.RESEARCH_DB),automaticScanning:env.SCANNER_CRON==='enabled',intervalMinutes:env.SCANNER_CRON==='enabled'?30:null}),{freshMs:600000});
    archived=withPerformance(await response.json());
+   if(env.MONITOR){const retained=await withRadar(env,archived);if(retained.items.some(x=>x.tracking))return json(retained);}
    const observationsOld=(archived.items||[]).length>0&&archived.aiPerformance.metrics.fresh.numerator===0;
-   if(archived.warning!=='D1_DAILY_READ_LIMIT'&&!observationsOld)return json(archived);
+   if(archived.warning!=='D1_DAILY_READ_LIMIT'&&!observationsOld)return json(await withRadar(env,archived));
    if(archived.warning!=='D1_DAILY_READ_LIMIT')fallbackReason='RESEARCH_OBSERVATIONS_OLD';
   }catch(e){fallbackReason=d1DailyLimitError(e)?'D1_DAILY_READ_LIMIT':'RESEARCH_READ_UNAVAILABLE';console.warn('research_read_failed',e?.name);}
+  if(env.MONITOR){const retained=await withRadar(env,archived||{items:[],counts:null,runs:[],candidates:[],evaluations:[],dataStatus:'TRACKING_ONLY',warning:fallbackReason});if(retained.items.some(x=>x.tracking))return json(retained);}
   // Database quota cannot disable independent upstream market data.
   if(env.API)try{
    const r=await env.API.fetch('https://api.internal/api/v1/market-feed');
    const live=await r.json();
    if(r.ok&&live.dataStatus==='LIVE_ONLY'&&Array.isArray(live.items)&&live.items.length)
-    return json(withPerformance({...live,counts:archived?.counts||null,runs:archived?.runs||[],candidates:archived?.candidates||[],evaluations:archived?.evaluations||[],warning:fallbackReason,resetAt:fallbackReason==='D1_DAILY_READ_LIMIT'?resetUTC(Date.now()):null,persisted:false}));
+    return json(await withRadar(env,withPerformance({...live,counts:archived?.counts||null,runs:archived?.runs||[],candidates:archived?.candidates||[],evaluations:archived?.evaluations||[],warning:fallbackReason,resetAt:fallbackReason==='D1_DAILY_READ_LIMIT'?resetUTC(Date.now()):null,persisted:false})));
   }catch{}
-  if(archived)return json(withPerformance({...archived,dataStatus:'STALE',warning:fallbackReason}));
+  if(archived)return json(await withRadar(env,withPerformance({...archived,dataStatus:'STALE',warning:fallbackReason})));
+  if(env.MONITOR){const tracked=await withRadar(env,{items:[],counts:null,runs:[],candidates:[],evaluations:[],dataStatus:'TRACKING_ONLY',warning:fallbackReason});if(tracked.items.length)return json(tracked);}
   return fallbackReason==='D1_DAILY_READ_LIMIT'?quotaResponse(Error('D1_DAILY_READ_LIMIT')):json({error:'RESEARCH_READ_UNAVAILABLE',dataStatus:'UNAVAILABLE'},503);
  }
  if(path==='/api/research/history'&&method==='GET'){
   if(!env.RESEARCH_DB)return json({error:'RESEARCH_DB_NOT_CONFIGURED'},503);
   const limit=Number.parseInt(u.searchParams.get('limit')||'25',10);
   const offset=Number.parseInt(u.searchParams.get('offset')||'0',10);
+  if(env.MONITOR)return await cachedResearch(new Request(new URL('/api/research/history?tracking=1&limit='+Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25))+'&offset='+Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0)),u.origin)),()=>unifiedRadarHistory(env.RESEARCH_DB,{limit,offset}),{freshMs:60000});
   return await cachedResearch(new Request(new URL('/api/research/history?limit='+Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25))+'&offset='+Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0)),u.origin)),()=>unifiedHistory(env.RESEARCH_DB,{limit,offset}),{freshMs:1800000});
  }
  if(path==='/api/research/scan-now'&&method==='POST'){
