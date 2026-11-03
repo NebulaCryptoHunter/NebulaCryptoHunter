@@ -4,6 +4,7 @@ import {providerJSON} from './provider-runtime.mjs';
 import {providerRoute,rpcFallback} from './provider-routes.mjs';
 import {marketPairs} from './market-sources.mjs';
 import {providerHealth} from './provider-health.mjs';
+import {monitorMarketRoute} from './radar-market.mjs';
 // =====================================================
 // NEBULA API WORKER V109.1 — "Production Polish"
 // =====================================================
@@ -218,6 +219,7 @@ export default {
       request=new Request(request.url,{method,headers:request.headers,body:bytes});
     }
     try {
+      if(path==='/api/v1/monitor-market'&&method==='GET')return monitorMarketRoute(request,env);
       if(path==='/provider-health'&&method==='GET')return providerHealth(request,env,'production');
       if(path==='/health') {
         const dbOk = await db.prepare(`SELECT 1`).first();

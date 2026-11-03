@@ -52,3 +52,10 @@ export async function unifiedHistory(db,{limit=25,offset=0}={}){
  const total=await aggregateCache('unified-total',async()=>{const [result]=await db.batch([db.prepare('SELECT COUNT(*) AS total FROM nebula_unified_records_v1')]);return result});
  return {items:page.results||[],total:Number(total.results?.[0]?.total||0),limit:lm,offset:of,countsAsOf:total.countsAsOf||null,source:'nebula-db',recordModel:'legacy-plus-scanner-v1'};
 }
+export async function unifiedRadarHistory(db,{limit=25,offset=0}={}){
+ const lm=Math.min(100,Math.max(1,Number.isInteger(limit)?limit:25)),of=Math.min(1000000,Math.max(0,Number.isInteger(offset)?offset:0));
+ const [page]=await db.batch([db.prepare(`SELECT * FROM nebula_unified_records_v2
+  ORDER BY REPLACE(observed_at,' ','T') DESC,record_key DESC LIMIT ? OFFSET ?`).bind(lm,of)]);
+ const total=await aggregateCache('unified-total-with-tracking-v2',async()=>{const [result]=await db.batch([db.prepare('SELECT COUNT(*) AS total FROM nebula_unified_records_v2')]);return result});
+ return {items:page.results||[],total:Number(total.results?.[0]?.total||0),limit:lm,offset:of,countsAsOf:total.countsAsOf||null,source:'nebula-db',recordModel:'legacy-plus-scanner-plus-tracking-v2'};
+}

@@ -1,0 +1,10 @@
+{
+ "name":"nebula-monitor",
+ "main":"workers/radar-monitor.mjs",
+ "compatibility_date":"2026-11-03",
+ "workers_dev":false,
+ "triggers":{"crons":["* * * * *"]},
+ "d1_databases":[{"binding":"DB","database_name":"nebula-db","database_id":"6eeadd5e-5e58-4a8c-90d9-92d039438a8f","migrations_dir":"migrations"}],
+ "services":[{"binding":"MARKET_API","service":"nebula-api"}],
+ "observability":{"enabled":true,"head_sampling_rate":1}
+}

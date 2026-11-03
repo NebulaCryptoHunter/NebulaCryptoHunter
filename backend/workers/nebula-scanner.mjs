@@ -2,6 +2,7 @@ import {selectScanMints} from './scanner-selection.mjs';
 import {marketPairs,discoverMints,marketFeed,scannerMarket} from './market-sources.mjs';
 import {retryDeadline,createProviderContext} from './provider-runtime.mjs';
 import {d1DailyLimitError,resetUTC} from './research-cache.mjs';
+import {admitTracks,observationItem} from './radar-store.mjs';
 // NEBULA scanner: deterministic token identity and pool-specific discovery.
 // Research-only: staging D1 snapshots and scores; no trading.
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json","cache-control":"no-store"}});
@@ -37,7 +38,9 @@ async function availablePool(env){
  const all=[];
  // New discovery is supplemented with historical known mints and the user's watchlist.
  try{
-  const rows=await env.STAGE_DB.prepare("SELECT mint FROM scanner_snapshots GROUP BY mint ORDER BY MAX(observed_at) ASC LIMIT 150").all();
+  let rows;
+  try{rows=await env.STAGE_DB.prepare('SELECT mint FROM radar_discovery_registry ORDER BY last_scanned_at,mint LIMIT 150').all();}catch{}
+  if(!rows?.results?.length)rows=await env.STAGE_DB.prepare('SELECT mint FROM scanner_snapshots GROUP BY mint LIMIT 150').all();
   all.push(...(rows.results||[]).map(r=>r.mint));
  }catch{}
  try{
@@ -90,6 +93,9 @@ export async function runScheduledScan(event,env){
     const cursor=Math.max(0,Number(await getState(env,'rotation_index'))||0);
     const selection=selectScanMints(pool,followups,{cursor,limit:BATCH_MAX_MINTS});
     selected=selection.selected;
+    try{await env.STAGE_DB.prepare(`INSERT INTO radar_discovery_registry(mint,first_seen_at,last_seen_at,last_scanned_at)
+     SELECT value,?,?,? FROM json_each(?) WHERE true ON CONFLICT(mint) DO UPDATE SET last_scanned_at=excluded.last_scanned_at`)
+     .bind(startISO,startISO,startISO,JSON.stringify(selected)).run();}catch(e){console.warn('radar_registry_update_deferred',e?.name);}
     // At most ONE DexScreener price request per run for up to 12 mints.
     const market=await scannerMarket(selected,env,{dexPaused,context});
     const dex=market.attempts.find(x=>x.provider==='dexscreener');
@@ -123,6 +129,7 @@ export async function runScheduledScan(event,env){
       const writes=await env.STAGE_DB.batch(statements);
       if(!Array.isArray(writes)||writes.length!==statements.length)throw Error('Snapshot persistence result unavailable');
       snapshotCount=writes.reduce((sum,result,i)=>sum+(i%2===0?Number(result.meta?.changes)||0:0),0);
+      try{await admitTracks(env.STAGE_DB,chosen.map((c,i)=>observationItem(c,body.results[i])));}catch(e){console.warn('radar_admission_deferred',e?.name);}
      }
      results=selected.map(mint=>({mint,status:grouped.has(mint)?200:404,snapshots:grouped.get(mint)?.length||0,providerAttempts:market.attempts}));
      await putState(env,'rotation_index',selection.nextCursor);
