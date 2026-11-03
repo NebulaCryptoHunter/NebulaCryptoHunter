@@ -1,6 +1,6 @@
 # Persistent radar and versioned research outcomes
 
-This change keeps eligible Solana tokens in server-side tracking when discovery/feed batches change. It preserves the existing HUD/CSS, fonts, graphics, animations, score model and research-only behavior.
+This change keeps eligible Solana tokens in server-side tracking when discovery/feed batches change. It preserves the existing HUD design, fonts, graphics, animations, score model and research-only behavior.
 
 ## Policy
 
@@ -33,18 +33,24 @@ Each admission/pattern transition records an algorithm version, original price, 
 - API: private service-binding market route; existing credentials are reused inside their original Worker, never copied.
 - Scanner: admits real eligible observations after normal snapshot persistence.
 - Frontend gateway: merges retained candidates, suppresses archived ones and reads the monitor snapshot. Existing history includes tracking entries through an additive v2 view.
-- Frontend: labels occupy existing badge/provenance/detail/catalog slots. The visible decision badge combines state and pattern, for example `DIPANTAU · TANGGA NAIK`, because the old auxiliary data chip is intentionally hidden. Stale vertical patterns retain `POLA LAMA`. No CSS or static layout changes.
+- Frontend: labels occupy existing badge/provenance/detail/catalog slots. The visible decision badge combines state and pattern, for example `DIPANTAU · TANGGA NAIK`, because the old auxiliary data chip is intentionally hidden. Stale vertical patterns retain `POLA LAMA`. The layout and assets remain intact; the mobile title anchor is corrected from 49% to 50% to keep its frame centered.
 
-## Resource constraint
+## Durable snapshot backup
 
-The Cloudflare R2 API currently returns code 10042: “Please enable R2 through the Cloudflare Dashboard.” No account activation, billing change or subscription was attempted. Optional ARCHIVE binding support is prepared for candle objects and latest snapshot recovery, but cannot be claimed active until R2 is enabled and a bucket is bound. D1 plus bounded Cache API fallback remains usable; complete protection against D1 exhaustion requires the separate durable archive.
+R2 still requires account activation (provider code 10042). No account activation, billing change or subscription was attempted. A private Workers KV namespace now supplies independent durable snapshot recovery through SNAPSHOT_BACKUP. The monitor writes at most once every five minutes (288 snapshot writes/day); it records the attempt before writing, so retries and provider failures cannot multiply writes each minute. Readback confirmed the actual stored snapshot at 12:17:10 WIB on 2026-11-03. The frontend catalog shows KV · TERSIMPAN.
+
+This backup preserves the latest radar snapshot, last known prices, original timestamps, bounded algorithm aggregates and legacy feed context. It is not a complete D1 history backup or a candle-object archive. D1 remains the event/evidence system of record. Cache API is a fast fallback; KV supplies durable recovery when D1 is unavailable. Recovery never makes old observations fresh. A failed KV write does not abort token updates. Optional ARCHIVE/R2 candle support remains prepared but inactive.
 
 ## Verification/deployment
 
-PR #64 was merged as `085ecf8`; visible badge follow-up `cb12e5f` is deployed. The additive D1 migration, API, scanner, evaluation worker, frontend and independent monitor are live. At 04:41:10 UTC on 2026-11-03 the monitor had completed eleven scheduled runs, reported RUNNING with no error, and recorded no tracked candidate yet. Public tracking status and unified history both returned HTTP 200. No synthetic candidate was inserted into production.
+PR #64 introduced persistent radar. Follow-up `22233bb` finishes regression repair, centered mobile title geometry, bounded KV recovery and compact public metadata (legacy feed context is no longer duplicated inside radarTracking). Frontend, scanner and monitor are deployed at 100%; prior API/evaluation deployments remain active.
 
-Algorithm/integration checks passed 155/155, including seventeen new tracking behavior tests. The local full suite had 287 passes, six existing UI contract failures and two browser skips. GitHub CI ran the real-browser tests and had 288 passes/seven failures: the same six UI contracts plus an existing header Y-centering assertion (about 1.17px), also present before the badge follow-up. The complete suite is not green.
+The GitHub full regression run passed **299/299, zero failures and zero skips**, including real-browser geometry tests. The algorithm CI also passed. Local tests passed 297/299 with only the two browser tests skipped because no local Chrome was installed; all ran in CI. The tracking suite now has 21 behavior tests, including KV cadence, provider failure isolation, stale-price recovery during D1 outage and invalid backup rejection.
 
-CSS and static markup match `23fb89f` exactly; CSS SHA-256 is `fb9c3c2d324df922f070f75199bad9ddee361fb631f88051bf611bf5e4602765`. Inline scripts parse and git diff whitespace checks pass. Badge labels fit without wrapping/overflow in isolated 320x640, 360x640 and 390x844 browser simulations. The existing 360/390 header clips a small amount of outer padding equally with the original WATCH label; text fits and header/card dimensions remain unchanged. This is UI verification, not evidence of live pattern success.
+The six former UI failures were obsolete assertions that the page must contain exactly one script. The shared contract now requires at least one executable block, matching opening/closing tags and valid syntax for every script. UI/control/asset/detail assertions remain. The browser failure was repaired by centering the mobile title anchor and enforcing the existing inclusive 40px mobile minimum in the test. No script-count assertion was used to remove UI functionality.
 
-R2 remains inactive under the provider's code 10042. Runtime CPU telemetry could not be measured because the account's observability query returned HTTP 403; upload startup time is not claimed as CPU performance. Exact version IDs, schedule evidence, test counts and limitations are in `NEBULA_PERSISTENT_RADAR_DEPLOYMENT.json`.
+The only CSS difference is the mobile title anchor 49% → 50%; static markup, graphics, colors, fonts, card layout and animations remain unchanged. Current CSS SHA-256: `57af6b02ef4de5b52ebaf8e805759bc02e7545e70cffa2b1e91c3e36fcb43ef0`. Live 360x640 production inspection found zero horizontal overflow, header center error X=0 / Y=0.5px, and the saved KV status in the existing indicator catalog.
+
+Workers CPU telemetry is now available through the GraphQL Analytics API despite the earlier Workers Observability HTTP 403. For nebula-monitor, the 11:20–12:00 WIB window on 2026-11-03 had 431 invocations, zero errors, CPU p50=3.240ms and p99=18.235ms. The API schema explicitly defines these source values in microseconds. The sample mixes scheduled and feed/status invocations and predates the final follow-up; it is a measurement, not a throughput benchmark or an accuracy claim. Wall time includes upstream waiting and is not CPU time.
+
+At the latest live check the monitor reported RUNNING, no error and KV READY. The new tracking table remained empty; no synthetic candidate was inserted to create a badge or apparent success. Actual pattern/outcome evidence still requires eligible market observations and elapsed horizons. Exact versions, CI links, snapshot readback and telemetry are recorded in `NEBULA_PERSISTENT_RADAR_DEPLOYMENT.json`.

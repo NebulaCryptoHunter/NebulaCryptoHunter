@@ -1,12 +1,13 @@
 {
-  "recordedAt": "2026-11-03T04:41:55.545Z",
+  "recordedAt": "2026-11-03T05:19:35.712Z",
   "project": "NEBULA Crypto Hunter",
   "site": "https://nebulacryptohunter.space/",
   "source": {
     "pullRequest": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/pull/64",
     "featureCommit": "a5143cd40290071b5a62cbb29a97d4fecd00ce2d",
     "mergeCommit": "085ecf859f28cbdbf70392e261574b4309c10cd6",
-    "visibleBadgeFollowup": "cb12e5fc303188b68a3e85b642e237e6f50b958e"
+    "visibleBadgeFollowup": "cb12e5fc303188b68a3e85b642e237e6f50b958e",
+    "completionCommit": "22233bbefafdb34e193a400906a429f985c770e6"
   },
   "migration": {
     "file": "backend/migrations/0011_persistent_radar.sql",
@@ -17,11 +18,11 @@
   "deployments": [
     {
       "name": "nebulacryptohunter",
-      "created_on": "2026-11-03T04:38:25.88988Z",
-      "deployment_id": "85ddcd22-01d4-430b-bff0-52d06316ad77",
+      "deployment_id": "c91f215a-5304-4377-b94f-1fc3ecb84eb4",
+      "created_on": "2026-11-03T05:16:49.08218Z",
       "versions": [
         {
-          "version_id": "ffc4c9e2-27f0-4ca4-99c1-8a3cfca8186d",
+          "version_id": "01e083c4-64f9-4550-bd9b-5a8898d823e1",
           "percentage": 100
         }
       ]
@@ -39,22 +40,22 @@
     },
     {
       "name": "nebula-scanner",
-      "created_on": "2026-11-03T04:26:45.217489Z",
-      "deployment_id": "892abbc0-3dd4-4525-ac1a-a5b15bc7422f",
+      "deployment_id": "d66fe689-2257-4745-a14a-424892b2b6c8",
+      "created_on": "2026-11-03T05:17:07.803161Z",
       "versions": [
         {
-          "version_id": "407fdfdb-be80-44b0-85e7-1402df905c15",
+          "version_id": "6380a87e-4780-40cf-b868-f751a0ebd2bf",
           "percentage": 100
         }
       ]
     },
     {
       "name": "nebula-monitor",
-      "created_on": "2026-11-03T04:21:53.483851Z",
-      "deployment_id": "7ab29f5b-899b-4140-b9ee-2405fd48615b",
+      "deployment_id": "1b561575-4cb6-432b-a927-ee94e535e074",
+      "created_on": "2026-11-03T05:16:53.343836Z",
       "versions": [
         {
-          "version_id": "6c65f696-911a-440b-beb9-fcada5cb8a78",
+          "version_id": "16c870b9-0a10-489e-adef-6c0f0a16a602",
           "percentage": 100
         }
       ]
@@ -169,37 +170,77 @@
         "total": 7260
       },
       "at": "2026-11-03T04:38:10.537Z"
+    },
+    "completionLive": {
+      "mode": "LIVE_PRODUCTION_READ",
+      "health": {
+        "version": "radar-v1.0.0",
+        "at": "2026-11-03T05:18:10.852Z",
+        "status": "RUNNING",
+        "selected": 0,
+        "error": null,
+        "archiveEnabled": false,
+        "backupBackend": "KV",
+        "snapshotBackup": {
+          "backend": "KV",
+          "status": "READY",
+          "nextAttemptAt": 1793683330256,
+          "lastSuccessAt": "2026-11-03T05:17:10.256Z",
+          "snapshotAt": "2026-11-03T05:17:10.256Z",
+          "error": null
+        }
+      },
+      "header": {
+        "centerErrorX": 0,
+        "centerErrorY": 0.5,
+        "height": 40
+      },
+      "backupVisible": true,
+      "viewport": {
+        "width": 360,
+        "height": 640,
+        "documentWidth": 360
+      },
+      "tracked": {},
+      "at": "2026-11-03T05:18:58.266Z"
+    },
+    "durableSnapshotReadback": {
+      "readable": true,
+      "version": "radar-v1.0.0",
+      "generatedAt": "2026-11-03T05:17:10.256Z",
+      "trackedItems": 0,
+      "legacyItems": 50
     }
   },
   "verification": {
     "algorithmIntegration": {
-      "passed": 155,
-      "failed": 0
+      "status": "success",
+      "jobId": 125741721654,
+      "url": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/41582946892/job/125741721654"
     },
     "newTrackingTests": {
-      "passed": 17,
+      "passed": 21,
       "failed": 0
     },
     "localFullSuite": {
-      "tests": 295,
-      "passed": 287,
-      "failed": 6,
+      "tests": 299,
+      "passed": 297,
+      "failed": 0,
       "skipped": 2
     },
     "githubFullSuite": {
-      "jobId": 125729885740,
-      "tests": 295,
-      "passed": 288,
-      "failed": 7,
-      "skipped": 0,
-      "note": "The same seven failures occurred on merge commit 085ecf8, including the six existing UI source-contract failures and the real-browser header frame Y centering assertion (about 1.17px). No full-green claim."
+      "jobId": 125741721368,
+      "url": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/41582947060/job/125741721368",
+      "tests": 299,
+      "passed": 299,
+      "failed": 0,
+      "skipped": 0
     },
     "frontendBuild": {
-      "id": "24b37bfb-03b1-4091-a667-0b91510137fd",
+      "id": "96da9837-aeb8-42eb-a409-695f57845c8c",
       "outcome": "success"
     },
-    "cssSha256": "fb9c3c2d324df922f070f75199bad9ddee361fb631f88051bf611bf5e4602765",
-    "cssAndStaticMarkupIdenticalTo": "23fb89f41a56bfdcdd306f67c5cd2ee296b5f02a",
+    "cssSha256": "57af6b02ef4de5b52ebaf8e805759bc02e7545e70cffa2b1e91c3e36fcb43ef0",
     "inlineScriptsParse": true,
     "gitDiffCheck": true,
     "mobile": [
@@ -322,7 +363,88 @@
         "headerHeight": 46,
         "note": "Existing header clips outer padding by approximately 0.55px at 360 / 1.14px at 390; same geometry with original WATCH badge, text fits; no CSS changed."
       }
-    ]
+    ],
+    "previousFullSuite": {
+      "local": {
+        "tests": 295,
+        "passed": 287,
+        "failed": 6,
+        "skipped": 2
+      },
+      "github": {
+        "jobId": 125729885740,
+        "tests": 295,
+        "passed": 288,
+        "failed": 7,
+        "skipped": 0,
+        "note": "The same seven failures occurred on merge commit 085ecf8, including the six existing UI source-contract failures and the real-browser header frame Y centering assertion (about 1.17px). No full-green claim."
+      }
+    },
+    "previousCssAndStaticMarkupIdenticalTo": "23fb89f41a56bfdcdd306f67c5cd2ee296b5f02a",
+    "cssChange": "Mobile title anchor top:49% -> top:50%; all other CSS and static markup/assets unchanged",
+    "completionChecks": [
+      {
+        "name": "Workers Builds: nebula-scanner",
+        "status": "completed",
+        "conclusion": "success",
+        "id": 125741960231,
+        "details": "https://dash.cloudflare.com/6011a83ecc58844429889353f3370fbd/workers/services/view/nebula-scanner/production/builds/c5ac721d-d06c-4339-9614-fcbeda07b0a3"
+      },
+      {
+        "name": "Workers Builds: nebulacryptohunter",
+        "status": "completed",
+        "conclusion": "success",
+        "id": 125741857284,
+        "details": "https://dash.cloudflare.com/6011a83ecc58844429889353f3370fbd/workers/services/view/nebulacryptohunter/production/builds/96da9837-aeb8-42eb-a409-695f57845c8c"
+      },
+      {
+        "name": "algorithm",
+        "status": "completed",
+        "conclusion": "success",
+        "id": 125741721654,
+        "details": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/41582946892/job/125741721654"
+      },
+      {
+        "name": "test",
+        "status": "completed",
+        "conclusion": "success",
+        "id": 125741721368,
+        "details": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/41582947060/job/125741721368"
+      }
+    ],
+    "live360": {
+      "mode": "LIVE_PRODUCTION_READ",
+      "health": {
+        "version": "radar-v1.0.0",
+        "at": "2026-11-03T05:18:10.852Z",
+        "status": "RUNNING",
+        "selected": 0,
+        "error": null,
+        "archiveEnabled": false,
+        "backupBackend": "KV",
+        "snapshotBackup": {
+          "backend": "KV",
+          "status": "READY",
+          "nextAttemptAt": 1793683330256,
+          "lastSuccessAt": "2026-11-03T05:17:10.256Z",
+          "snapshotAt": "2026-11-03T05:17:10.256Z",
+          "error": null
+        }
+      },
+      "header": {
+        "centerErrorX": 0,
+        "centerErrorY": 0.5,
+        "height": 40
+      },
+      "backupVisible": true,
+      "viewport": {
+        "width": 360,
+        "height": 640,
+        "documentWidth": 360
+      },
+      "tracked": {},
+      "at": "2026-11-03T05:18:58.266Z"
+    }
   },
   "limitations": [
     {
@@ -330,18 +452,58 @@
       "active": false,
       "providerCode": 10042,
       "message": "Please enable R2 through the Cloudflare Dashboard.",
-      "fallback": "D1 plus bounded Cache API fallback; independent durable archive is not active."
-    },
-    {
-      "component": "CPU telemetry",
-      "measured": false,
-      "httpStatus": 403,
-      "message": "Workers observability API query denied by role/resource restriction. Upload startup time is not a runtime CPU measurement."
+      "fallback": "Independent private KV snapshot backup is active; full D1 history and candle-object archive are not independently backed up."
     },
     {
       "component": "Pattern/outcome live evidence",
       "measured": false,
       "message": "Tracking table is empty at the recorded check. Labels were verified in isolated browser UI simulation with no production writes. Real admission, candle detections and horizon outcomes require eligible observations; missing observations are never counted as failures."
+    },
+    {
+      "component": "Workers Observability endpoint",
+      "httpStatus": 403,
+      "message": "Endpoint remains denied; GraphQL Analytics CPU query succeeds, so CPU measurement is no longer blocked."
     }
-  ]
+  ],
+  "backup": {
+    "backend": "KV",
+    "binding": "SNAPSHOT_BACKUP",
+    "namespaceId": "bd11b3b375f14bdbac8557aed627c55b",
+    "maxSnapshotWritesPerDay": 288,
+    "writeIntervalSeconds": 300,
+    "readback": {
+      "readable": true,
+      "version": "radar-v1.0.0",
+      "generatedAt": "2026-11-03T05:17:10.256Z",
+      "trackedItems": 0,
+      "legacyItems": 50
+    },
+    "scope": "Latest radar snapshot and bounded context; not complete D1 history or candle-object archive",
+    "r2Active": false
+  },
+  "cpuTelemetry": {
+    "source": "Cloudflare GraphQL workersInvocationsAdaptive",
+    "sourceUnit": "microseconds (confirmed by API schema introspection)",
+    "worker": "nebula-monitor",
+    "windowStart": "2026-11-03T04:20:00Z",
+    "windowEnd": "2026-11-03T05:00:00Z",
+    "raw": {
+      "dimensions": {
+        "scriptName": "nebula-monitor"
+      },
+      "quantiles": {
+        "cpuTimeP50": 3240,
+        "cpuTimeP99": 18235,
+        "wallTimeP50": 13748,
+        "wallTimeP99": 4047812
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 431
+      }
+    },
+    "cpuP50ms": 3.24,
+    "cpuP99ms": 18.235,
+    "scope": "Mixed invocations before final follow-up; not a throughput benchmark"
+  }
 }
