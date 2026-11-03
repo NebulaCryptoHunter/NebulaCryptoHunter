@@ -78,5 +78,5 @@ export function mergeRadar(base,monitor){
   seen.add(item.mint);items.push(item);
  }
  items.sort((a,b)=>(finite(b.score)?b.score:-1)-(finite(a.score)?a.score:-1)||String(a.tracking?.firstSeenAt||a.observed_at).localeCompare(String(b.tracking?.firstSeenAt||b.observed_at))||a.mint.localeCompare(b.mint));
- return {...base,items,radarTracking:{...monitor,items:undefined,exitedMints:undefined},generatedAt:new Date().toISOString()};
+ return {...base,items,radarTracking:{...monitor,items:undefined,exitedMints:undefined,legacy:undefined},generatedAt:new Date().toISOString()};
 }

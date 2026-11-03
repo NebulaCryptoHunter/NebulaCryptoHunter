@@ -1,3 +1,4 @@
+import {assertFrontendScripts} from './frontend-script-contract.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -46,6 +47,6 @@ test('scanner, data, token actions, score and indicators are preserved',()=>{
  for(const a of ['watch','copyca','phantom','pump','dex','buy'])assert.ok(html.includes("a==='"+a+"'"),'Missing token action '+a);
  assert.match(html,/class="score-ring-container"/);
  const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
- assert.equal(scripts.length,1);
+ assertFrontendScripts(html);
  for(const s of scripts)new vm.Script(s[1]);
 });

@@ -1,3 +1,4 @@
+import {assertFrontendScripts} from './frontend-script-contract.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -19,7 +20,7 @@ test('icon audit overrides late responsive CSS rather than altering original con
  includes(html,'HUNT BEFORE THE HYPE.');
  assert.match(html,/NEBULA HUNTER V2.1 — fixed single-viewport command bridge/);
  const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
- assert.equal(scripts.length,1);
+ assertFrontendScripts(html);
  for(const src of scripts)new vm.Script(src[1]);
 });
 test('12 provider LEDs and chips stay present with readable minimum dimensions',()=>{

@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {newTrack,updateTrack,mergeRadar,RADAR_VERSION,trackItem} from '../backend/workers/radar-policy.mjs';
 import {closedCandles,detectPattern} from '../backend/workers/radar-patterns.mjs';
 import {admitTracks,hydrateTrack,readTrackingFeed,trackStatements,publishFeed,evaluateSignals,trackingAnalytics} from '../backend/workers/radar-store.mjs';
-import {runMonitor} from '../backend/workers/radar-monitor.mjs';
+import monitor,{runMonitor,writeSnapshotBackup} from '../backend/workers/radar-monitor.mjs';
 import {monitorMarketRoute} from '../backend/workers/radar-market.mjs';
 import {scoreCandidate} from '../backend/workers/scoring-v2.mjs';
 import gateway from '../backend/workers/frontend-gateway.mjs';
@@ -24,12 +24,43 @@ function database(){
  return {db,sqlite};
 }
 const candles=(prices,volumes=prices.map(()=>100))=>({meta:{base:{address:A}},data:{attributes:{ohlcv_list:prices.map((p,i)=>[Math.floor(now/60000)*60-(prices.length-i)*60,p,p*1.001,p*.999,p,volumes[i]])}}});
+test('durable snapshot backup is limited to one write per five minutes and keeps the observation time',async()=>{
+ const {db,sqlite}=database(),saved=[],env={DB:db,SNAPSHOT_BACKUP:{async put(key,value){saved.push({key,value})}}};
+ const feed={version:RADAR_VERSION,items:[],generatedAt:at(now-60000)};
+ const first=await writeSnapshotBackup(env,feed,{now});assert.equal(first.status,'READY');assert.equal(saved.length,1);
+ const previous=JSON.parse(sqlite.prepare("SELECT value_json FROM radar_runtime WHERE key='snapshot-backup'").get().value_json);
+ await writeSnapshotBackup(env,feed,{now:now+60000,previous});assert.equal(saved.length,1);
+ await writeSnapshotBackup(env,feed,{now:now+300000,previous});assert.equal(saved.length,2);
+ assert.equal(JSON.parse(saved[1].value).generatedAt,feed.generatedAt);assert.equal(first.snapshotAt,feed.generatedAt);
+});
+test('backup provider failure is recorded without aborting the monitor or retrying every minute',async()=>{
+ const {db,sqlite}=database();let calls=0;
+ const result=await runMonitor({DB:db,SNAPSHOT_BACKUP:{async put(){calls++;throw Error('provider quota')}}},{now});
+ assert.equal(result.status,'COMPLETED');assert.equal(calls,1);
+ const backup=JSON.parse(sqlite.prepare("SELECT value_json FROM radar_runtime WHERE key='snapshot-backup'").get().value_json);
+ assert.equal(backup.status,'FAILED');assert.equal(backup.lastSuccessAt,null);assert.equal(backup.nextAttemptAt,now+300000);
+ const health=JSON.parse(sqlite.prepare("SELECT value_json FROM radar_runtime WHERE key='monitor-health'").get().value_json);
+ assert.equal(health.status,'RUNNING');assert.equal(health.snapshotBackup.status,'FAILED');
+});
+test('D1 outage serves the durable KV snapshot without refreshing old prices or source timestamps',async()=>{
+ const old=Date.now()-3600000,t=newTrack(item({observed_at:at(old),source_as_of:at(old)}),old);
+ const feed={version:RADAR_VERSION,items:[trackItem(t,old)],generatedAt:at(old)};
+ const response=await monitor.fetch(new Request('https://monitor.internal/feed'),{DB:{prepare(){throw Error('D1_DAILY_READ_LIMIT')}},SNAPSHOT_BACKUP:{async get(){return feed}}});
+ assert.equal(response.status,200);const data=await response.json();assert.equal(data.backupBackend,'KV');assert.equal(data.generatedAt,at(old));
+ const merged=mergeRadar({items:[]},data);assert.equal(merged.items[0].tracking.dataStatus,'STALE');assert.equal(merged.items[0].observed_at,at(old));
+});
+test('an invalid durable snapshot never becomes an available tracking feed',async()=>{
+ const response=await monitor.fetch(new Request('https://monitor.internal/feed'),{DB:{prepare(){throw Error('D1 unavailable')}},SNAPSHOT_BACKUP:{async get(){return {version:'wrong',items:[]}}}});
+ assert.equal(response.status,503);assert.equal((await response.json()).error,'TRACKING_UNAVAILABLE');
+});
 test('eligible candidate is retained across empty and unrelated discovery feeds, sorted by real score',()=>{
  const t=newTrack(item(),now);assert.ok(t);const tracked=trackItem(t,now);
  const result=mergeRadar({items:[item({mint:B,score:70})]},{version:RADAR_VERSION,items:[tracked],exitedMints:[]});
  assert.deepEqual(result.items.map(x=>x.mint),[B,A]);assert.equal(mergeRadar({items:[]},{version:RADAR_VERSION,items:[tracked]}).items.length,1);
  assert.equal(newTrack(item({observed_at:at(now-3600000)}),now),null);
  assert.equal(newTrack(item({score:39,riskAssessment:{status:'RISK_DETECTED'}}),now),null);
+ const compact=mergeRadar({items:[],counts:{total_records:2}},{version:RADAR_VERSION,items:[tracked],legacy:{items:[item()],counts:{total_records:2}}});
+ assert.equal(compact.counts.total_records,2);assert.equal(JSON.parse(JSON.stringify(compact)).radarTracking.legacy,undefined);
 });
 test('missing provider data, duplicates and a single reversal never remove a candidate',()=>{
  const t=newTrack(item(),now);const missing=updateTrack(t,null,{now:now+60000});assert.equal(missing.state,'ACTIVE');assert.equal(missing.payload.dataStatus,'POOL_MISSING');

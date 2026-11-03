@@ -6,5 +6,6 @@
  "triggers":{"crons":["* * * * *"]},
  "d1_databases":[{"binding":"DB","database_name":"nebula-db","database_id":"6eeadd5e-5e58-4a8c-90d9-92d039438a8f","migrations_dir":"migrations"}],
  "services":[{"binding":"MARKET_API","service":"nebula-api"}],
+ "kv_namespaces":[{"binding":"SNAPSHOT_BACKUP","id":"bd11b3b375f14bdbac8557aed627c55b"}],
  "observability":{"enabled":true,"head_sampling_rate":1}
 }

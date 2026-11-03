@@ -1,3 +1,4 @@
+import {assertFrontendScripts} from './frontend-script-contract.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -67,6 +68,6 @@ test('retains the Hunter spaceship, HD source layers, real data and one-page vie
  ok('id="radarFeed"');
  for(const tokenAction of ['watch','copyca','phantom','pump','dex','buy'])ok("a==='"+tokenAction+"'");
  const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
- assert.equal(scripts.length,1);
- new vm.Script(scripts[0][1]);
+ assertFrontendScripts(html);
+ for(const [,source] of scripts)new vm.Script(source);
 });

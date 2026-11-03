@@ -3221,7 +3221,7 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
   .sticky-nav{width:100%!important;min-width:0!important;padding:0 5px 4px!important;overflow:visible!important}
   .sticky-nav .hunter-banner{height:67px!important;min-height:67px!important;max-height:67px!important;margin:0 -5px 3px!important}
   .hunter-banner .hunter-brand{
-    left:50%!important;top:49%!important;
+    left:50%!important;top:50%!important;
     transform:translate(-50%,-50%)!important;
     width:calc(100% - 142px)!important;max-width:calc(100% - 142px)!important;
     min-height:40px!important;padding:4px 7px!important;
@@ -4010,7 +4010,7 @@ function researchIndicatorGroups(data=S.serverResearch){
  const database=[['DATABASE',num(counts.database_records),'Total baris tabel riset'],['PREDICTION',num(counts.total_records),'Prediksi historis dan kandidat scanner'],['UNIQUE',num(counts.unique_mints),'Mint berbeda pada gabungan histori'],['SNAPSHOTS',num(counts.snapshots),'Observasi tersimpan'],['ENGINE SCORES',num(counts.scores),'Skor tersimpan']];
  const labels={on:'AKTIF',off:'GAGAL',limited:'LIMIT',disabled:'NONAKTIF',plan:'PAKET TIDAK MENDUKUNG',config:'BELUM DIKONFIGURASI',pending:'BELUM DIUJI / KEDALUWARSA'};
  const providers=CONFIG.ENDPOINTS.map(name=>[name,labels[currentProviderState(name)],'Hasil pemeriksaan terakhir maksimal 15 menit; bukan indikator transaksi']);
- const track=data?.radarTracking,trackingRows=[['AKTIF',num((track?.counts?.ACTIVE||0)+(track?.counts?.WEAK||0)),'Pantauan menetap; waktu data tetap diperiksa'],['DIARSIPKAN',num(track?.counts?.EXITED),'Keluar dengan alasan yang tersimpan'],['CADANGAN R2',track?.health?.archiveEnabled?'TERHUBUNG':'BELUM AKTIF','Aktivasi R2 diperlukan untuk cadangan lintas penyimpanan']];
+ const track=data?.radarTracking,trackingRows=[['AKTIF',num((track?.counts?.ACTIVE||0)+(track?.counts?.WEAK||0)),'Pantauan menetap; waktu data tetap diperiksa'],['DIARSIPKAN',num(track?.counts?.EXITED),'Keluar dengan alasan yang tersimpan'],['CADANGAN SNAPSHOT',track?.health?.snapshotBackup?.lastSuccessAt?(track.health.snapshotBackup.backend+' · TERSIMPAN'):'MENUNGGU','Snapshot terpisah maksimal setiap lima menit; pemulihan dapat memakai data lama'],['ARSIP CANDLE R2',track?.health?.archiveEnabled?'TERHUBUNG':'BELUM AKTIF','Opsional; bukti pola tetap dicatat di D1']];
  const outcomes=new Map();for(const r of track?.analytics?.rows||[]){const key=[r.algorithm,r.version,r.horizon_seconds,r.target_pct].join(' · ');if(!outcomes.has(key))outcomes.set(key,{});outcomes.get(key)[r.status]=r.samples;}
  const resultRows=[...outcomes].map(([key,r])=>[key,(r.SUCCESS||0)+' BERHASIL · '+(r.FAILED_TARGET||0)+' GAGAL · '+(r.PENDING||0)+' MENUNGGU · '+(r.INDETERMINATE||0)+' TANPA DATA','Target return pada horizon tertentu; bukan win rate transaksi. Sampel 2.000 signal-horizon terbaru.']);
  return [{name:'AI · INSTRUMENTS',rows:instruments},{name:'AI · MODEL / EVALUASI',rows:performance},{name:'PANTAUAN SERVER',rows:trackingRows},{name:'HASIL ALGORITMA · RISET',rows:resultRows.length?resultRows:[['HASIL','BELUM TERUKUR','Menunggu sinyal dan horizon pengamatan yang sah']]},{name:'RESEARCH · ACTIVE FEED',rows:trading},{name:'DATABASE',rows:database},{name:'12 API CONNECTIONS',rows:providers}];

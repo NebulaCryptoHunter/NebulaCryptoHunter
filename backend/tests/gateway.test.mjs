@@ -1,3 +1,4 @@
+import {assertFrontendScripts} from './frontend-script-contract.mjs';
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import gateway from '../workers/frontend-gateway.mjs';import api from '../workers/nebula-api.mjs';import {transformFrontend} from '../workers/frontend-transform.mjs';import fs from 'node:fs';import vm from 'node:vm';
 const origin='https://nebulacryptohunter.nebula-crypto-proxy.workers.dev';
@@ -44,7 +45,7 @@ test('HUD details render every section without raw source leaks or trapped scrol
  const html=fs.readFileSync('index.html','utf8');
  assert.equal((html.match(/<\/html>/g)||[]).length,1);
  assert.ok(html.trimEnd().endsWith('</html>'),'nothing should appear after closing html tag');
- assert.equal((html.match(/<script\b/g)||[]).length,1);
+ assertFrontendScripts(html);
  assert.match(html,/\.card-detail-section\{margin-top:8px;display:none;max-height:none;overflow:visible/);
  assert.match(html,/@media\(max-width:767px\)\{\.sticky-nav\{position:relative/);
  assert.match(html,/if\(e\.target\.closest\('button, a, \.card-detail-section'\)\)return/);
@@ -486,7 +487,7 @@ test('tablet and phone use three accessible tabs rather than vertically scrollin
  assert.match(css,/@media \(max-height:640px\) and \(max-width:767px\)/);
  assert.match(css,/@media \(max-height:730px\) and \(min-width:1200px\)/);
  for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
- assert.equal((html.match(/<script\b/g)||[]).length,1);
+ assertFrontendScripts(html);
 });
 
 test('Hunter controls remain connected and AUTO controls read-only periodic refresh',()=>{
@@ -526,7 +527,7 @@ test('Hunter indicators and independent panel scrolling remain intact',()=>{
  assert.match(css,/\.hunter-advanced\[open\]\{position:fixed/);
  for(const tab of ['ai','radar','history'])assert.ok(html.includes('data-hunter-tab="'+tab+'"'));
  const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
- assert.equal(scripts.length,1);
+ assertFrontendScripts(html);
  for(const m of scripts)new vm.Script(m[1]);
 });
 

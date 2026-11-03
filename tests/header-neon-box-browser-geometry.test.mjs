@@ -53,7 +53,7 @@ test('real browser: classic neon title box remains centered and symmetric on des
    assert.ok(Math.abs(parseFloat(x.before.width)-parseFloat(x.after.width))<eps,'Asymmetric corner widths '+JSON.stringify(x));
    assert.equal(x.before.top,x.after.top,'Brackets have different vertical anchors');
    assert.equal(x.boxBorder,'1px');
-   assert.ok(x.box.w>165&&x.box.h>40,'Neon frame too small '+JSON.stringify(x));
+   assert.ok(x.box.w>165&&x.box.h>=40,'Neon frame below the 40px mobile minimum '+JSON.stringify(x));
   }
  }finally{rmSync(dir,{recursive:true,force:true})}
 });

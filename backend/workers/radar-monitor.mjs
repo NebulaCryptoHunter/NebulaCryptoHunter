@@ -7,6 +7,28 @@ import {d1DailyLimitError} from './research-cache.mjs';
 import {researchData} from './research-api.mjs';
 const iso=ms=>new Date(ms).toISOString();
 const safeError=e=>String(e?.message||e).replace(/https?:\/\/\S+/g,'[upstream]').slice(0,140);
+export const backupBackend=env=>env.ARCHIVE?'R2':env.SNAPSHOT_BACKUP?'KV':null;
+export async function readSnapshotBackup(env){
+ if(env.ARCHIVE)try{const object=await env.ARCHIVE.get('radar/latest.json');if(object)return {feed:await object.json(),backend:'R2'};}catch{}
+ if(env.SNAPSHOT_BACKUP)try{const feed=await env.SNAPSHOT_BACKUP.get('radar/latest.json',{type:'json',cacheTtl:60});if(feed?.version===RADAR_VERSION&&Array.isArray(feed.items))return {feed,backend:'KV'};}catch{}
+ return null;
+}
+export async function writeSnapshotBackup(env,feed,{now=Date.now(),previous=null,account=()=>{}}={}){
+ const backend=backupBackend(env);if(!backend)return null;
+ if(previous?.backend===backend&&previous.nextAttemptAt>now)return previous;
+ const state={backend,status:'WRITING',nextAttemptAt:now+5*60000,lastSuccessAt:previous?.lastSuccessAt||null,snapshotAt:previous?.snapshotAt||null,error:null};
+ // Persist the attempt before the external write: cron retries cannot multiply
+ // KV writes. At most 288 snapshot writes/day, with no per-token KV writes.
+ account(await runtimeStatement(env.DB,'snapshot-backup',state,now).run());
+ try{
+  const body=JSON.stringify(feed);
+  if(backend==='R2')await env.ARCHIVE.put('radar/latest.json',body,{httpMetadata:{contentType:'application/json'}});
+  else await env.SNAPSHOT_BACKUP.put('radar/latest.json',body);
+  state.status='READY';state.lastSuccessAt=iso(now);state.snapshotAt=feed.generatedAt;
+ }catch(e){state.status='FAILED';state.error=safeError(e);console.warn('radar_snapshot_backup_unavailable',e?.name);}
+ account(await runtimeStatement(env.DB,'snapshot-backup',state,now).run());
+ return state;
+}
 async function serveFeed(env){
  const key=new Request('https://nebula.internal/radar-monitor-feed-v1');let cached=null;
  try{const r=await globalThis.caches?.default?.match(key);if(r)cached=await r.json();}catch{}
@@ -17,7 +39,7 @@ async function serveFeed(env){
   return feed;
  }catch(e){
   if(cached)return {...cached,status:'STALE_CACHE',warning:d1DailyLimitError(e)?'D1_DAILY_READ_LIMIT':'TRACKING_READ_UNAVAILABLE'};
-  if(env.ARCHIVE){const object=await env.ARCHIVE.get('radar/latest.json');if(object)return {...await object.json(),status:'ARCHIVE_FALLBACK',warning:'D1_UNAVAILABLE'};}
+  const saved=await readSnapshotBackup(env);if(saved)return {...saved.feed,status:'ARCHIVE_FALLBACK',backupBackend:saved.backend,warning:'D1_UNAVAILABLE'};
   throw e;
  }
 }
@@ -29,7 +51,7 @@ export async function runMonitor(env,{now=Date.now()}={}){
  if(!lock.meta?.changes)return {status:'BUSY'};
  const day=iso(now).slice(0,10),previous=await readRuntime(db,'monitor-budget'),budget=previous?.day===day?previous:{day,startedAt:now,rowsRead:0,rowsWritten:0,runs:0};
  const account=results=>{for(const r of Array.isArray(results)?results:[results]){budget.rowsRead+=Number(r?.meta?.rows_read)||0;budget.rowsWritten+=Number(r?.meta?.rows_written)||0;}};
- let selected=[],items=[],error=null,candleRequests=0,status='RUNNING';
+ let selected=[],items=[],error=null,candleRequests=0,status='RUNNING',snapshotBackup=null;
  try{
   if(budget.rowsWritten>=RADAR_POLICY.ownDailyWriteBudget||budget.rowsRead>=RADAR_POLICY.ownDailyReadBudget){status='MONITOR_BUDGET_PAUSED';return {status,budget};}
   const remainingMinutes=(Date.parse(day+'T00:00:00Z')+86400000-now)/60000,elapsedMinutes=Math.max(10,(now-(budget.startedAt||now))/60000);
@@ -89,8 +111,9 @@ export async function runMonitor(env,{now=Date.now()}={}){
   }
   if(statements.length)account(await db.batch(statements));
   account(await evaluateSignals(db,items.filter(x=>freshItem(x,now)),{now}));
-  const feed=await publishFeed(db,{now,account,health:{selected:selected.length,candleRequests,archiveEnabled:!!env.ARCHIVE,error:null,status,cadenceFactor}});
-  if(env.ARCHIVE)try{await env.ARCHIVE.put('radar/latest.json',JSON.stringify(feed),{httpMetadata:{contentType:'application/json'}});}catch(e){console.warn('radar_archive_unavailable',e?.name);}
+  snapshotBackup=await readRuntime(db,'snapshot-backup');
+  const feed=await publishFeed(db,{now,account,health:{selected:selected.length,candleRequests,archiveEnabled:!!env.ARCHIVE,backupBackend:backupBackend(env),snapshotBackup,error:null,status,cadenceFactor}});
+  snapshotBackup=await writeSnapshotBackup(env,feed,{now,previous:snapshotBackup,account});
   if(Math.floor(now/60000)%5===0)await runtimeStatement(db,'algorithm-analytics',await trackingAnalytics(db),now).run();
   const nextLegacy=await readRuntime(db,'legacy-next');
   if(!nextLegacy||nextLegacy.at<=now){
@@ -101,7 +124,7 @@ export async function runMonitor(env,{now=Date.now()}={}){
  }catch(e){status='FAILED';error=safeError(e);console.warn('radar_monitor_failed',JSON.stringify({error,d1Limited:d1DailyLimitError(e)}));throw e;
  }finally{
   budget.runs++;budget.rowsWritten+=4; // bounded coordination + snapshot overhead; row metadata tracks the bulk writes.
-  try{await db.batch([runtimeStatement(db,'monitor-budget',budget,now),runtimeStatement(db,'monitor-health',{version:RADAR_VERSION,at:iso(now),status,selected:selected.length,error,archiveEnabled:!!env.ARCHIVE},now),
+  try{await db.batch([runtimeStatement(db,'monitor-budget',budget,now),runtimeStatement(db,'monitor-health',{version:RADAR_VERSION,at:iso(now),status,selected:selected.length,error,archiveEnabled:!!env.ARCHIVE,backupBackend:backupBackend(env),snapshotBackup},now),
    db.prepare("UPDATE radar_runtime SET value_json=? WHERE key='monitor-lock' AND json_extract(value_json,'$.lease')=?").bind(JSON.stringify({until:0,lease}),lease)]);}catch(e){console.warn('radar_monitor_state_unavailable',e?.name);}
  }
 }
@@ -109,12 +132,12 @@ export default {
  async scheduled(event,env,ctx){ctx.waitUntil(runMonitor(env).then(r=>console.log('radar_monitor',JSON.stringify(r))).catch(()=>{}));},
  async fetch(request,env){
   const u=new URL(request.url);if(request.method!=='GET')return Response.json({error:'METHOD_NOT_ALLOWED'},{status:405});
-  if(u.pathname==='/health')return Response.json({service:'nebula-monitor',version:RADAR_VERSION,archiveEnabled:!!env.ARCHIVE});
+  if(u.pathname==='/health')return Response.json({service:'nebula-monitor',version:RADAR_VERSION,archiveEnabled:!!env.ARCHIVE,backupBackend:backupBackend(env)});
   try{
    if(u.pathname==='/feed')return Response.json(await serveFeed(env),{headers:{'Cache-Control':'no-store'}});
    if(u.pathname==='/status')return Response.json({health:await readRuntime(env.DB,'monitor-health'),budget:await readRuntime(env.DB,'monitor-budget'),analytics:await readRuntime(env.DB,'algorithm-analytics')});
   }catch(e){
-   if(u.pathname==='/feed'&&env.ARCHIVE){const object=await env.ARCHIVE.get('radar/latest.json');if(object)return Response.json({...await object.json(),status:'ARCHIVE_FALLBACK',warning:d1DailyLimitError(e)?'D1_DAILY_READ_LIMIT':'TRACKING_READ_UNAVAILABLE'});}
+   if(u.pathname==='/feed'){const saved=await readSnapshotBackup(env);if(saved)return Response.json({...saved.feed,status:'ARCHIVE_FALLBACK',backupBackend:saved.backend,warning:d1DailyLimitError(e)?'D1_DAILY_READ_LIMIT':'TRACKING_READ_UNAVAILABLE'});}
    return Response.json({error:'TRACKING_UNAVAILABLE'},{status:503});
   }
   return Response.json({error:'NOT_FOUND'},{status:404});
