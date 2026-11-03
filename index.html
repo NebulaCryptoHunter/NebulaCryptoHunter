@@ -3592,6 +3592,12 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
 .hunter-ai-panel .instrument-footnote span{white-space:normal;overflow-wrap:anywhere}
 .hunter-ai-panel .hunter-ai-fact dd{min-width:0;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:1050px){.hunter-ai-panel #aiHealthDash .instrument-bar{min-height:68px!important;padding:5px 6px!important}}
+/* Short Android viewports: keep the eighth reading above the fold. */
+@media(max-width:767px) and (max-height:700px){
+ .hunter-ai-panel #aiHealthDash .instrument-bar{min-height:62px!important;padding:4px 6px!important;gap:3px!important}
+ .hunter-ai-panel .instrument-bar-head{align-items:center!important}
+ .hunter-ai-panel .instrument-bar .lbl{margin:0!important}
+}
 </style>
 </head>
 <body>
