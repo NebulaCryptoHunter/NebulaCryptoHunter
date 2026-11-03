@@ -32,6 +32,14 @@ test('bar coverage reflects data and sanitizes descriptions',()=>{
  assert.match(output,/8 \/ 12/);
  assert.match(output,/&lt;source&gt;/);
 });
+test('compact samples preserve risk counts and expose the complete caption accessibly',()=>{
+ const output=bar('CEK RISIKO',70,'Current evidence','#ff628e','7 / 10 CEK · 2 RISIKO');
+ assert.match(output,/title="7 \/ 10 CEK · 2 RISIKO">7\/10 · 2R<\/small>/);
+ assert.match(output,/aria-label="CEK RISIKO: 70%\. 7 \/ 10 CEK · 2 RISIKO/);
+ const pending=bar('SKOR V4',null,'No eligible V4 scores','#aa65ff','BELUM ADA SKOR V4');
+ assert.match(pending,/title="BELUM ADA SKOR V4">NO V4 DATA<\/small>/);
+ assert.doesNotMatch(pending,/aria-valuenow=/);
+});
 test('momentum compares observed horizons without inventing a price path',()=>{
  const output=pulse({timeframes:{m5:{changePct:-12.5},h1:{changePct:0}},change24h:25});
  assert.match(output,/-12\.50%/);
