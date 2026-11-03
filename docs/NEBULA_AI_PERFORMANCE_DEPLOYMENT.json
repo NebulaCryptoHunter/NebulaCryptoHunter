@@ -1,0 +1,149 @@
+{
+  "recordedAt": "2026-11-03T00:02:56.656Z",
+  "pullRequest": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/pull/62",
+  "implementationMerge": "61276524c8e2498813af07a53af6bbce54c8a55a",
+  "sourceCommit": "4817ae66817aeb125f79008b45c74cbadb3cc374",
+  "contract": "research-performance-v1",
+  "rankingModel": "heuristic-v4.0.0",
+  "rankingWeightsChanged": false,
+  "scope": "AI readiness instruments, model-scoped descriptive follow-ups, risk-status labels and independently consumable cached research responses",
+  "indicators": [
+    "DATA POOL",
+    "HARGA",
+    "SKOR V4",
+    "API AKTIF",
+    "DATA SEGAR",
+    "CEK RISIKO",
+    "EVALUASI V4",
+    "RETURN POSITIF"
+  ],
+  "tests": {
+    "targeted": {
+      "tests": 138,
+      "passed": 138,
+      "failed": 0
+    },
+    "newPerformanceTests": 19,
+    "full": {
+      "tests": 278,
+      "passed": 270,
+      "failed": 6,
+      "skipped": 2
+    },
+    "fullSuiteLimitation": "The same six existing unrelated UI contract failures and two browser-test skips remain. Updated indicator and risk-caption contracts verify the intentional new semantics.",
+    "algorithmCi": "success",
+    "algorithmCiUrl": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/actions/runs/41548718839/job/125630615176",
+    "frontendBuild": "success",
+    "scannerBuild": "success"
+  },
+  "productionAndStaging": [
+    {
+      "name": "nebula-api",
+      "createdOn": "2026-11-02T23:52:39.968201Z",
+      "versions": [
+        {
+          "version_id": "39fbe965-b22e-435e-9857-5a84c38fbe99",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebulacryptohunter",
+      "createdOn": "2026-11-02T23:58:28.79934Z",
+      "versions": [
+        {
+          "version_id": "48fc6cb2-010d-408a-80a9-0e32cb13b71b",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-scanner",
+      "createdOn": "2026-11-02T23:53:34.536992Z",
+      "versions": [
+        {
+          "version_id": "dbd2f720-9477-4a26-8562-b27212aa4c87",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-api-adapters-stage",
+      "createdOn": "2026-11-02T23:52:17.134258Z",
+      "versions": [
+        {
+          "version_id": "da9a8f25-e766-4ead-ab67-a36c153ca601",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "apiBindingsPreserved": true,
+  "noSchemaMigration": true,
+  "noAdditionalSqlQueryPerRequest": true,
+  "existingProviderBudgetsRetained": true,
+  "liveVerification": {
+    "latestResearch": {
+      "http": 200,
+      "dataStatus": "LIVE_ONLY",
+      "warning": "RESEARCH_OBSERVATIONS_OLD",
+      "activeModel": "heuristic-v4.0.0",
+      "uniqueTokens": 12,
+      "metricsAtCapture": {
+        "pool": [
+          1,
+          12
+        ],
+        "price": [
+          12,
+          12
+        ],
+        "scoredV4": [
+          1,
+          12
+        ],
+        "fresh": [
+          12,
+          12
+        ],
+        "riskChecks": [
+          3,
+          5
+        ],
+        "eligibleV4Candidates": 0,
+        "measuredV4Candidates": 0
+      },
+      "limitation": "Snapshot-specific coverage, not persistent provider availability or predictive performance. Follow-ups remain unavailable until real V4 observations exist."
+    },
+    "concurrentLatestRequests": {
+      "requests": 3,
+      "httpStatuses": [
+        200,
+        200,
+        200
+      ],
+      "validIndependentJson": true
+    },
+    "confirmedBeforeFixError": "Body has already been used. It can only be used once. Use tee() first if you need to read it twice.",
+    "postDeploymentMatchingBodyReuseErrors": 0,
+    "postDeploymentLogCheckWindowMinutes": 5,
+    "desktopBrowser": {
+      "viewport": [
+        1363,
+        936
+      ],
+      "eightBarsVisible": true,
+      "allCaptionsFit": true,
+      "detailCatalogueVerified": true,
+      "riskCaptionShowsDetectedRisk": true,
+      "animationRetained": true
+    },
+    "android": {
+      "responsiveCssReviewed": true,
+      "visualViewportVerified": false,
+      "limitation": "Browser URL policy rejected the separate data-protocol responsive preview. No bypass was attempted; an actual Android viewport was not rendered."
+    }
+  },
+  "autoTrade": false,
+  "calibrated": false
+}

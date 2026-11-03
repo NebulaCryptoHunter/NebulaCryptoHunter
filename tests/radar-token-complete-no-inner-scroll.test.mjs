@@ -35,8 +35,10 @@ test('no inner scroll; wheel pages one token; full details remain available via 
  assert.match(html,/div\.querySelector\('\[data-token-detail\]'\)\.addEventListener\('click'/);
 });
 test('card still shows price, momentum, timestamps, risk, contract address and all six actions',()=>{
- for(const value of ['token-price-console','tokenPulse(t)','token-card-provenance','RISIKO BELUM DIVERIFIKASI','token-card-address',
+ for(const value of ['token-price-console','tokenPulse(t)','token-card-provenance','token-risk-chip','token-card-address',
   'data-action="watch"','data-action="copyca"','data-action="phantom"','data-action="pump"','data-action="dex"','DETAIL ↗']) assert.ok(html.includes(value),value);
+ const card=html.slice(html.indexOf('function buildCard('),html.indexOf('function openTokenDetails('));
+ assert.match(card,/escapeHTML\(researchRiskLabel\(t\)\)/);
  assert.match(css,/@media\(min-width:1200px\) and \(max-height:790px\)/);
  assert.match(css,/@media\(max-width:767px\) and \(max-height:760px\)/);
 });
