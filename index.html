@@ -3611,7 +3611,8 @@ html,body{height:100dvh!important;min-height:0;overflow:hidden!important;overscr
  scrollbar-width:thin;scrollbar-color:#35a7be #061b30;
 }
 .hunter-ai-panel #aiHealthDash .instrument-bar{
- display:grid!important;grid-template-rows:auto 7px auto!important;
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ grid-template-rows:auto 7px auto!important;justify-content:stretch!important;
  align-content:center!important;align-items:stretch!important;
  min-height:52px!important;min-width:0!important;
  padding:4px 6px!important;gap:3px!important;overflow:visible!important;
