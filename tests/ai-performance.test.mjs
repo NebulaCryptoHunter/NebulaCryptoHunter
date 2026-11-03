@@ -15,7 +15,7 @@ const candidate=(patch={})=>({id:1,model:MODEL,ai_score:66,observed_at:new Date(
 const html=readFileSync('index.html','utf8');
 function ui(){
  const clock={now};class Clock extends Date{static now(){return clock.now;}}
- const elements={aiHealthDash:{innerHTML:''},hunterActiveTargetCount:{},hunterWatchValue:{},hunterEvaluationValue:{},hunterCalibrationStatus:{},hunterCalibratedValue:{closest:()=>null},hunterPerformanceAsOf:{}};
+ const elements={aiHealthDash:{innerHTML:''},hunterActiveTargetCount:{},hunterTrackedValue:{},hunterTrackedCaption:{},hunterSetupValue:{},hunterWatchValue:{},hunterEvaluationValue:{},hunterCalibrationStatus:{},hunterCalibratedValue:{closest:()=>null},hunterPerformanceAsOf:{}};
  const ctx=vm.createContext({S:{},CONFIG:{ENDPOINTS:['DEX','HELIUS','RUGCHECK']},ep:{},eph:{},Date:Clock,$:id=>elements[id],escapeHTML:x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
  vm.runInContext(html.slice(html.indexOf('function currentProviderState('),html.indexOf('function showIndicatorCatalog(')),ctx);
  return {ctx,clock,elements};
@@ -24,6 +24,24 @@ test('all token coverage uses exactly the first visible pool per mint, including
  const p=metrics({items:[item({price_usd:0}),item({pair_address:'another'}),item({mint:B})]});
  assert.equal(p.tokenCount,2);assert.equal(p.metrics.price.numerator,1);assert.equal(p.metrics.pool.numerator,1);
  assert.equal(p.metrics.scored.numerator,2);assert.equal(p.metrics.price.value,50);
+});
+test('TRACKED uses persistent ACTIVE plus WEAK totals, independent of feed size and EXITED history',()=>{
+ const data={items:[item()],radarTracking:{version:'radar-v1.0.0',counts:{ACTIVE:7,WEAK:2,EXITED:11}}};
+ assert.equal(metrics(data).overview.tracked,9);
+ assert.equal(metrics({...data,radarTracking:{version:'radar-v1.0.0',counts:{}}}).overview.tracked,0);
+ for(const radarTracking of [null,{version:'old',counts:{}},{version:'radar-v1.0.0',counts:{ACTIVE:-1}},{version:'radar-v1.0.0',counts:{ACTIVE:'7'}}])assert.equal(metrics({...data,radarTracking}).overview.tracked,null);
+});
+test('ACTIVE SETUPS counts unique fresh V4 REVIEW with current passing checks, excluding weak and exited tokens',()=>{
+ assert.equal(metrics({items:[item({decision:'REVIEW'}),item({decision:'REVIEW',pair_address:'second-pool'})]}).overview.activeSetups,1);
+ for(const patch of [{decision:'WATCH'},{model:'heuristic-v3.0.0'},{observed_at:new Date(now-16*60000).toISOString()},{source_as_of:new Date(now-3600000).toISOString()},{verificationEvidence:null,tokenMetadata:null,riskAssessment:{status:'CHECKS_PASSED'}},{tracking:{state:'WEAK'}},{tracking:{state:'EXITED'}}])
+  assert.equal(metrics({items:[item({decision:'REVIEW',...patch})]}).overview.activeSetups,0,JSON.stringify(patch));
+});
+test('new overview cards preserve unknown versus zero and expire setups in the browser without losing tracked totals',()=>{
+ const {ctx,elements,clock}=ui();ctx.renderResearchIndicators();assert.equal(elements.hunterTrackedValue.textContent,'—');assert.equal(elements.hunterSetupValue.textContent,'—');
+ const data=withPerformance({items:[item({decision:'REVIEW'})],radarTracking:{version:'radar-v1.0.0',counts:{ACTIVE:2,WEAK:1}}},{now});
+ ctx.S.serverResearch=data;ctx.S.performanceAsOf=data.aiPerformance.asOf;ctx.S.performanceReceivedAt=now;ctx.renderResearchIndicators(data);
+ assert.equal(elements.hunterTrackedValue.textContent,'3');assert.equal(elements.hunterSetupValue.textContent,'1');
+ clock.now+=16*60000;ctx.renderResearchIndicators(data);assert.equal(elements.hunterTrackedValue.textContent,'3');assert.equal(elements.hunterSetupValue.textContent,'0');
 });
 test('pool coverage requires identity, positive liquidity and a positive numeric price',()=>{
  for(const patch of [{pair_address:null},{pair_address:''},{liquidity_usd:0},{liquidity_usd:-1},{price_usd:true},{price_usd:'1'},{price_usd:0}])assert.equal(metrics({items:[item(patch)]}).metrics.pool.value,0);
