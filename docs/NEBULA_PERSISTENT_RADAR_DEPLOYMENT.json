@@ -1,0 +1,347 @@
+{
+  "recordedAt": "2026-11-03T04:41:55.545Z",
+  "project": "NEBULA Crypto Hunter",
+  "site": "https://nebulacryptohunter.space/",
+  "source": {
+    "pullRequest": "https://github.com/NebulaCryptoHunter/NebulaCryptoHunter/pull/64",
+    "featureCommit": "a5143cd40290071b5a62cbb29a97d4fecd00ce2d",
+    "mergeCommit": "085ecf859f28cbdbf70392e261574b4309c10cd6",
+    "visibleBadgeFollowup": "cb12e5fc303188b68a3e85b642e237e6f50b958e"
+  },
+  "migration": {
+    "file": "backend/migrations/0011_persistent_radar.sql",
+    "applied": true,
+    "preMigrationBookmark": "0000131b-00000000-00005118-f2be88a746b528ec4693733b7866c287",
+    "syntheticProductionCandidates": 0
+  },
+  "deployments": [
+    {
+      "name": "nebulacryptohunter",
+      "created_on": "2026-11-03T04:38:25.88988Z",
+      "deployment_id": "85ddcd22-01d4-430b-bff0-52d06316ad77",
+      "versions": [
+        {
+          "version_id": "ffc4c9e2-27f0-4ca4-99c1-8a3cfca8186d",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-api",
+      "created_on": "2026-11-03T04:21:28.500595Z",
+      "deployment_id": "d3a2f386-9bab-48e1-99ec-10d139b1b1f5",
+      "versions": [
+        {
+          "version_id": "1d711809-c74b-41ad-89d2-8db1741e139c",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-scanner",
+      "created_on": "2026-11-03T04:26:45.217489Z",
+      "deployment_id": "892abbc0-3dd4-4525-ac1a-a5b15bc7422f",
+      "versions": [
+        {
+          "version_id": "407fdfdb-be80-44b0-85e7-1402df905c15",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-monitor",
+      "created_on": "2026-11-03T04:21:53.483851Z",
+      "deployment_id": "7ab29f5b-899b-4140-b9ee-2405fd48615b",
+      "versions": [
+        {
+          "version_id": "6c65f696-911a-440b-beb9-fcada5cb8a78",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "name": "nebula-evaluation",
+      "created_on": "2026-11-03T04:27:33.613908Z",
+      "deployment_id": "3fb80548-dd6a-4a8f-9f23-2a9db80cdbe1",
+      "versions": [
+        {
+          "version_id": "4a7f9f6a-5675-4e9a-a6d9-5772534f949d",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "schedules": [
+    {
+      "name": "nebula-monitor",
+      "schedules": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-11-03T04:23:37.438556Z",
+          "modified_on": "2026-11-03T04:23:37.438556Z"
+        }
+      ]
+    },
+    {
+      "name": "nebula-scanner",
+      "schedules": [
+        {
+          "cron": "*/30 * * * *",
+          "created_on": "2026-11-01T04:18:01.472253Z",
+          "modified_on": "2026-11-01T04:18:01.472253Z"
+        }
+      ]
+    },
+    {
+      "name": "nebula-evaluation",
+      "schedules": [
+        {
+          "cron": "*/30 * * * *",
+          "created_on": "2026-08-02T15:18:35.30109Z",
+          "modified_on": "2026-08-02T15:18:35.30109Z"
+        }
+      ]
+    }
+  ],
+  "monitorEvidence": {
+    "health": {
+      "version": "radar-v1.0.0",
+      "at": "2026-11-03T04:41:10.654Z",
+      "status": "RUNNING",
+      "selected": 0,
+      "error": null,
+      "archiveEnabled": false
+    },
+    "budget": {
+      "day": "2026-11-03",
+      "startedAt": 1793680270715,
+      "rowsRead": 164,
+      "rowsWritten": 56,
+      "runs": 11
+    },
+    "tracks": [],
+    "publicStatus": {
+      "tracking": {
+        "status": 200,
+        "data": {
+          "health": {
+            "version": "radar-v1.0.0",
+            "at": "2026-11-03T04:37:10.193Z",
+            "status": "RUNNING",
+            "selected": 0,
+            "error": null,
+            "archiveEnabled": false
+          },
+          "budget": {
+            "day": "2026-11-03",
+            "startedAt": 1793680270715,
+            "rowsRead": 104,
+            "rowsWritten": 36,
+            "runs": 7
+          },
+          "analytics": {
+            "version": "radar-v1.0.0",
+            "scope": "LATEST_2000_SIGNAL_HORIZONS",
+            "rows": [],
+            "definition": "Versioned paper signals; success means point return >= declared target at declared horizon plus tolerance. Missing observations are indeterminate. Not trading win rate or P&L.",
+            "calibrated": false
+          }
+        }
+      },
+      "history": {
+        "status": 200,
+        "keys": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "countsAsOf",
+          "source",
+          "recordModel",
+          "dataStatus",
+          "cacheAt"
+        ],
+        "sources": [
+          "SCANNER",
+          "SCANNER",
+          "SCANNER"
+        ],
+        "total": 7260
+      },
+      "at": "2026-11-03T04:38:10.537Z"
+    }
+  },
+  "verification": {
+    "algorithmIntegration": {
+      "passed": 155,
+      "failed": 0
+    },
+    "newTrackingTests": {
+      "passed": 17,
+      "failed": 0
+    },
+    "localFullSuite": {
+      "tests": 295,
+      "passed": 287,
+      "failed": 6,
+      "skipped": 2
+    },
+    "githubFullSuite": {
+      "jobId": 125729885740,
+      "tests": 295,
+      "passed": 288,
+      "failed": 7,
+      "skipped": 0,
+      "note": "The same seven failures occurred on merge commit 085ecf8, including the six existing UI source-contract failures and the real-browser header frame Y centering assertion (about 1.17px). No full-green claim."
+    },
+    "frontendBuild": {
+      "id": "24b37bfb-03b1-4091-a667-0b91510137fd",
+      "outcome": "success"
+    },
+    "cssSha256": "fb9c3c2d324df922f070f75199bad9ddee361fb631f88051bf611bf5e4602765",
+    "cssAndStaticMarkupIdenticalTo": "23fb89f41a56bfdcdd306f67c5cd2ee296b5f02a",
+    "inlineScriptsParse": true,
+    "gitDiffCheck": true,
+    "mobile": [
+      {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "documentWidth": 320
+        },
+        "mode": "UI_SIMULATION_ONLY_NO_PRODUCTION_WRITES",
+        "measuredLabels": [
+          {
+            "text": "DIPANTAU · VERTIKAL",
+            "width": 120.3125,
+            "available": 233,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · KONSOLIDASI",
+            "width": 137.40625,
+            "available": 233,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · POLA LAMA",
+            "width": 126,
+            "available": 233,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · TANGGA NAIK",
+            "width": 137.40625,
+            "available": 233,
+            "height": 17,
+            "noTextOverflow": true
+          }
+        ],
+        "headerHeight": 46,
+        "note": "No clipping in header geometry."
+      },
+      {
+        "viewport": {
+          "width": 360,
+          "height": 640,
+          "documentWidth": 360
+        },
+        "mode": "UI_SIMULATION_ONLY_NO_PRODUCTION_WRITES",
+        "measuredLabels": [
+          {
+            "text": "DIPANTAU · VERTIKAL",
+            "width": 120.3125,
+            "available": 228,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · KONSOLIDASI",
+            "width": 137.40625,
+            "available": 228,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · POLA LAMA",
+            "width": 126,
+            "available": 228,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · TANGGA NAIK",
+            "width": 137.40625,
+            "available": 228,
+            "height": 17,
+            "noTextOverflow": true
+          }
+        ],
+        "note": "Existing header clips outer padding by approximately 0.55px at 360 / 1.14px at 390; same geometry with original WATCH badge, text fits; no CSS changed."
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "documentWidth": 390
+        },
+        "mode": "UI_SIMULATION_ONLY_NO_PRODUCTION_WRITES",
+        "measuredLabels": [
+          {
+            "text": "DIPANTAU · VERTIKAL",
+            "width": 120.3125,
+            "available": 258,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · KONSOLIDASI",
+            "width": 137.40625,
+            "available": 258,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · POLA LAMA",
+            "width": 126,
+            "available": 258,
+            "height": 17,
+            "noTextOverflow": true
+          },
+          {
+            "text": "DIPANTAU · TANGGA NAIK",
+            "width": 137.40625,
+            "available": 258,
+            "height": 17,
+            "noTextOverflow": true
+          }
+        ],
+        "headerHeight": 46,
+        "note": "Existing header clips outer padding by approximately 0.55px at 360 / 1.14px at 390; same geometry with original WATCH badge, text fits; no CSS changed."
+      }
+    ]
+  },
+  "limitations": [
+    {
+      "component": "R2 archive",
+      "active": false,
+      "providerCode": 10042,
+      "message": "Please enable R2 through the Cloudflare Dashboard.",
+      "fallback": "D1 plus bounded Cache API fallback; independent durable archive is not active."
+    },
+    {
+      "component": "CPU telemetry",
+      "measured": false,
+      "httpStatus": 403,
+      "message": "Workers observability API query denied by role/resource restriction. Upload startup time is not a runtime CPU measurement."
+    },
+    {
+      "component": "Pattern/outcome live evidence",
+      "measured": false,
+      "message": "Tracking table is empty at the recorded check. Labels were verified in isolated browser UI simulation with no production writes. Real admission, candle detections and horizon outcomes require eligible observations; missing observations are never counted as failures."
+    }
+  ]
+}

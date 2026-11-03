@@ -33,7 +33,7 @@ Each admission/pattern transition records an algorithm version, original price, 
 - API: private service-binding market route; existing credentials are reused inside their original Worker, never copied.
 - Scanner: admits real eligible observations after normal snapshot persistence.
 - Frontend gateway: merges retained candidates, suppresses archived ones and reads the monitor snapshot. Existing history includes tracking entries through an additive v2 view.
-- Frontend: labels occupy existing badge/provenance/detail/catalog slots. No CSS or static layout changes.
+- Frontend: labels occupy existing badge/provenance/detail/catalog slots. The visible decision badge combines state and pattern, for example `DIPANTAU · TANGGA NAIK`, because the old auxiliary data chip is intentionally hidden. Stale vertical patterns retain `POLA LAMA`. No CSS or static layout changes.
 
 ## Resource constraint
 
@@ -41,4 +41,10 @@ The Cloudflare R2 API currently returns code 10042: “Please enable R2 through 
 
 ## Verification/deployment
 
-Implementation and verification are in progress. No production migration or deployment has been performed at the time of this initial record. The pre-change repository suite has six documented unrelated UI contract failures and two browser skips. New behavioral tests use isolated local SQLite; no synthetic candidate is inserted into production.
+PR #64 was merged as `085ecf8`; visible badge follow-up `cb12e5f` is deployed. The additive D1 migration, API, scanner, evaluation worker, frontend and independent monitor are live. At 04:41:10 UTC on 2026-11-03 the monitor had completed eleven scheduled runs, reported RUNNING with no error, and recorded no tracked candidate yet. Public tracking status and unified history both returned HTTP 200. No synthetic candidate was inserted into production.
+
+Algorithm/integration checks passed 155/155, including seventeen new tracking behavior tests. The local full suite had 287 passes, six existing UI contract failures and two browser skips. GitHub CI ran the real-browser tests and had 288 passes/seven failures: the same six UI contracts plus an existing header Y-centering assertion (about 1.17px), also present before the badge follow-up. The complete suite is not green.
+
+CSS and static markup match `23fb89f` exactly; CSS SHA-256 is `fb9c3c2d324df922f070f75199bad9ddee361fb631f88051bf611bf5e4602765`. Inline scripts parse and git diff whitespace checks pass. Badge labels fit without wrapping/overflow in isolated 320x640, 360x640 and 390x844 browser simulations. The existing 360/390 header clips a small amount of outer padding equally with the original WATCH label; text fits and header/card dimensions remain unchanged. This is UI verification, not evidence of live pattern success.
+
+R2 remains inactive under the provider's code 10042. Runtime CPU telemetry could not be measured because the account's observability query returned HTTP 403; upload startup time is not claimed as CPU performance. Exact version IDs, schedule evidence, test counts and limitations are in `NEBULA_PERSISTENT_RADAR_DEPLOYMENT.json`.
